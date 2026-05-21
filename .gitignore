@@ -1,0 +1,23 @@
+# Build output
+target/
+
+# Node dependencies
+node_modules/
+
+# IDE files
+.idea/
+.vscode/
+*.iml
+
+# macOS
+.DS_Store
+
+# Logs / environment
+*.log
+.env
+
+# Vaadin generated files
+.vaadin/
+frontend/generated/
+vite.generated.ts
+types.d.ts
