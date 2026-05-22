@@ -1,0 +1,45 @@
+/* ===== HCBS light theme variables ===== */
+:root {
+    --hcbs-bg: #f4f7fb;
+    --hcbs-panel: #ffffff;
+    --hcbs-panel-soft: #eef4fb;
+    --hcbs-text: #142033;
+    --hcbs-muted: #64748b;
+    --hcbs-border: #d8e2ef;
+    --hcbs-blue: #0072ce;
+    --hcbs-blue-dark: #005ba6;
+    --hcbs-selected: #0f8de8;
+    --hcbs-booked: #94a3b8;
+}
+
+/* remove Vaadin dialog default white margin/padding */
+vaadin-dialog-overlay[theme~="hcbs-seat-dialog"]::part(overlay) {
+    width: 100vw;
+    height: 100vh;
+    max-width: 100vw;
+    max-height: 100vh;
+    margin: 0;
+    padding: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+}
+
+vaadin-dialog-overlay[theme~="hcbs-seat-dialog"]::part(content) {
+    padding: 0;
+    margin: 0;
+    background: transparent;
+    overflow: hidden;
+}
+
+/* Make input fields clearer inside booking dialog */
+.hcbs-light-dialog vaadin-text-field,
+.hcbs-light-dialog vaadin-email-field,
+.hcbs-light-dialog vaadin-text-area {
+    color: var(--hcbs-text);
+}
+
+/* optional global body */
+body {
+    background: var(--hcbs-bg);
+}
