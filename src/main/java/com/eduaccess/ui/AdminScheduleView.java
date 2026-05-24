@@ -56,9 +56,9 @@ public class AdminScheduleView extends Div {
     private final Span weekLabel = new Span();
     private final Span pendingLabel = new Span();
 
-    private final Button autoButton = primaryButton("Auto-fill week");
-    private final Button confirmButton = primaryButton("Confirm changes");
-    private final Button discardButton = secondaryButton("Discard changes");
+    private final Button autoButton = new Button("Auto-fill week");
+    private final Button confirmButton = new Button("Confirm changes");
+    private final Button discardButton = new Button("Discard changes");
 
     private final List<ScheduleItem> scheduleItems = new ArrayList<>();
     private final Random random = new Random();
@@ -80,6 +80,11 @@ public class AdminScheduleView extends Div {
         this.filmRepository = filmRepository;
         this.cinemaRepository = cinemaRepository;
         this.screenRepository = screenRepository;
+
+        // Initialize styled buttons
+        stylePrimaryButton(autoButton);
+        stylePrimaryButton(confirmButton);
+        styleSecondaryButton(discardButton);
 
         setWidthFull();
         getStyle()
@@ -1009,8 +1014,7 @@ public class AdminScheduleView extends Div {
         return card;
     }
 
-    private Button primaryButton(String text) {
-        Button button = new Button(text);
+    private void stylePrimaryButton(Button button) {
         button.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
         button.getStyle()
                 .set("height", "46px")
@@ -1019,11 +1023,9 @@ public class AdminScheduleView extends Div {
                 .set("font-weight", "900")
                 .set("clip-path", "polygon(0 0, 100% 0, 92% 100%, 0 100%)")
                 .set("padding", "0 34px 0 28px");
-        return button;
     }
 
-    private Button secondaryButton(String text) {
-        Button button = new Button(text);
+    private void styleSecondaryButton(Button button) {
         button.getStyle()
                 .set("height", "42px")
                 .set("background", "#ffffff")
@@ -1031,6 +1033,11 @@ public class AdminScheduleView extends Div {
                 .set("border", "1px solid #cbd5e1")
                 .set("border-radius", "0")
                 .set("font-weight", "800");
+    }
+
+    private Button secondaryButton(String text) {
+        Button button = new Button(text);
+        styleSecondaryButton(button);
         return button;
     }
 

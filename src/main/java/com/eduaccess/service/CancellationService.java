@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -20,6 +21,11 @@ public class CancellationService {
 
     public CancellationService(BookingRepository bookingRepository) {
         this.bookingRepository = bookingRepository;
+    }
+
+    @Transactional(readOnly = true)
+    public List<Booking> findAllBookings() {
+        return bookingRepository.findAllByOrderByBookingDateDesc();
     }
 
     @Transactional(readOnly = true)

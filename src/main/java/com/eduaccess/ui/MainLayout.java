@@ -272,19 +272,15 @@ public class MainLayout extends AppLayout {
     }
 
     private String getSelectedCity() {
-        Object city = VaadinSession.getCurrent().getAttribute("selectedCity");
-
-        if (city == null) {
-            return null;
+        VaadinSession session = VaadinSession.getCurrent();
+        if (session == null) {
+            return "";
         }
-
-        String value = city.toString();
-
-        return value.isBlank() ? null : value;
+        return (String) session.getAttribute("selectedCity");
     }
 
     private String getSelectedCityLabel() {
         String city = getSelectedCity();
-        return city == null ? "City" : city;
+        return (city == null || city.isBlank()) ? "Choose city" : city;
     }
 }

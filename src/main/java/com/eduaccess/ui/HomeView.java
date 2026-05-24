@@ -52,9 +52,13 @@ public class HomeView extends VerticalLayout {
         description.getStyle().set("text-align", "center");
 
         List<Cinema> cinemas = cinemaRepository.findAll();
+        if (cinemas == null) {
+            cinemas = List.of();
+        }
 
         List<String> cities = cinemas.stream()
                 .map(Cinema::getCity)
+                .filter(city -> city != null && !city.isBlank())
                 .distinct()
                 .sorted()
                 .toList();

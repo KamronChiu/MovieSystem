@@ -1,194 +1,386 @@
 package com.eduaccess.ui;
 
 import com.eduaccess.domain.Booking;
-import com.eduaccess.domain.BookingSeat;
 import com.eduaccess.domain.BookingStatus;
 import com.eduaccess.service.CancellationService;
+import com.vaadin.flow.component.Html;
 import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.dialog.Dialog;
+import com.vaadin.flow.component.grid.Grid;
+import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H2;
-import com.vaadin.flow.component.html.Paragraph;
+import com.vaadin.flow.component.html.H3;
+import com.vaadin.flow.component.html.Span;
+import com.vaadin.flow.component.icon.Icon;
+import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.notification.Notification;
+import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
-import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.component.textfield.TextField;
+import com.vaadin.flow.data.provider.ListDataProvider;
+import com.vaadin.flow.data.value.ValueChangeMode;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 
 import java.math.BigDecimal;
 import java.text.NumberFormat;
-import java.util.Comparator;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import java.util.stream.Collectors;
 
 @Route(value = "cancellation", layout = MainLayout.class)
 @PageTitle("HCBS — Cancellation")
-public class CancellationView extends VerticalLayout {
+public class CancellationView extends Div {
+
+    private static final String DARK_BG = "#020b1d";
+    private static final String BLUE = "#0072ce";
+    private static final String LIGHT_TEXT = "#142033";
+    private static final String LIGHT_MUTED = "#64748b";
 
     private final CancellationService cancellationService;
 
-    private final TextField bookingReferenceField = new TextField("Booking reference");
-    private final TextArea bookingDetailsArea = new TextArea("Booking details");
-    private final TextArea cancellationResultArea = new TextArea("Cancellation result");
-    private final Button cancelButton = new Button("Cancel booking");
+    // Search components
+    private final TextField searchField = new TextField("Booking Reference");
+    private final Button searchButton = new Button("Search");
+    private final Button clearButton = new Button("Clear");
 
-    private Booking currentBooking;
+    // Master-Detail components
+    private final Grid<Booking> bookingGrid = new Grid<>(Booking.class, false);
+    private final Div detailsCard = new Div();
+    private final Button cancelButton = new Button("Cancel Booking");
+
+    private Booking selectedBooking;
+    private final List<Booking> allBookings = new ArrayList<>();
+    private ListDataProvider<Booking> dataProvider;
 
     public CancellationView(CancellationService cancellationService) {
         this.cancellationService = cancellationService;
 
-        setSizeFull();
-        setPadding(true);
-        setSpacing(true);
+        // Initialize Data Provider with an empty list first
+        this.dataProvider = new ListDataProvider<>(allBookings);
 
-        H2 title = new H2("Booking Cancellation");
-        Paragraph description = new Paragraph(
-                "Search for a booking reference and cancel the booking if it is still eligible for cancellation."
-        );
+        setWidthFull();
+        getStyle()
+                .set("background", DARK_BG)
+                .set("min-height", "100vh")
+                .set("color", "white");
 
-        configureReferenceField();
-        configureTextAreas();
-        configureCancelButton();
+        Div container = new Div();
+        container.getStyle()
+                .set("max-width", "1320px")
+                .set("margin", "0 auto")
+                .set("padding", "44px 48px")
+                .set("box-sizing", "border-box");
 
-        Button searchButton = new Button("Search booking", event -> searchBooking());
+        // Title Section
+        H2 title = new H2("Booking Cancellation Management");
+        title.getStyle().set("margin-top", "0").set("font-weight", "950");
+        container.add(title);
 
-        HorizontalLayout searchRow = new HorizontalLayout(bookingReferenceField, searchButton, cancelButton);
-        searchRow.setAlignItems(Alignment.END);
-        searchRow.getStyle().set("flex-wrap", "wrap");
+        // Search Section
+        container.add(buildSearchBar());
 
-        add(
-                title,
-                description,
-                searchRow,
-                bookingDetailsArea,
-                cancellationResultArea
-        );
+        // Content Section (Master-Detail)
+        container.add(buildMainContent());
+
+        // Setup Actions
+        cancelButton.addClickListener(e -> confirmCancellation());
+        
+        add(container);
+
+        // Load data initially
+        refreshBookings();
     }
 
-    private void configureReferenceField() {
-        bookingReferenceField.setWidth("420px");
-        bookingReferenceField.setPlaceholder("e.g. HCBS-20260509-ABC123");
-        bookingReferenceField.setClearButtonVisible(true);
+    private void refreshBookings() {
+        allBookings.clear();
+        allBookings.addAll(cancellationService.findAllBookings());
+        dataProvider.refreshAll();
     }
 
-    private void configureTextAreas() {
-        bookingDetailsArea.setWidthFull();
-        bookingDetailsArea.setHeight("260px");
-        bookingDetailsArea.setReadOnly(true);
-        bookingDetailsArea.setPlaceholder("Booking information will appear here.");
+    private Div buildSearchBar() {
+        Div wrapper = new Div();
+        wrapper.getStyle()
+                .set("background", "white")
+                .set("color", LIGHT_TEXT)
+                .set("padding", "20px 24px")
+                .set("margin-bottom", "40px")
+                .set("display", "grid")
+                .set("grid-template-columns", "1fr 160px 120px")
+                .set("gap", "16px")
+                .set("align-items", "end")
+                .set("box-shadow", "0 10px 30px rgba(0,0,0,0.3)");
 
-        cancellationResultArea.setWidthFull();
-        cancellationResultArea.setHeight("180px");
-        cancellationResultArea.setReadOnly(true);
-        cancellationResultArea.setPlaceholder("Cancellation result will appear here.");
+        searchField.setPlaceholder("Search by reference (e.g. HCBS-...)");
+        searchField.setWidthFull();
+        searchField.setClearButtonVisible(true);
+        searchField.setPrefixComponent(new Icon(VaadinIcon.SEARCH));
+        searchField.setValueChangeMode(ValueChangeMode.LAZY);
+        searchField.addValueChangeListener(e -> applyFilter());
+
+        searchButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        searchButton.getStyle().set("background", BLUE).set("height", "44px").set("font-weight", "700");
+        searchButton.addClickListener(e -> applyFilter());
+
+        clearButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+        clearButton.getStyle().set("height", "44px");
+        clearButton.addClickListener(e -> {
+            searchField.clear();
+            applyFilter();
+        });
+
+        wrapper.add(searchField, searchButton, clearButton);
+        return wrapper;
     }
 
-    private void configureCancelButton() {
-        cancelButton.setEnabled(false);
-        cancelButton.addClickListener(event -> cancelCurrentBooking());
+    private Div buildMainContent() {
+        Div content = new Div();
+        content.getStyle()
+                .set("display", "grid")
+                .set("grid-template-columns", "450px 1fr")
+                .set("gap", "32px")
+                .set("align-items", "start");
+
+        // Left Side: Grid
+        configureGrid();
+        Div gridWrapper = new Div(bookingGrid);
+        gridWrapper.getStyle()
+                .set("background", "white")
+                .set("border-radius", "8px")
+                .set("padding", "1px")
+                .set("overflow", "hidden");
+        content.add(gridWrapper);
+
+        // Right Side: Details Card
+        configureDetailsCard();
+        content.add(detailsCard);
+
+        return content;
     }
 
-    private void searchBooking() {
-        String reference = bookingReferenceField.getValue();
+    private void configureGrid() {
+        bookingGrid.addColumn(Booking::getBookingReference)
+                .setHeader("Reference")
+                .setAutoWidth(true)
+                .setFlexGrow(1);
+        
+        bookingGrid.addColumn(b -> {
+                    if (b.getScreening() != null && b.getScreening().getFilm() != null) {
+                        return b.getScreening().getFilm().getTitle();
+                    }
+                    return "Unknown Film";
+                })
+                .setHeader("Film")
+                .setAutoWidth(true)
+                .setFlexGrow(2);
 
-        currentBooking = cancellationService.findBookingByReference(reference)
-                .orElse(null);
-
-        cancellationResultArea.clear();
-
-        if (currentBooking == null) {
-            bookingDetailsArea.setValue("No booking was found for this reference.");
-            cancelButton.setEnabled(false);
-            Notification.show("Booking not found.");
-            return;
-        }
-
-        bookingDetailsArea.setValue(buildBookingDetails(currentBooking));
-        cancelButton.setEnabled(currentBooking.getStatus() == BookingStatus.CONFIRMED);
+        bookingGrid.setDataProvider(dataProvider);
+        bookingGrid.setHeight("650px");
+        bookingGrid.addSelectionListener(event -> {
+            selectedBooking = event.getFirstSelectedItem().orElse(null);
+            updateDetailsCard();
+        });
     }
 
-    private void cancelCurrentBooking() {
-        if (currentBooking == null) {
-            Notification.show("Please search for a booking first.");
-            return;
-        }
+    private void configureDetailsCard() {
+        detailsCard.getStyle()
+                .set("background", "white")
+                .set("color", LIGHT_TEXT)
+                .set("padding", "40px")
+                .set("min-height", "650px")
+                .set("border-radius", "8px")
+                .set("box-shadow", "0 10px 30px rgba(0,0,0,0.3)")
+                .set("display", "flex")
+                .set("flex-direction", "column")
+                .set("box-sizing", "border-box");
+        
+        updateDetailsCard(); 
+    }
 
+    private void updateDetailsCard() {
         try {
-            CancellationService.CancellationResult result =
-                    cancellationService.cancelBooking(currentBooking.getBookingReference());
+            detailsCard.removeAll();
 
-            currentBooking = result.booking();
+            if (selectedBooking == null) {
+                renderPlaceholder();
+                return;
+            }
 
-            bookingDetailsArea.setValue(buildBookingDetails(currentBooking));
-            cancellationResultArea.setValue(buildCancellationResult(result));
-            cancelButton.setEnabled(false);
-
-            Notification.show("Booking cancelled successfully.");
-
-        } catch (RuntimeException ex) {
-            Notification.show(ex.getMessage());
+            renderBookingDetails();
+        } catch (Exception e) {
+            showError("Error loading booking details: " + e.getMessage());
+            renderPlaceholder();
         }
     }
 
-    private String buildBookingDetails(Booking booking) {
-        String seats = booking.getBookingSeats()
-                .stream()
-                .sorted(Comparator.comparing(bs -> bs.getSeat().getSeatNumber()))
-                .map(BookingSeat::getSeat)
-                .map(seat -> seat.getSeatNumber() + " (" + seat.getSeatType() + ")")
-                .collect(Collectors.joining(", "));
-
-        return """
-                Booking Reference: %s
-                Customer Name: %s
-                Customer Email: %s
-                
-                Film: %s
-                Cinema: %s
-                City: %s
-                Date: %s
-                Showing Time: %s
-                Screen: %s
-                Seats: %s
-                
-                Total Booking Cost: %s
-                Booking Date: %s
-                Status: %s
-                """.formatted(
-                booking.getBookingReference(),
-                booking.getCustomerName(),
-                booking.getCustomerEmail(),
-                booking.getScreening().getFilm().getTitle(),
-                booking.getScreening().getScreen().getCinema().getName(),
-                booking.getScreening().getScreen().getCinema().getCity(),
-                booking.getScreening().getScreeningDate(),
-                booking.getScreening().getStartTime(),
-                booking.getScreening().getScreen().getScreenNumber(),
-                seats,
-                formatMoney(booking.getTotalCost()),
-                booking.getBookingDate(),
-                booking.getStatus()
-        );
+    private void renderPlaceholder() {
+        Div placeholder = new Div();
+        placeholder.getStyle()
+                .set("height", "100%")
+                .set("display", "flex")
+                .set("flex-direction", "column")
+                .set("align-items", "center")
+                .set("justify-content", "center")
+                .set("color", LIGHT_MUTED)
+                .set("text-align", "center");
+        
+        Icon icon = new Icon(VaadinIcon.INFO_CIRCLE_O);
+        icon.setSize("48px");
+        icon.getStyle().set("margin-bottom", "16px");
+        
+        Span text = new Span("Select a booking from the list to view full details and cancellation options.");
+        text.getStyle().set("max-width", "300px").set("font-style", "italic");
+        
+        placeholder.add(icon, text);
+        detailsCard.add(placeholder);
     }
 
-    private String buildCancellationResult(CancellationService.CancellationResult result) {
-        return """
-                Cancellation Successful
-                
-                Booking Reference: %s
-                Original Booking Cost: %s
-                Cancellation Charge: %s
-                Refund Amount: %s
-                Updated Status: %s
-                
-                The selected seats have been released and can now be booked again.
-                """.formatted(
-                result.booking().getBookingReference(),
-                formatMoney(result.booking().getTotalCost()),
-                formatMoney(result.cancellationCharge()),
-                formatMoney(result.refundAmount()),
-                result.booking().getStatus()
+    private void renderBookingDetails() {
+        H3 detailTitle = new H3("Booking Detailed Information");
+        detailTitle.getStyle().set("margin-top", "0").set("color", BLUE).set("font-weight", "900");
+        
+        Div grid = new Div();
+        grid.getStyle()
+                .set("display", "grid")
+                .set("grid-template-columns", "1fr 1fr")
+                .set("gap", "24px")
+                .set("margin", "32px 0");
+
+        String filmTitle = "N/A";
+        String cinemaInfo = "N/A";
+        if (selectedBooking.getScreening() != null) {
+            if (selectedBooking.getScreening().getFilm() != null) {
+                filmTitle = selectedBooking.getScreening().getFilm().getTitle();
+            }
+            if (selectedBooking.getScreening().getScreen() != null && selectedBooking.getScreening().getScreen().getCinema() != null) {
+                cinemaInfo = selectedBooking.getScreening().getScreen().getCinema().getName() 
+                        + " (Screen " + selectedBooking.getScreening().getScreen().getScreenNumber() + ")";
+            }
+        }
+
+        grid.add(createDetailItem("Film Title", filmTitle));
+        grid.add(createDetailItem("Cinema & Screen", cinemaInfo));
+        
+        String seats = "None";
+        if (selectedBooking.getBookingSeats() != null && !selectedBooking.getBookingSeats().isEmpty()) {
+            seats = selectedBooking.getBookingSeats().stream()
+                    .filter(bs -> bs.getSeat() != null)
+                    .map(bs -> bs.getSeat().getSeatNumber())
+                    .sorted()
+                    .collect(Collectors.joining(", "));
+        }
+        grid.add(createDetailItem("Booked Seats", seats));
+        
+        grid.add(createDetailItem("Customer Name", selectedBooking.getCustomerName()));
+        grid.add(createDetailItem("Customer Email", selectedBooking.getCustomerEmail()));
+        grid.add(createDetailItem("Booking Status", String.valueOf(selectedBooking.getStatus())));
+        grid.add(createDetailItem("Booking Reference", selectedBooking.getBookingReference()));
+        grid.add(createDetailItem("Total Amount Paid", formatMoney(selectedBooking.getTotalCost())));
+
+        cancelButton.setWidthFull();
+        cancelButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_ERROR);
+        cancelButton.getStyle().set("margin-top", "auto").set("height", "50px").set("font-weight", "800");
+        cancelButton.setEnabled(selectedBooking.getStatus() == BookingStatus.CONFIRMED);
+
+        detailsCard.add(detailTitle, grid, cancelButton);
+    }
+
+    private Div createDetailItem(String label, String value) {
+        Div item = new Div();
+        Span labelSpan = new Span(label);
+        labelSpan.getStyle()
+                .set("display", "block")
+                .set("font-size", "12px")
+                .set("font-weight", "700")
+                .set("color", LIGHT_MUTED)
+                .set("text-transform", "uppercase")
+                .set("letter-spacing", "0.05em")
+                .set("margin-bottom", "6px");
+        Span valueSpan = new Span(value);
+        valueSpan.getStyle()
+                .set("font-size", "17px")
+                .set("font-weight", "700")
+                .set("color", LIGHT_TEXT);
+        item.add(labelSpan, valueSpan);
+        return item;
+    }
+
+    private void applyFilter() {
+        String filterText = searchField.getValue().trim().toUpperCase();
+        
+        if (filterText.isEmpty()) {
+            dataProvider.clearFilters();
+        } else {
+            dataProvider.setFilter(booking -> 
+                booking.getBookingReference().toUpperCase().contains(filterText) ||
+                booking.getScreening().getFilm().getTitle().toUpperCase().contains(filterText)
+            );
+        }
+
+        // Auto-select if unique match
+        if (dataProvider.size(new com.vaadin.flow.data.provider.Query<>()) == 1) {
+            allBookings.stream()
+                    .filter(b -> b.getBookingReference().toUpperCase().contains(filterText) ||
+                                 b.getScreening().getFilm().getTitle().toUpperCase().contains(filterText))
+                    .findFirst()
+                    .ifPresent(bookingGrid::select);
+        }
+    }
+
+    private void confirmCancellation() {
+        if (selectedBooking == null) return;
+
+        Dialog dialog = new Dialog();
+        dialog.setHeaderTitle("Confirm Cancellation Request");
+        
+        VerticalLayout dialogContent = new VerticalLayout(
+                new Span("Are you sure you want to cancel booking " + selectedBooking.getBookingReference() + "?"),
+                new Html("<p style='color: var(--lumo-error-text-color); font-size: 14px; font-weight: 600;'>" +
+                        "Warning: A 50% cancellation fee will be automatically deducted from your refund.</p>")
         );
+        dialogContent.setPadding(false);
+        dialog.add(dialogContent);
+
+        Button confirmBtn = new Button("Confirm Cancellation", e -> {
+            performCancellation();
+            dialog.close();
+        });
+        confirmBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_ERROR);
+        
+        Button closeBtn = new Button("Close", e -> dialog.close());
+        dialog.getFooter().add(closeBtn, confirmBtn);
+        
+        dialog.open();
+    }
+
+    private void performCancellation() {
+        try {
+            CancellationService.CancellationResult result = 
+                    cancellationService.cancelBooking(selectedBooking.getBookingReference());
+            
+            // Update local state
+            refreshBookings();
+            
+            // Re-select updated booking
+            selectedBooking = result.booking();
+            bookingGrid.select(selectedBooking);
+            updateDetailsCard();
+
+            Notification.show("Cancellation successful. Refund of " + formatMoney(result.refundAmount()) + " processed.", 
+                    5000, Notification.Position.MIDDLE)
+                    .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+
+        } catch (Exception e) {
+            showError(e.getMessage());
+        }
+    }
+
+    private void showError(String message) {
+        Notification.show(message, 5000, Notification.Position.MIDDLE)
+                .addThemeVariants(NotificationVariant.LUMO_ERROR);
     }
 
     private String formatMoney(BigDecimal amount) {
