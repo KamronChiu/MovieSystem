@@ -46,7 +46,7 @@ public class SchedulingService {
             LocalDate screeningDate,
             LocalTime startTime
     ) {
-        return createScreening(filmId, screenId, screeningDate, startTime, ScreeningType.REGULAR);
+        return createScreening(filmId, screenId, screeningDate, startTime, ScreeningType.REGULAR_2D);
     }
 
     @Transactional
@@ -84,7 +84,7 @@ public class SchedulingService {
                 screenId,
                 screeningDate,
                 startTime,
-                ScreeningType.REGULAR
+                ScreeningType.REGULAR_2D
         );
     }
 
@@ -179,7 +179,7 @@ public class SchedulingService {
                 screening.getFilm().getReleaseDate() != null
                         && screening.getScreeningDate().isBefore(screening.getFilm().getReleaseDate());
 
-        boolean advancePreview = screening.getScreeningType() == ScreeningType.ADVANCE_PREVIEW;
+        boolean advancePreview = !screening.getScreeningType().isRegular();
 
         if (beforeReleaseDate && !advancePreview) {
             throw new IllegalArgumentException(

@@ -3,9 +3,11 @@ package com.eduaccess.ui;
 import com.eduaccess.domain.Booking;
 import com.eduaccess.domain.Cinema;
 import com.eduaccess.domain.Film;
+import com.eduaccess.domain.HallType;
 import com.eduaccess.domain.Screening;
 import com.eduaccess.domain.ScreeningType;
 import com.eduaccess.domain.Seat;
+import com.eduaccess.domain.SeatType;
 import com.eduaccess.repository.CinemaRepository;
 import com.eduaccess.service.BookingService;
 import com.eduaccess.service.LoginService;
@@ -87,6 +89,8 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
 
     private final ComboBox<Film> filmBox = new ComboBox<>();
     private final ComboBox<Cinema> cinemaBox = new ComboBox<>();
+    private final ComboBox<HallType> hallTypeBox = new ComboBox<>();
+    private final ComboBox<String> formatBox = new ComboBox<>(); // 2D/3D/All
     private final DatePicker datePicker = new DatePicker();
 
     private final Div hero = new Div();
@@ -172,6 +176,16 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
         filmBox.setItemLabelGenerator(Film::getTitle);
         filmBox.setClearButtonVisible(false);
 
+        hallTypeBox.setPlaceholder("All hall types");
+        hallTypeBox.setItems(HallType.values());
+        hallTypeBox.setItemLabelGenerator(HallType::getLabel);
+        hallTypeBox.setClearButtonVisible(true);
+
+        formatBox.setPlaceholder("All formats");
+        formatBox.setItems("All", "2D", "3D");
+        formatBox.setValue("All");
+        formatBox.setClearButtonVisible(false);
+
         datePicker.setPlaceholder("Select a date");
         datePicker.setValue(LocalDate.now());
 
@@ -179,6 +193,14 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
             Film film = event.getValue();
             selectedFilmId = film == null ? null : film.getId();
             renderHero();
+            renderShowtimes();
+        });
+
+        hallTypeBox.addValueChangeListener(event -> {
+            renderShowtimes();
+        });
+
+        formatBox.addValueChangeListener(event -> {
             renderShowtimes();
         });
     }
@@ -216,12 +238,14 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
                 .set("box-shadow", "0 16px 40px rgba(0,0,0,0.28)")
                 .set("margin", "32px 0 50px 0")
                 .set("display", "grid")
-                .set("grid-template-columns", "1.2fr 1.2fr 1fr 220px")
+                .set("grid-template-columns", "1fr 1fr 0.7fr 0.7fr 1fr 220px")
                 .set("gap", "14px")
                 .set("align-items", "end");
 
         filmBox.setWidthFull();
         cinemaBox.setWidthFull();
+        hallTypeBox.setWidthFull();
+        formatBox.setWidthFull();
         datePicker.setWidthFull();
 
         Button searchButton = new Button("Search", event -> reloadScreenings());
@@ -233,7 +257,7 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
                 .set("border-radius", "0")
                 .set("clip-path", "polygon(0 0, 100% 0, 92% 100%, 0 100%)");
 
-        wrapper.add(filmBox, cinemaBox, datePicker, searchButton);
+        wrapper.add(filmBox, cinemaBox, hallTypeBox, formatBox, datePicker, searchButton);
         return wrapper;
     }
 
@@ -433,6 +457,70 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
         return badge;
     }
 
+    private Span hallTypeBadge(HallType hallType) {
+        Span badge = new Span(hallType.getLabel());
+        String bg = "transparent";
+        String border = "transparent";
+        String color = "transparent";
+
+        switch (hallType) {
+            case IMAX -> {
+                bg = "rgba(99, 102, 241, 0.22)";
+                border = "#818cf8";
+                color = "#c7d2fe";
+            }
+            case PREMIUM -> {
+                bg = "rgba(234, 179, 8, 0.22)";
+                border = "#eab308";
+                color = "#fde68a";
+            }
+            default -> {
+                bg = "transparent";
+                border = "transparent";
+                color = "transparent";
+            }
+        }
+
+        badge.getStyle()
+                .set("display", "inline-block")
+                .set("margin-top", "8px")
+                .set("margin-left", "6px")
+                .set("padding", "4px 7px")
+                .set("border", "1px solid " + border)
+                .set("background", bg)
+                .set("color", color)
+                .set("font-size", "11px")
+                .set("font-weight", "900")
+                .set("letter-spacing", "0.05em");
+        return badge;
+    }
+
+    private Span formatBadge(String format) {
+        Span badge = new Span(format);
+        String bg = "rgba(16, 185, 129, 0.22)";
+        String border = "#10b981";
+        String color = "#6ee7b7";
+
+        if (format.equals("3D")) {
+            bg = "rgba(139, 92, 246, 0.22)";
+            border = "#8b5cf6";
+            color = "#c4b5fd";
+        }
+
+        badge.getStyle()
+                .set("display", "inline-block")
+                .set("margin-top", "8px")
+                .set("margin-left", "6px")
+                .set("padding", "4px 7px")
+                .set("border", "1px solid " + border)
+                .set("background", bg)
+                .set("color", color)
+                .set("font-size", "11px")
+                .set("font-weight", "900")
+                .set("letter-spacing", "0.05em");
+        return badge;
+    }
+
     private boolean hasAdvancePreviewForSelectedFilm() {
         if (selectedFilmId == null) {
             return false;
@@ -444,7 +532,7 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
     }
 
     private boolean isAdvancePreview(Screening screening) {
-        return screening != null && screening.getScreeningType() == ScreeningType.ADVANCE_PREVIEW;
+        return screening != null && !screening.getScreeningType().isRegular();
     }
 
     private String screeningTypeLabel(Screening screening) {
@@ -515,24 +603,37 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
 
         List<Screening> screenings = currentScreenings.stream()
                 .filter(screening -> Objects.equals(screening.getFilm().getId(), selectedFilmId))
+                .filter(screening -> {
+                    HallType selected = hallTypeBox.getValue();
+                    return selected == null || screening.getScreen().getHallType() == selected;
+                })
+                .filter(screening -> {
+                    String selectedFormat = formatBox.getValue();
+                    if (selectedFormat == null || selectedFormat.equals("All")) {
+                        return true;
+                    }
+                    return screening.getScreeningType() != null && screening.getScreeningType().getFormat().equals(selectedFormat);
+                })
                 .sorted(screeningComparator())
                 .toList();
 
         if (screenings.isEmpty()) {
-            Paragraph empty = new Paragraph("No showtimes are available for this film.");
+            Paragraph empty = new Paragraph("No showtimes are available for this film and hall type combination.");
             empty.getStyle().set("color", "#cbd5e1");
             showtimeArea.add(empty);
             return;
         }
 
-        Map<String, List<Screening>> byCinema = screenings.stream()
+        Map<String, List<Screening>> byCinemaAndHallType = screenings.stream()
                 .collect(Collectors.groupingBy(
-                        screening -> screening.getScreen().getCinema().getName(),
+                        screening -> screening.getScreen().getCinema().getName()
+                                + " | " + screening.getScreen().getHallType().getLabel()
+                                + " Hall",
                         LinkedHashMap::new,
                         Collectors.toList()
                 ));
 
-        for (Map.Entry<String, List<Screening>> entry : byCinema.entrySet()) {
+        for (Map.Entry<String, List<Screening>> entry : byCinemaAndHallType.entrySet()) {
             showtimeArea.add(buildCinemaShowtimeSection(entry.getKey(), entry.getValue()));
         }
     }
@@ -609,6 +710,17 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
 
         if (isAdvancePreview(screening)) {
             timeBlock.add(showtimeBadge("ADVANCE PREVIEW"));
+        }
+
+        // Add 2D/3D format badge
+        String format = screening.getFormat();
+        if (format != null) {
+            timeBlock.add(formatBadge(format));
+        }
+
+        HallType hallType = screening.getScreen().getHallType();
+        if (hallType != HallType.REGULAR) {
+            timeBlock.add(hallTypeBadge(hallType));
         }
 
         Button bookNow = new Button(isAdvancePreview(screening) ? "Book Early" : "Book Now", event -> openSeatDialog(screening));
@@ -696,7 +808,7 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
         Div right = new Div();
         right.getStyle()
                 .set("display", "grid")
-                .set("grid-template-columns", "1fr 1fr 1fr")
+                .set("grid-template-columns", "1fr 1fr 1fr 1fr")
                 .set("gap", "20px")
                 .set("background", LIGHT_PANEL)
                 .set("border", "1px solid " + LIGHT_BORDER)
@@ -707,6 +819,7 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
         right.add(
                 dialogInfo("CINEMA", screening.getScreen().getCinema().getName()),
                 dialogInfo("SHOWTIME", screening.getScreeningDate() + ", " + screening.getStartTime()),
+                dialogInfo("HALL TYPE", screening.getScreen().getHallType().getLabel() + " Hall"),
                 dialogInfo("SCREENING TYPE", screeningTypeLabel(screening))
         );
 
@@ -1131,42 +1244,63 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
                 .set("box-shadow", "0 18px 45px rgba(15, 23, 42, 0.10)")
                 .set("overflow-x", "auto");
 
+        HallType hallType = selectedScreening.getScreen().getHallType();
+        int seatsPerRow = getSeatsPerRowForHall(hallType);
+
         Div screen = new Div();
-        screen.setText("SCREEN");
+        screen.setText("SCREEN - " + hallType.getLabel() + " Hall");
         screen.getStyle()
                 .set("height", "34px")
                 .set("line-height", "34px")
                 .set("text-align", "center")
                 .set("border-radius", "50% 50% 8px 8px")
-                .set("background", "linear-gradient(180deg, #dbeafe, #93c5fd)")
-                .set("color", "#1e3a8a")
+                .set("background", hallType == HallType.IMAX ? "linear-gradient(180deg, #dbeafe, #818cf8)" : hallType == HallType.PREMIUM ? "linear-gradient(180deg, #fef3c7, #eab308)" : "linear-gradient(180deg, #dbeafe, #93c5fd)")
+                .set("color", hallType == HallType.PREMIUM ? "#1e3a8a" : "#1e3a8a")
                 .set("font-weight", "900")
                 .set("letter-spacing", "4px")
                 .set("margin", "0 auto 24px auto")
                 .set("max-width", "520px");
 
+        Div hallInfo = new Div();
+        hallInfo.getStyle()
+                .set("text-align", "center")
+                .set("margin-bottom", "18px")
+                .set("font-weight", "800")
+                .set("font-size", "16px")
+                .set("color", LIGHT_TEXT);
+
+        Span hallLabel = new Span(hallType.getLabel() + " Hall · " + seatsPerRow + " seats per row · ");
+        hallLabel.getStyle().set("color", LIGHT_MUTED);
+
+        Span hallPriceInfo = new Span("Base price from " + formatMoney(pricingService.getHallSurcharge(hallType).add(new BigDecimal("5.00"))));
+        hallPriceInfo.getStyle().set("color", BLUE).set("font-weight", "900");
+
+        hallInfo.add(hallLabel, hallPriceInfo);
+
         Div grid = new Div();
         grid.getStyle()
                 .set("display", "grid")
-                .set("grid-template-columns", "repeat(10, 44px)")
+                .set("grid-template-columns", "repeat(" + seatsPerRow + ", 44px)")
                 .set("gap", "10px")
                 .set("justify-content", "center")
-                .set("min-width", "540px");
+                .set("min-width", seatsPerRow * 44 + "px");
 
         for (BookingService.SeatOption option : currentSeatOptions) {
-            grid.add(createSeatButton(option));
+            grid.add(createSeatButton(option, hallType));
         }
 
-        seatMap.add(screen, buildSeatLegend(), grid);
+        seatMap.add(screen, hallInfo, buildSeatLegend(hallType), grid);
         updatePriceSummary();
     }
 
-    private Button createSeatButton(BookingService.SeatOption option) {
+    private Button createSeatButton(BookingService.SeatOption option, HallType hallType) {
         Seat seat = option.seat();
         boolean selected = selectedSeatIds.contains(seat.getId());
+        SeatType seatType = seat.getSeatType();
 
         Button button = new Button(seat.getSeatNumber());
-        button.setWidth("44px");
+        int buttonWidth = hallType == HallType.PREMIUM ? 54 : 44;
+        button.setWidth(buttonWidth + "px");
         button.setHeight("38px");
 
         button.getStyle()
@@ -1192,10 +1326,32 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
                     .set("color", "white")
                     .set("border", "1px solid #38bdf8");
         } else {
+            String seatBg;
+            String seatBorder;
+            String seatTextColor;
+
+            switch (seatType) {
+                case CENTER -> {
+                    seatBg = "#fef3c7";
+                    seatBorder = "#eab308";
+                    seatTextColor = "#111827";
+                }
+                case PREMIUM -> {
+                    seatBg = "#dbeafe";
+                    seatBorder = "#93c5fd";
+                    seatTextColor = "#111827";
+                }
+                default -> {
+                    seatBg = "white";
+                    seatBorder = "#d1d5db";
+                    seatTextColor = "#111827";
+                }
+            }
+
             button.getStyle()
-                    .set("background", "white")
-                    .set("color", "#111827")
-                    .set("border", "1px solid #d1d5db");
+                    .set("background", seatBg)
+                    .set("color", seatTextColor)
+                    .set("border", "1px solid " + seatBorder);
         }
 
         button.addClickListener(event -> {
@@ -1211,9 +1367,21 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
         return button;
     }
 
-    private HorizontalLayout buildSeatLegend() {
-        HorizontalLayout legend = new HorizontalLayout(
-                legendItem("#ffffff", "Available"),
+    private int getSeatsPerRowForHall(HallType hallType) {
+        return switch (hallType) {
+            case IMAX -> 8;
+            case PREMIUM -> 6;
+            default -> 10;
+        };
+    }
+
+    private HorizontalLayout buildSeatLegend(HallType hallType) {
+        HorizontalLayout legend = new HorizontalLayout();
+
+        legend.add(
+                legendItem("white", "Standard (Front/Back rows)"),
+                legendItem("#dbeafe", "Premium (Middle rows)"),
+                legendItem("#fef3c7", "Center (Middle rows, center seats)"),
                 legendItem(BLUE, "Selected"),
                 legendItem("#94a3b8", "Booked")
         );
@@ -1335,7 +1503,9 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
                 .toList();
 
         for (Seat seat : selectedSeats) {
-            Span chip = new Span(seat.getSeatNumber());
+            BigDecimal seatPrice = pricingService.calculateTicketPrice(selectedScreening, seat);
+            String seatTypeLabel = getSeatTypeLabel(seat.getSeatType());
+            Span chip = new Span(seat.getSeatNumber() + " (" + seatTypeLabel + " - " + formatMoney(seatPrice) + ")");
             chip.getStyle()
                     .set("background", "#dbeafe")
                     .set("color", "#1e40af")
@@ -1458,7 +1628,7 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
         Div seatStats = new Div();
         seatStats.getStyle()
                 .set("display", "grid")
-                .set("grid-template-columns", "repeat(3, 1fr)")
+                .set("grid-template-columns", "repeat(4, 1fr)")
                 .set("gap", "12px")
                 .set("padding", "16px 0")
                 .set("margin", "10px 0 16px 0")
@@ -1466,6 +1636,7 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
                 .set("border-bottom", "1px dashed rgba(255,255,255,0.45)");
 
         seatStats.add(
+                ticketStat("HALL", selectedScreening.getScreen().getHallType().getLabel()),
                 ticketStat("SCREEN", String.valueOf(screening.getScreen().getScreenNumber())),
                 ticketStat("ROW", extractRowText(selectedSeats)),
                 ticketStat("SEAT", extractSeatText(selectedSeats))
@@ -1483,6 +1654,7 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
                 ticketDetail("Booking Ref", booking.getBookingReference()),
                 ticketDetail("Cinema", screening.getScreen().getCinema().getName()),
                 ticketDetail("City", screening.getScreen().getCinema().getCity()),
+                ticketDetail("Hall Type", screening.getScreen().getHallType().getLabel()),
                 ticketDetail("Screening", screeningTypeLabel(screening)),
                 ticketDetail("Customer", safeText(booking.getCustomerName())),
                 ticketDetail("Booked At", booking.getBookingDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")))
@@ -1650,6 +1822,14 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
         return value == null || value.isBlank() ? "-" : value;
     }
 
+    private String getSeatTypeLabel(SeatType seatType) {
+        return switch (seatType) {
+            case STANDARD -> "Standard";
+            case PREMIUM -> "Premium";
+            case CENTER -> "Center";
+        };
+    }
+
     private String buildBookingPreview() {
         List<Seat> selectedSeats = selectedSeatIds.stream()
                 .map(seatById::get)
@@ -1663,6 +1843,7 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
                 City: %s
                 Date: %s
                 Showing Time: %s
+                Hall Type: %s
                 Screen: %s
                 Screening Type: %s
                 Customer Name: %s
@@ -1676,6 +1857,7 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
                 selectedScreening.getScreen().getCinema().getCity(),
                 selectedScreening.getScreeningDate(),
                 selectedScreening.getStartTime(),
+                selectedScreening.getScreen().getHallType().getLabel(),
                 selectedScreening.getScreen().getScreenNumber(),
                 screeningTypeLabel(selectedScreening),
                 customerNameField.getValue(),
@@ -1736,6 +1918,7 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
                 City: %s
                 Date: %s
                 Showing Time: %s
+                Hall Type: %s
                 Screen: %s
                 Number of Tickets: %d
                 Seat Numbers: %s
@@ -1750,6 +1933,7 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
                 screening.getScreen().getCinema().getCity(),
                 screening.getScreeningDate(),
                 screening.getStartTime(),
+                screening.getScreen().getHallType().getLabel(),
                 screening.getScreen().getScreenNumber(),
                 selectedSeats.size(),
                 seatNumbers,

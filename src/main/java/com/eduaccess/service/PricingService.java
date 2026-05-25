@@ -1,6 +1,8 @@
 package com.eduaccess.service;
 
+import com.eduaccess.domain.HallType;
 import com.eduaccess.domain.Screening;
+import com.eduaccess.domain.ScreeningType;
 import com.eduaccess.domain.Seat;
 import com.eduaccess.domain.SeatType;
 import org.springframework.stereotype.Service;
@@ -12,19 +14,49 @@ import java.util.Collection;
 @Service
 public class PricingService {
 
-    private static final BigDecimal UPPER_GALLERY_EXTRA = new BigDecimal("2.00");
+    private static final BigDecimal IMAX_SURCHARGE = new BigDecimal("3.00");
+    private static final BigDecimal PREMIUM_SURCHARGE = new BigDecimal("5.00");
+
+    private static final BigDecimal PREMIUM_SEAT_EXTRA = new BigDecimal("2.50");
+    private static final BigDecimal CENTER_SEAT_EXTRA = new BigDecimal("4.00");
+
+    private static final BigDecimal THREE_D_SURCHARGE = new BigDecimal("2.00");
 
     public BigDecimal calculateTicketPrice(Screening screening, Seat seat) {
         String city = screening.getScreen().getCinema().getCity();
         LocalTime startTime = screening.getStartTime();
+        HallType hallType = screening.getScreen().getHallType();
+        ScreeningType screeningType = screening.getScreeningType();
 
-        BigDecimal basePrice = getLowerHallPrice(city, startTime);
+        BigDecimal basePrice = getBasePrice(city, startTime);
+        BigDecimal hallSurcharge = getHallSurcharge(hallType);
+        BigDecimal seatSurcharge = getSeatSurcharge(seat.getSeatType());
+        BigDecimal threeDSurcharge = get3DSurcharge(screeningType);
 
-        if (seat.getSeatType() == SeatType.UPPER_GALLERY) {
-            return basePrice.add(UPPER_GALLERY_EXTRA);
+        return basePrice.add(hallSurcharge).add(seatSurcharge).add(threeDSurcharge);
+    }
+
+    public BigDecimal getHallSurcharge(HallType hallType) {
+        return switch (hallType) {
+            case IMAX -> IMAX_SURCHARGE;
+            case PREMIUM -> PREMIUM_SURCHARGE;
+            case REGULAR -> BigDecimal.ZERO;
+        };
+    }
+
+    public BigDecimal getSeatSurcharge(SeatType seatType) {
+        return switch (seatType) {
+            case PREMIUM -> PREMIUM_SEAT_EXTRA;
+            case CENTER -> CENTER_SEAT_EXTRA;
+            case STANDARD -> BigDecimal.ZERO;
+        };
+    }
+
+    public BigDecimal get3DSurcharge(ScreeningType screeningType) {
+        if (screeningType != null && screeningType.is3D()) {
+            return THREE_D_SURCHARGE;
         }
-
-        return basePrice;
+        return BigDecimal.ZERO;
     }
 
     public BigDecimal calculateTotalPrice(Screening screening, Collection<Seat> seats) {
@@ -37,7 +69,7 @@ public class PricingService {
         return total;
     }
 
-    private BigDecimal getLowerHallPrice(String city, LocalTime startTime) {
+    private BigDecimal getBasePrice(String city, LocalTime startTime) {
         ShowPeriod period = getShowPeriod(startTime);
 
         return switch (city.toLowerCase()) {

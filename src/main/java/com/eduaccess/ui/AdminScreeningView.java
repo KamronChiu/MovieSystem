@@ -136,7 +136,7 @@ public class AdminScreeningView extends Div {
         startTimePicker.setWidth("180px");
 
         screeningTypeBox.setItems(ScreeningType.values());
-        screeningTypeBox.setValue(ScreeningType.REGULAR);
+        screeningTypeBox.setValue(ScreeningType.REGULAR_2D);
         screeningTypeBox.setItemLabelGenerator(this::formatScreeningTypeLabel);
         screeningTypeBox.setWidth("220px");
 
@@ -384,16 +384,21 @@ public class AdminScreeningView extends Div {
         screenBox.clear();
         datePicker.setValue(LocalDate.now().plusDays(1));
         startTimePicker.setValue(LocalTime.of(12, 0));
-        screeningTypeBox.setValue(ScreeningType.REGULAR);
+        screeningTypeBox.setValue(ScreeningType.REGULAR_2D);
     }
 
 
     private String formatScreeningTypeLabel(ScreeningType type) {
-        if (type == null || type == ScreeningType.REGULAR) {
-            return "Regular";
+        if (type == null) {
+            return "2D Regular";
         }
-
-        return "Advance Preview";
+        
+        return switch (type) {
+            case REGULAR_2D -> "2D Regular";
+            case REGULAR_3D -> "3D Regular";
+            case ADVANCE_PREVIEW_2D -> "2D Advance Preview";
+            case ADVANCE_PREVIEW_3D -> "3D Advance Preview";
+        };
     }
 
     private String formatScreenLabel(Screen screen) {
@@ -401,7 +406,7 @@ public class AdminScreeningView extends Div {
             return "";
         }
 
-        return "Screen " + screen.getScreenNumber() + " - " + screen.getCapacity() + " seats";
+        return screen.getHallType().getLabel() + " - Screen " + screen.getScreenNumber() + " - " + screen.getCapacity() + " seats";
     }
 
     private void styleDarkField(com.vaadin.flow.component.Component component) {

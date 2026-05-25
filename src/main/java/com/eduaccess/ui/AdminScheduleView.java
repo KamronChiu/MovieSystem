@@ -630,9 +630,9 @@ public class AdminScheduleView extends Div implements BeforeEnterObserver {
 
     private ScreeningType chooseScreeningType(Film film, LocalDate date) {
         if (film.getReleaseDate() != null && date.isBefore(film.getReleaseDate())) {
-            return ScreeningType.ADVANCE_PREVIEW;
+            return ScreeningType.ADVANCE_PREVIEW_2D;
         }
-        return ScreeningType.REGULAR;
+        return ScreeningType.REGULAR_2D;
     }
 
 
@@ -897,7 +897,7 @@ public class AdminScheduleView extends Div implements BeforeEnterObserver {
         }
         if (item.film.getReleaseDate() != null
                 && item.date.isBefore(item.film.getReleaseDate())
-                && item.screeningType != ScreeningType.ADVANCE_PREVIEW) {
+                && item.screeningType.isRegular()) {
             throw new IllegalArgumentException(
                     "Regular screenings cannot be scheduled before release date. Use advance preview for "
                             + item.film.getTitle()
@@ -1008,7 +1008,14 @@ public class AdminScheduleView extends Div implements BeforeEnterObserver {
     }
 
     private String formatType(ScreeningType type) {
-        return type == ScreeningType.ADVANCE_PREVIEW ? "Advance Preview" : "Regular";
+        if (type == null) return "Regular 2D";
+        switch (type) {
+            case REGULAR_2D: return "Regular 2D";
+            case REGULAR_3D: return "Regular 3D";
+            case ADVANCE_PREVIEW_2D: return "Advance Preview 2D";
+            case ADVANCE_PREVIEW_3D: return "Advance Preview 3D";
+            default: return "Regular 2D";
+        }
     }
 
     private String filmCardColour(Film film) {
@@ -1116,7 +1123,7 @@ public class AdminScheduleView extends Div implements BeforeEnterObserver {
             this.screen = screen;
             this.date = date;
             this.startTime = startTime;
-            this.screeningType = screeningType == null ? ScreeningType.REGULAR : screeningType;
+            this.screeningType = screeningType == null ? ScreeningType.REGULAR_2D : screeningType;
             this.dirty = dirty;
         }
 

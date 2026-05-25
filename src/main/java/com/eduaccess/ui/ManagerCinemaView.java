@@ -1,6 +1,7 @@
 package com.eduaccess.ui;
 
 import com.eduaccess.domain.Cinema;
+import com.eduaccess.domain.HallType;
 import com.eduaccess.domain.Screen;
 import com.eduaccess.service.CinemaService;
 import com.eduaccess.service.LoginService;
@@ -8,6 +9,7 @@ import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H1;
@@ -24,6 +26,7 @@ import com.vaadin.flow.router.Route;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Route(value = "manager/cinemas", layout = MainLayout.class)
 @PageTitle("HCBS — Manager Cinemas")
@@ -183,18 +186,33 @@ public class ManagerCinemaView extends Div implements BeforeEnterObserver {
                 .setHeader("Total seats")
                 .setAutoWidth(true);
 
+        cinemaGrid.addColumn(cinema -> cinemaService.findScreensForCinema(cinema.getId())
+                        .stream()
+                        .map(screen -> screen.getHallType().getLabel())
+                        .distinct()
+                        .collect(Collectors.joining(" / ")))
+                .setHeader("Hall Types")
+                .setAutoWidth(true);
+
         cinemaGrid.addComponentColumn(cinema -> {
             IntegerField capacity = new IntegerField();
-            capacity.setPlaceholder("50–120");
-            capacity.setMin(50);
+            capacity.setPlaceholder("30–120");
+            capacity.setMin(30);
             capacity.setMax(120);
             capacity.setWidth("110px");
             styleDarkField(capacity);
 
+            ComboBox<HallType> hallTypeSelect = new ComboBox<>();
+            hallTypeSelect.setItems(HallType.values());
+            hallTypeSelect.setItemLabelGenerator(HallType::getLabel);
+            hallTypeSelect.setValue(HallType.REGULAR);
+            hallTypeSelect.setWidth("110px");
+            styleDarkField(hallTypeSelect);
+
             Button addScreen = secondaryButton("Add screen");
             addScreen.addClickListener(event -> {
                 try {
-                    cinemaService.addScreen(cinema.getId(), capacity.getValue());
+                    cinemaService.addScreen(cinema.getId(), capacity.getValue(), hallTypeSelect.getValue());
                     Notification.show("Screen added to " + cinema.getName());
                     refreshGrid();
                 } catch (RuntimeException ex) {
@@ -202,7 +220,7 @@ public class ManagerCinemaView extends Div implements BeforeEnterObserver {
                 }
             });
 
-            HorizontalLayout row = new HorizontalLayout(capacity, addScreen);
+            HorizontalLayout row = new HorizontalLayout(capacity, hallTypeSelect, addScreen);
             row.setAlignItems(FlexComponent.Alignment.END);
             return row;
         }).setHeader("Expansion");

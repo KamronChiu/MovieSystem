@@ -25,32 +25,32 @@ ALTER TABLE cinemas ALTER COLUMN id RESTART WITH 100;
 -- Seats are generated automatically by DataInitializer.java.
 -- ============================================================
 
-MERGE INTO screens (id, cinema_id, screen_number, capacity) KEY(id) VALUES
-    (1, 1, 1, 80),
-    (2, 1, 2, 60),
-    (3, 1, 3, 100),
+MERGE INTO screens (id, cinema_id, screen_number, capacity, hall_type) KEY(id) VALUES
+    (1, 1, 1, 80, 'IMAX'),
+    (2, 1, 2, 60, 'REGULAR'),
+    (3, 1, 3, 48, 'PREMIUM'),
 
-    (4, 2, 1, 90),
-    (5, 2, 2, 70),
+    (4, 2, 1, 80, 'IMAX'),
+    (5, 2, 2, 70, 'REGULAR'),
 
-    (6, 3, 1, 70),
-    (7, 3, 2, 90),
-    (8, 3, 3, 110),
+    (6, 3, 1, 70, 'REGULAR'),
+    (7, 3, 2, 80, 'IMAX'),
+    (8, 3, 3, 100, 'REGULAR'),
 
-    (9, 4, 1, 80),
-    (10, 4, 2, 100),
+    (9, 4, 1, 80, 'REGULAR'),
+    (10, 4, 2, 48, 'PREMIUM'),
 
-    (11, 5, 1, 60),
-    (12, 5, 2, 90),
+    (11, 5, 1, 60, 'REGULAR'),
+    (12, 5, 2, 80, 'IMAX'),
 
-    (13, 6, 1, 80),
-    (14, 6, 2, 100),
+    (13, 6, 1, 48, 'PREMIUM'),
+    (14, 6, 2, 100, 'REGULAR'),
 
-    (15, 7, 1, 70),
-    (16, 7, 2, 90),
+    (15, 7, 1, 70, 'REGULAR'),
+    (16, 7, 2, 80, 'IMAX'),
 
-    (17, 8, 1, 60),
-    (18, 8, 2, 80);
+    (17, 8, 1, 60, 'REGULAR'),
+    (18, 8, 2, 48, 'PREMIUM');
 
 ALTER TABLE screens ALTER COLUMN id RESTART WITH 100;
 
@@ -186,8 +186,10 @@ ALTER TABLE films ALTER COLUMN id RESTART WITH 100;
 -- 4. Screenings
 -- A screening = one film shown on one screen at one date/time.
 -- screening_type distinguishes normal public screenings from advance previews.
--- REGULAR: normal public screening on/after release date.
--- ADVANCE_PREVIEW: early access screening before the official release date.
+-- REGULAR_2D: normal public 2D screening on/after release date.
+-- REGULAR_3D: normal public 3D screening on/after release date.
+-- ADVANCE_PREVIEW_2D: early access 2D screening before the official release date.
+-- ADVANCE_PREVIEW_3D: early access 3D screening before the official release date.
 -- ============================================================
 
 MERGE INTO screenings (
@@ -199,44 +201,68 @@ MERGE INTO screenings (
     end_time,
     screening_type
     ) KEY(id) VALUES
--- Project Hail Mary: already released in this demo window
-    (1, 1, 1, DATEADD('DAY', 1, CURRENT_DATE), TIME '12:00:00', TIME '14:36:00', 'REGULAR'),
-    (2, 1, 1, DATEADD('DAY', 2, CURRENT_DATE), TIME '17:50:00', TIME '20:26:00', 'REGULAR'),
-    (3, 1, 6, DATEADD('DAY', 3, CURRENT_DATE), TIME '20:40:00', TIME '23:16:00', 'REGULAR'),
+-- Project Hail Mary: mixed 2D and 3D
+    (1, 1, 1, DATEADD('DAY', 1, CURRENT_DATE), TIME '10:00:00', TIME '12:36:00', 'REGULAR_2D'),
+    (2, 1, 1, DATEADD('DAY', 1, CURRENT_DATE), TIME '14:00:00', TIME '16:36:00', 'REGULAR_3D'),
+    (3, 1, 1, DATEADD('DAY', 1, CURRENT_DATE), TIME '17:50:00', TIME '20:26:00', 'REGULAR_2D'),
+    (4, 1, 7, DATEADD('DAY', 2, CURRENT_DATE), TIME '15:00:00', TIME '17:36:00', 'REGULAR_3D'),
+    (5, 1, 6, DATEADD('DAY', 2, CURRENT_DATE), TIME '20:40:00', TIME '23:16:00', 'REGULAR_2D'),
+    (6, 1, 12, DATEADD('DAY', 3, CURRENT_DATE), TIME '18:00:00', TIME '20:36:00', 'REGULAR_3D'),
+    (7, 1, 16, DATEADD('DAY', 4, CURRENT_DATE), TIME '19:30:00', TIME '22:06:00', 'REGULAR_2D'),
+    (8, 1, 3, DATEADD('DAY', 5, CURRENT_DATE), TIME '21:00:00', TIME '23:36:00', 'REGULAR_3D'),
 
--- Michael: already released in this demo window
-    (4, 2, 2, DATEADD('DAY', 1, CURRENT_DATE), TIME '14:50:00', TIME '16:57:00', 'REGULAR'),
-    (5, 2, 11, DATEADD('DAY', 2, CURRENT_DATE), TIME '18:00:00', TIME '20:07:00', 'REGULAR'),
-    (6, 2, 15, DATEADD('DAY', 4, CURRENT_DATE), TIME '20:45:00', TIME '22:52:00', 'REGULAR'),
+-- Michael: mixed 2D and 3D
+    (9, 2, 2, DATEADD('DAY', 1, CURRENT_DATE), TIME '11:00:00', TIME '13:07:00', 'REGULAR_2D'),
+    (10, 2, 2, DATEADD('DAY', 1, CURRENT_DATE), TIME '14:50:00', TIME '16:57:00', 'REGULAR_3D'),
+    (11, 2, 11, DATEADD('DAY', 2, CURRENT_DATE), TIME '18:00:00', TIME '20:07:00', 'REGULAR_2D'),
+    (12, 2, 15, DATEADD('DAY', 3, CURRENT_DATE), TIME '16:30:00', TIME '18:37:00', 'REGULAR_3D'),
+    (13, 2, 15, DATEADD('DAY', 4, CURRENT_DATE), TIME '20:45:00', TIME '22:52:00', 'REGULAR_2D'),
+    (14, 2, 8, DATEADD('DAY', 5, CURRENT_DATE), TIME '19:00:00', TIME '21:07:00', 'REGULAR_3D'),
 
--- Star Wars: The Mandalorian and Grogu: advance preview examples
-    (7, 3, 7, DATEADD('DAY', 1, CURRENT_DATE), TIME '15:15:00', TIME '17:27:00', 'ADVANCE_PREVIEW'),
-    (8, 3, 3, DATEADD('DAY', 3, CURRENT_DATE), TIME '18:00:00', TIME '20:12:00', 'ADVANCE_PREVIEW'),
-    (9, 3, 13, DATEADD('DAY', 5, CURRENT_DATE), TIME '20:45:00', TIME '22:57:00', 'ADVANCE_PREVIEW'),
+-- Star Wars: The Mandalorian and Grogu: advance preview with 2D/3D
+    (15, 3, 7, DATEADD('DAY', 1, CURRENT_DATE), TIME '15:15:00', TIME '17:27:00', 'ADVANCE_PREVIEW_2D'),
+    (16, 3, 7, DATEADD('DAY', 1, CURRENT_DATE), TIME '19:00:00', TIME '21:12:00', 'ADVANCE_PREVIEW_3D'),
+    (17, 3, 3, DATEADD('DAY', 3, CURRENT_DATE), TIME '18:00:00', TIME '20:12:00', 'ADVANCE_PREVIEW_3D'),
+    (18, 3, 13, DATEADD('DAY', 4, CURRENT_DATE), TIME '17:30:00', TIME '19:42:00', 'ADVANCE_PREVIEW_2D'),
+    (19, 3, 13, DATEADD('DAY', 5, CURRENT_DATE), TIME '20:45:00', TIME '22:57:00', 'ADVANCE_PREVIEW_3D'),
+    (20, 3, 1, DATEADD('DAY', 6, CURRENT_DATE), TIME '19:30:00', TIME '21:42:00', 'ADVANCE_PREVIEW_2D'),
 
--- Chainsaw Man: advance preview examples
-    (10, 4, 16, DATEADD('DAY', 2, CURRENT_DATE), TIME '17:30:00', TIME '19:10:00', 'ADVANCE_PREVIEW'),
-    (11, 4, 2, DATEADD('DAY', 4, CURRENT_DATE), TIME '22:00:00', TIME '23:40:00', 'ADVANCE_PREVIEW'),
+-- Chainsaw Man: advance preview
+    (21, 4, 16, DATEADD('DAY', 2, CURRENT_DATE), TIME '17:30:00', TIME '19:10:00', 'ADVANCE_PREVIEW_2D'),
+    (22, 4, 16, DATEADD('DAY', 2, CURRENT_DATE), TIME '20:30:00', TIME '22:10:00', 'ADVANCE_PREVIEW_3D'),
+    (23, 4, 2, DATEADD('DAY', 4, CURRENT_DATE), TIME '22:00:00', TIME '23:40:00', 'ADVANCE_PREVIEW_2D'),
+    (24, 4, 7, DATEADD('DAY', 5, CURRENT_DATE), TIME '21:00:00', TIME '22:40:00', 'ADVANCE_PREVIEW_3D'),
 
 -- GOAT: mix of advance preview and regular screenings
-    (12, 5, 11, DATEADD('DAY', 1, CURRENT_DATE), TIME '10:30:00', TIME '12:10:00', 'ADVANCE_PREVIEW'),
-    (13, 5, 15, DATEADD('DAY', 3, CURRENT_DATE), TIME '13:20:00', TIME '15:00:00', 'REGULAR'),
-    (14, 5, 6, DATEADD('DAY', 6, CURRENT_DATE), TIME '16:00:00', TIME '17:40:00', 'REGULAR'),
+    (25, 5, 11, DATEADD('DAY', 1, CURRENT_DATE), TIME '10:30:00', TIME '12:10:00', 'ADVANCE_PREVIEW_2D'),
+    (26, 5, 15, DATEADD('DAY', 2, CURRENT_DATE), TIME '14:00:00', TIME '15:40:00', 'REGULAR_2D'),
+    (27, 5, 15, DATEADD('DAY', 3, CURRENT_DATE), TIME '13:20:00', TIME '15:00:00', 'REGULAR_3D'),
+    (28, 5, 6, DATEADD('DAY', 4, CURRENT_DATE), TIME '16:00:00', TIME '17:40:00', 'REGULAR_2D'),
+    (29, 5, 11, DATEADD('DAY', 5, CURRENT_DATE), TIME '11:00:00', TIME '12:40:00', 'REGULAR_3D'),
+    (30, 5, 3, DATEADD('DAY', 6, CURRENT_DATE), TIME '15:30:00', TIME '17:10:00', 'REGULAR_2D'),
 
 -- The Devil Wears Prada 2
-    (15, 6, 2, DATEADD('DAY', 1, CURRENT_DATE), TIME '15:30:00', TIME '17:29:00', 'REGULAR'),
-    (16, 6, 7, DATEADD('DAY', 2, CURRENT_DATE), TIME '18:30:00', TIME '20:29:00', 'REGULAR'),
-    (17, 6, 13, DATEADD('DAY', 5, CURRENT_DATE), TIME '21:00:00', TIME '22:59:00', 'REGULAR'),
+    (31, 6, 2, DATEADD('DAY', 1, CURRENT_DATE), TIME '15:30:00', TIME '17:29:00', 'REGULAR_2D'),
+    (32, 6, 7, DATEADD('DAY', 2, CURRENT_DATE), TIME '18:30:00', TIME '20:29:00', 'REGULAR_3D'),
+    (33, 6, 13, DATEADD('DAY', 3, CURRENT_DATE), TIME '17:00:00', TIME '18:59:00', 'REGULAR_2D'),
+    (34, 6, 13, DATEADD('DAY', 5, CURRENT_DATE), TIME '21:00:00', TIME '22:59:00', 'REGULAR_3D'),
+    (35, 6, 2, DATEADD('DAY', 6, CURRENT_DATE), TIME '19:30:00', TIME '21:29:00', 'REGULAR_2D'),
+    (36, 6, 8, DATEADD('DAY', 7, CURRENT_DATE), TIME '20:00:00', TIME '21:59:00', 'REGULAR_3D'),
 
 -- Minions
-    (18, 7, 1, DATEADD('DAY', 1, CURRENT_DATE), TIME '10:20:00', TIME '11:51:00', 'REGULAR'),
-    (19, 7, 6, DATEADD('DAY', 2, CURRENT_DATE), TIME '13:40:00', TIME '15:11:00', 'REGULAR'),
-    (20, 7, 11, DATEADD('DAY', 4, CURRENT_DATE), TIME '16:10:00', TIME '17:41:00', 'REGULAR'),
+    (37, 7, 1, DATEADD('DAY', 1, CURRENT_DATE), TIME '10:20:00', TIME '11:51:00', 'REGULAR_2D'),
+    (38, 7, 6, DATEADD('DAY', 2, CURRENT_DATE), TIME '13:40:00', TIME '15:11:00', 'REGULAR_3D'),
+    (39, 7, 11, DATEADD('DAY', 3, CURRENT_DATE), TIME '11:00:00', TIME '12:31:00', 'REGULAR_2D'),
+    (40, 7, 11, DATEADD('DAY', 4, CURRENT_DATE), TIME '16:10:00', TIME '17:41:00', 'REGULAR_3D'),
+    (41, 7, 3, DATEADD('DAY', 5, CURRENT_DATE), TIME '14:30:00', TIME '16:01:00', 'REGULAR_2D'),
+    (42, 7, 1, DATEADD('DAY', 6, CURRENT_DATE), TIME '10:00:00', TIME '11:31:00', 'REGULAR_3D'),
 
 -- Zootopia 2
-    (21, 8, 2, DATEADD('DAY', 1, CURRENT_DATE), TIME '11:30:00', TIME '13:18:00', 'REGULAR'),
-    (22, 8, 15, DATEADD('DAY', 3, CURRENT_DATE), TIME '15:20:00', TIME '17:08:00', 'REGULAR'),
-    (23, 8, 7, DATEADD('DAY', 5, CURRENT_DATE), TIME '18:30:00', TIME '20:18:00', 'REGULAR'),
-    (24, 8, 4, DATEADD('DAY', 6, CURRENT_DATE), TIME '20:30:00', TIME '22:18:00', 'REGULAR');
+    (43, 8, 2, DATEADD('DAY', 1, CURRENT_DATE), TIME '11:30:00', TIME '13:18:00', 'REGULAR_2D'),
+    (44, 8, 15, DATEADD('DAY', 2, CURRENT_DATE), TIME '15:20:00', TIME '17:08:00', 'REGULAR_3D'),
+    (45, 8, 7, DATEADD('DAY', 3, CURRENT_DATE), TIME '18:30:00', TIME '20:18:00', 'REGULAR_2D'),
+    (46, 8, 4, DATEADD('DAY', 4, CURRENT_DATE), TIME '20:30:00', TIME '22:18:00', 'REGULAR_3D'),
+    (47, 8, 13, DATEADD('DAY', 5, CURRENT_DATE), TIME '16:00:00', TIME '17:48:00', 'REGULAR_2D'),
+    (48, 8, 3, DATEADD('DAY', 6, CURRENT_DATE), TIME '19:00:00', TIME '20:48:00', 'REGULAR_3D');
 
 ALTER TABLE screenings ALTER COLUMN id RESTART WITH 100;

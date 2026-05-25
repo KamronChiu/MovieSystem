@@ -32,13 +32,13 @@ public class Screening {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "screening_type", length = 30)
-    private ScreeningType screeningType = ScreeningType.REGULAR;
+    private ScreeningType screeningType = ScreeningType.REGULAR_2D;
 
     protected Screening() {
     }
 
     public Screening(Film film, Screen screen, LocalDate screeningDate, LocalTime startTime) {
-        this(film, screen, screeningDate, startTime, ScreeningType.REGULAR);
+        this(film, screen, screeningDate, startTime, ScreeningType.REGULAR_2D);
     }
 
     public Screening(
@@ -53,14 +53,14 @@ public class Screening {
         this.screeningDate = screeningDate;
         this.startTime = startTime;
         this.endTime = startTime.plusMinutes(film.getDurationMinutes());
-        this.screeningType = screeningType == null ? ScreeningType.REGULAR : screeningType;
+        this.screeningType = screeningType == null ? ScreeningType.REGULAR_2D : screeningType;
     }
 
     @PrePersist
     @PreUpdate
     private void ensureDefaults() {
         if (screeningType == null) {
-            screeningType = ScreeningType.REGULAR;
+            screeningType = ScreeningType.REGULAR_2D;
         }
 
         if (film != null && startTime != null) {
@@ -93,7 +93,7 @@ public class Screening {
     }
 
     public ScreeningType getScreeningType() {
-        return screeningType == null ? ScreeningType.REGULAR : screeningType;
+        return screeningType == null ? ScreeningType.REGULAR_2D : screeningType;
     }
 
     public Cinema getCinema() {
@@ -131,11 +131,23 @@ public class Screening {
     }
 
     public void setScreeningType(ScreeningType screeningType) {
-        this.screeningType = screeningType == null ? ScreeningType.REGULAR : screeningType;
+        this.screeningType = screeningType == null ? ScreeningType.REGULAR_2D : screeningType;
     }
 
     @Override
     public String toString() {
         return film.getTitle() + " - " + screeningDate + " " + startTime;
+    }
+
+    public String getFormat() {
+        return screeningType == null ? "2D" : screeningType.getFormat();
+    }
+
+    public boolean is3D() {
+        return screeningType != null && screeningType.is3D();
+    }
+
+    public boolean isRegular() {
+        return screeningType == null || screeningType.isRegular();
     }
 }

@@ -25,6 +25,10 @@ public class Screen {
     @Column(name = "screen_number", nullable = false)
     private int screenNumber;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "hall_type", nullable = false)
+    private HallType hallType = HallType.REGULAR;
+
     @Column(nullable = false)
     private int capacity;
 
@@ -37,10 +41,15 @@ public class Screen {
     protected Screen() {
     }
 
-    public Screen(Cinema cinema, int screenNumber, int capacity) {
+    public Screen(Cinema cinema, int screenNumber, int capacity, HallType hallType) {
         this.cinema = cinema;
         this.screenNumber = screenNumber;
         this.capacity = capacity;
+        this.hallType = hallType == null ? HallType.REGULAR : hallType;
+    }
+
+    public Screen(Cinema cinema, int screenNumber, int capacity) {
+        this(cinema, screenNumber, capacity, HallType.REGULAR);
     }
 
     public void addSeat(Seat seat) {
@@ -63,6 +72,10 @@ public class Screen {
 
     public int getScreenNumber() {
         return screenNumber;
+    }
+
+    public HallType getHallType() {
+        return hallType == null ? HallType.REGULAR : hallType;
     }
 
     public int getCapacity() {
@@ -89,6 +102,10 @@ public class Screen {
         this.screenNumber = screenNumber;
     }
 
+    public void setHallType(HallType hallType) {
+        this.hallType = hallType == null ? HallType.REGULAR : hallType;
+    }
+
     public void setCapacity(int capacity) {
         this.capacity = capacity;
     }
@@ -103,6 +120,6 @@ public class Screen {
 
     @Override
     public String toString() {
-        return "Screen " + screenNumber + " - " + capacity + " seats";
+        return hallType.getLabel() + " - Screen " + screenNumber + " - " + capacity + " seats";
     }
 }

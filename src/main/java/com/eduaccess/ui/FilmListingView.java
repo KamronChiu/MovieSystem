@@ -566,13 +566,13 @@ public class FilmListingView extends Div implements BeforeEnterObserver {
     private boolean hasRegularUpcomingScreening(Film film) {
         return screeningWindow.stream()
                 .filter(screening -> Objects.equals(screening.getFilm().getId(), film.getId()))
-                .anyMatch(screening -> screening.getScreeningType() == ScreeningType.REGULAR);
+                .anyMatch(screening -> screening.getScreeningType().isRegular());
     }
 
     private boolean hasAdvancePreviewScreening(Film film) {
         return screeningWindow.stream()
                 .filter(screening -> Objects.equals(screening.getFilm().getId(), film.getId()))
-                .anyMatch(screening -> screening.getScreeningType() == ScreeningType.ADVANCE_PREVIEW);
+                .anyMatch(screening -> !screening.getScreeningType().isRegular());
     }
 
     private boolean matchesKeyword(Film film, String keyword) {

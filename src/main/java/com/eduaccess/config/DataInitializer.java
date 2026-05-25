@@ -2,6 +2,7 @@ package com.eduaccess.config;
 
 import com.eduaccess.domain.Cinema;
 import com.eduaccess.domain.Film;
+import com.eduaccess.domain.HallType;
 import com.eduaccess.domain.Screen;
 import com.eduaccess.domain.Screening;
 import com.eduaccess.domain.ScreeningType;
@@ -12,7 +13,11 @@ import com.eduaccess.repository.FilmRepository;
 import com.eduaccess.repository.ScreenRepository;
 import com.eduaccess.repository.ScreeningRepository;
 import com.eduaccess.repository.SeatRepository;
+import com.eduaccess.domain.UserAccount;
+import com.eduaccess.domain.UserRole;
+import com.eduaccess.repository.UserAccountRepository;
 import jakarta.persistence.EntityManager;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -30,7 +35,9 @@ import java.util.Set;
 @Configuration
 public class DataInitializer {
 
-    private static final int SEATS_PER_ROW = 10;
+    private static final int REGULAR_SEATS_PER_ROW = 10;
+    private static final int IMAX_SEATS_PER_ROW = 8;
+    private static final int PREMIUM_SEATS_PER_ROW = 6;
 
     @Bean
     CommandLineRunner maintainSeedData(
@@ -39,6 +46,7 @@ public class DataInitializer {
             ScreenRepository screenRepository,
             ScreeningRepository screeningRepository,
             SeatRepository seatRepository,
+            UserAccountRepository userAccountRepository,
             EntityManager entityManager,
             PlatformTransactionManager transactionManager
     ) {
@@ -59,12 +67,15 @@ public class DataInitializer {
                         screeningRepository
                 );
 
+                seedUsersIfEmpty(userAccountRepository);
+
                 System.out.println("HCBS data maintenance completed.");
                 System.out.println("Expired unbooked screenings removed: " + deletedScreenings);
                 System.out.println("Films in database: " + filmRepository.count());
                 System.out.println("Cinemas in database: " + cinemaRepository.count());
                 System.out.println("Screens in database: " + screenRepository.count());
                 System.out.println("Screenings in database: " + screeningRepository.count());
+                System.out.println("User accounts in database: " + userAccountRepository.count());
             });
         };
     }
@@ -100,9 +111,9 @@ public class DataInitializer {
                 "London",
                 "12 King Street, London"
         );
-        londonCentral.addScreen(new Screen(londonCentral, 1, 80));
-        londonCentral.addScreen(new Screen(londonCentral, 2, 60));
-        londonCentral.addScreen(new Screen(londonCentral, 3, 100));
+        londonCentral.addScreen(new Screen(londonCentral, 1, 80, HallType.IMAX));
+        londonCentral.addScreen(new Screen(londonCentral, 2, 60, HallType.REGULAR));
+        londonCentral.addScreen(new Screen(londonCentral, 3, 48, HallType.PREMIUM));
         cinemas.add(londonCentral);
 
         Cinema londonRiverside = new Cinema(
@@ -110,8 +121,8 @@ public class DataInitializer {
                 "London",
                 "45 River Road, London"
         );
-        londonRiverside.addScreen(new Screen(londonRiverside, 1, 90));
-        londonRiverside.addScreen(new Screen(londonRiverside, 2, 70));
+        londonRiverside.addScreen(new Screen(londonRiverside, 1, 80, HallType.IMAX));
+        londonRiverside.addScreen(new Screen(londonRiverside, 2, 70, HallType.REGULAR));
         cinemas.add(londonRiverside);
 
         Cinema birminghamCity = new Cinema(
@@ -119,9 +130,9 @@ public class DataInitializer {
                 "Birmingham",
                 "8 New Street, Birmingham"
         );
-        birminghamCity.addScreen(new Screen(birminghamCity, 1, 70));
-        birminghamCity.addScreen(new Screen(birminghamCity, 2, 90));
-        birminghamCity.addScreen(new Screen(birminghamCity, 3, 110));
+        birminghamCity.addScreen(new Screen(birminghamCity, 1, 70, HallType.REGULAR));
+        birminghamCity.addScreen(new Screen(birminghamCity, 2, 80, HallType.IMAX));
+        birminghamCity.addScreen(new Screen(birminghamCity, 3, 100, HallType.REGULAR));
         cinemas.add(birminghamCity);
 
         Cinema birminghamSouth = new Cinema(
@@ -129,8 +140,8 @@ public class DataInitializer {
                 "Birmingham",
                 "22 Park Lane, Birmingham"
         );
-        birminghamSouth.addScreen(new Screen(birminghamSouth, 1, 80));
-        birminghamSouth.addScreen(new Screen(birminghamSouth, 2, 100));
+        birminghamSouth.addScreen(new Screen(birminghamSouth, 1, 80, HallType.REGULAR));
+        birminghamSouth.addScreen(new Screen(birminghamSouth, 2, 48, HallType.PREMIUM));
         cinemas.add(birminghamSouth);
 
         Cinema bristolCentral = new Cinema(
@@ -138,8 +149,8 @@ public class DataInitializer {
                 "Bristol",
                 "6 College Green, Bristol"
         );
-        bristolCentral.addScreen(new Screen(bristolCentral, 1, 60));
-        bristolCentral.addScreen(new Screen(bristolCentral, 2, 90));
+        bristolCentral.addScreen(new Screen(bristolCentral, 1, 60, HallType.REGULAR));
+        bristolCentral.addScreen(new Screen(bristolCentral, 2, 80, HallType.IMAX));
         cinemas.add(bristolCentral);
 
         Cinema bristolHarbour = new Cinema(
@@ -147,8 +158,8 @@ public class DataInitializer {
                 "Bristol",
                 "19 Harbour Road, Bristol"
         );
-        bristolHarbour.addScreen(new Screen(bristolHarbour, 1, 80));
-        bristolHarbour.addScreen(new Screen(bristolHarbour, 2, 100));
+        bristolHarbour.addScreen(new Screen(bristolHarbour, 1, 48, HallType.PREMIUM));
+        bristolHarbour.addScreen(new Screen(bristolHarbour, 2, 100, HallType.REGULAR));
         cinemas.add(bristolHarbour);
 
         Cinema cardiffBay = new Cinema(
@@ -156,8 +167,8 @@ public class DataInitializer {
                 "Cardiff",
                 "5 Bay Avenue, Cardiff"
         );
-        cardiffBay.addScreen(new Screen(cardiffBay, 1, 70));
-        cardiffBay.addScreen(new Screen(cardiffBay, 2, 90));
+        cardiffBay.addScreen(new Screen(cardiffBay, 1, 70, HallType.REGULAR));
+        cardiffBay.addScreen(new Screen(cardiffBay, 2, 80, HallType.IMAX));
         cinemas.add(cardiffBay);
 
         Cinema cardiffNorth = new Cinema(
@@ -165,8 +176,8 @@ public class DataInitializer {
                 "Cardiff",
                 "31 North Road, Cardiff"
         );
-        cardiffNorth.addScreen(new Screen(cardiffNorth, 1, 60));
-        cardiffNorth.addScreen(new Screen(cardiffNorth, 2, 80));
+        cardiffNorth.addScreen(new Screen(cardiffNorth, 1, 60, HallType.REGULAR));
+        cardiffNorth.addScreen(new Screen(cardiffNorth, 2, 48, HallType.PREMIUM));
         cinemas.add(cardiffNorth);
 
         cinemaRepository.saveAll(cinemas);
@@ -316,37 +327,69 @@ public class DataInitializer {
 
         List<Screening> screenings = new ArrayList<>();
 
-        screenings.add(new Screening(projectHailMary, screenAt(screens, 0), today.plusDays(1), LocalTime.of(12, 0), ScreeningType.REGULAR));
-        screenings.add(new Screening(projectHailMary, screenAt(screens, 0), today.plusDays(2), LocalTime.of(17, 50), ScreeningType.REGULAR));
-        screenings.add(new Screening(projectHailMary, screenAt(screens, 5), today.plusDays(3), LocalTime.of(20, 40), ScreeningType.REGULAR));
+        // Project Hail Mary - mixed 2D and 3D
+        screenings.add(new Screening(projectHailMary, screenAt(screens, 0), today.plusDays(1), LocalTime.of(10, 0), ScreeningType.REGULAR_2D));
+        screenings.add(new Screening(projectHailMary, screenAt(screens, 0), today.plusDays(1), LocalTime.of(14, 0), ScreeningType.REGULAR_3D));
+        screenings.add(new Screening(projectHailMary, screenAt(screens, 0), today.plusDays(1), LocalTime.of(17, 50), ScreeningType.REGULAR_2D));
+        screenings.add(new Screening(projectHailMary, screenAt(screens, 6), today.plusDays(2), LocalTime.of(15, 0), ScreeningType.REGULAR_3D));
+        screenings.add(new Screening(projectHailMary, screenAt(screens, 5), today.plusDays(2), LocalTime.of(20, 40), ScreeningType.REGULAR_2D));
+        screenings.add(new Screening(projectHailMary, screenAt(screens, 11), today.plusDays(3), LocalTime.of(18, 0), ScreeningType.REGULAR_3D));
+        screenings.add(new Screening(projectHailMary, screenAt(screens, 15), today.plusDays(4), LocalTime.of(19, 30), ScreeningType.REGULAR_2D));
+        screenings.add(new Screening(projectHailMary, screenAt(screens, 2), today.plusDays(5), LocalTime.of(21, 0), ScreeningType.REGULAR_3D));
 
-        screenings.add(new Screening(michael, screenAt(screens, 1), today.plusDays(1), LocalTime.of(14, 50), ScreeningType.REGULAR));
-        screenings.add(new Screening(michael, screenAt(screens, 10), today.plusDays(2), LocalTime.of(18, 0), ScreeningType.REGULAR));
-        screenings.add(new Screening(michael, screenAt(screens, 14), today.plusDays(4), LocalTime.of(20, 45), ScreeningType.REGULAR));
+        // Michael - mixed 2D and 3D
+        screenings.add(new Screening(michael, screenAt(screens, 1), today.plusDays(1), LocalTime.of(11, 0), ScreeningType.REGULAR_2D));
+        screenings.add(new Screening(michael, screenAt(screens, 1), today.plusDays(1), LocalTime.of(14, 50), ScreeningType.REGULAR_3D));
+        screenings.add(new Screening(michael, screenAt(screens, 10), today.plusDays(2), LocalTime.of(18, 0), ScreeningType.REGULAR_2D));
+        screenings.add(new Screening(michael, screenAt(screens, 14), today.plusDays(3), LocalTime.of(16, 30), ScreeningType.REGULAR_3D));
+        screenings.add(new Screening(michael, screenAt(screens, 14), today.plusDays(4), LocalTime.of(20, 45), ScreeningType.REGULAR_2D));
+        screenings.add(new Screening(michael, screenAt(screens, 7), today.plusDays(5), LocalTime.of(19, 0), ScreeningType.REGULAR_3D));
 
-        screenings.add(new Screening(starWars, screenAt(screens, 6), today.plusDays(1), LocalTime.of(15, 15), ScreeningType.ADVANCE_PREVIEW));
-        screenings.add(new Screening(starWars, screenAt(screens, 2), today.plusDays(3), LocalTime.of(18, 0), ScreeningType.ADVANCE_PREVIEW));
-        screenings.add(new Screening(starWars, screenAt(screens, 12), today.plusDays(5), LocalTime.of(20, 45), ScreeningType.ADVANCE_PREVIEW));
+        // Star Wars - advance preview with 2D/3D
+        screenings.add(new Screening(starWars, screenAt(screens, 6), today.plusDays(1), LocalTime.of(15, 15), ScreeningType.ADVANCE_PREVIEW_2D));
+        screenings.add(new Screening(starWars, screenAt(screens, 6), today.plusDays(1), LocalTime.of(19, 0), ScreeningType.ADVANCE_PREVIEW_3D));
+        screenings.add(new Screening(starWars, screenAt(screens, 2), today.plusDays(3), LocalTime.of(18, 0), ScreeningType.ADVANCE_PREVIEW_3D));
+        screenings.add(new Screening(starWars, screenAt(screens, 12), today.plusDays(4), LocalTime.of(17, 30), ScreeningType.ADVANCE_PREVIEW_2D));
+        screenings.add(new Screening(starWars, screenAt(screens, 12), today.plusDays(5), LocalTime.of(20, 45), ScreeningType.ADVANCE_PREVIEW_3D));
+        screenings.add(new Screening(starWars, screenAt(screens, 0), today.plusDays(6), LocalTime.of(19, 30), ScreeningType.ADVANCE_PREVIEW_2D));
 
-        screenings.add(new Screening(chainsaw, screenAt(screens, 15), today.plusDays(2), LocalTime.of(17, 30), ScreeningType.ADVANCE_PREVIEW));
-        screenings.add(new Screening(chainsaw, screenAt(screens, 1), today.plusDays(4), LocalTime.of(22, 0), ScreeningType.ADVANCE_PREVIEW));
+        // Chainsaw Man - advance preview
+        screenings.add(new Screening(chainsaw, screenAt(screens, 15), today.plusDays(2), LocalTime.of(17, 30), ScreeningType.ADVANCE_PREVIEW_2D));
+        screenings.add(new Screening(chainsaw, screenAt(screens, 15), today.plusDays(2), LocalTime.of(20, 30), ScreeningType.ADVANCE_PREVIEW_3D));
+        screenings.add(new Screening(chainsaw, screenAt(screens, 1), today.plusDays(4), LocalTime.of(22, 0), ScreeningType.ADVANCE_PREVIEW_2D));
+        screenings.add(new Screening(chainsaw, screenAt(screens, 6), today.plusDays(5), LocalTime.of(21, 0), ScreeningType.ADVANCE_PREVIEW_3D));
 
-        screenings.add(new Screening(goat, screenAt(screens, 10), today.plusDays(1), LocalTime.of(10, 30), ScreeningType.ADVANCE_PREVIEW));
-        screenings.add(new Screening(goat, screenAt(screens, 14), today.plusDays(3), LocalTime.of(13, 20), ScreeningType.REGULAR));
-        screenings.add(new Screening(goat, screenAt(screens, 5), today.plusDays(6), LocalTime.of(16, 0), ScreeningType.REGULAR));
+        // GOAT - mix of advance preview and regular
+        screenings.add(new Screening(goat, screenAt(screens, 10), today.plusDays(1), LocalTime.of(10, 30), ScreeningType.ADVANCE_PREVIEW_2D));
+        screenings.add(new Screening(goat, screenAt(screens, 14), today.plusDays(2), LocalTime.of(14, 0), ScreeningType.REGULAR_2D));
+        screenings.add(new Screening(goat, screenAt(screens, 14), today.plusDays(3), LocalTime.of(13, 20), ScreeningType.REGULAR_3D));
+        screenings.add(new Screening(goat, screenAt(screens, 5), today.plusDays(4), LocalTime.of(16, 0), ScreeningType.REGULAR_2D));
+        screenings.add(new Screening(goat, screenAt(screens, 10), today.plusDays(5), LocalTime.of(11, 0), ScreeningType.REGULAR_3D));
+        screenings.add(new Screening(goat, screenAt(screens, 2), today.plusDays(6), LocalTime.of(15, 30), ScreeningType.REGULAR_2D));
 
-        screenings.add(new Screening(devilWearsPrada, screenAt(screens, 1), today.plusDays(1), LocalTime.of(15, 30), ScreeningType.REGULAR));
-        screenings.add(new Screening(devilWearsPrada, screenAt(screens, 6), today.plusDays(2), LocalTime.of(18, 30), ScreeningType.REGULAR));
-        screenings.add(new Screening(devilWearsPrada, screenAt(screens, 12), today.plusDays(5), LocalTime.of(21, 0), ScreeningType.REGULAR));
+        // The Devil Wears Prada 2
+        screenings.add(new Screening(devilWearsPrada, screenAt(screens, 1), today.plusDays(1), LocalTime.of(15, 30), ScreeningType.REGULAR_2D));
+        screenings.add(new Screening(devilWearsPrada, screenAt(screens, 6), today.plusDays(2), LocalTime.of(18, 30), ScreeningType.REGULAR_3D));
+        screenings.add(new Screening(devilWearsPrada, screenAt(screens, 12), today.plusDays(3), LocalTime.of(17, 0), ScreeningType.REGULAR_2D));
+        screenings.add(new Screening(devilWearsPrada, screenAt(screens, 12), today.plusDays(5), LocalTime.of(21, 0), ScreeningType.REGULAR_3D));
+        screenings.add(new Screening(devilWearsPrada, screenAt(screens, 1), today.plusDays(6), LocalTime.of(19, 30), ScreeningType.REGULAR_2D));
+        screenings.add(new Screening(devilWearsPrada, screenAt(screens, 7), today.plusDays(7), LocalTime.of(20, 0), ScreeningType.REGULAR_3D));
 
-        screenings.add(new Screening(minions, screenAt(screens, 0), today.plusDays(1), LocalTime.of(10, 20), ScreeningType.REGULAR));
-        screenings.add(new Screening(minions, screenAt(screens, 5), today.plusDays(2), LocalTime.of(13, 40), ScreeningType.REGULAR));
-        screenings.add(new Screening(minions, screenAt(screens, 10), today.plusDays(4), LocalTime.of(16, 10), ScreeningType.REGULAR));
+        // Minions
+        screenings.add(new Screening(minions, screenAt(screens, 0), today.plusDays(1), LocalTime.of(10, 20), ScreeningType.REGULAR_2D));
+        screenings.add(new Screening(minions, screenAt(screens, 5), today.plusDays(2), LocalTime.of(13, 40), ScreeningType.REGULAR_3D));
+        screenings.add(new Screening(minions, screenAt(screens, 10), today.plusDays(3), LocalTime.of(11, 0), ScreeningType.REGULAR_2D));
+        screenings.add(new Screening(minions, screenAt(screens, 10), today.plusDays(4), LocalTime.of(16, 10), ScreeningType.REGULAR_3D));
+        screenings.add(new Screening(minions, screenAt(screens, 2), today.plusDays(5), LocalTime.of(14, 30), ScreeningType.REGULAR_2D));
+        screenings.add(new Screening(minions, screenAt(screens, 0), today.plusDays(6), LocalTime.of(10, 0), ScreeningType.REGULAR_3D));
 
-        screenings.add(new Screening(zootopia, screenAt(screens, 1), today.plusDays(1), LocalTime.of(11, 30), ScreeningType.REGULAR));
-        screenings.add(new Screening(zootopia, screenAt(screens, 14), today.plusDays(3), LocalTime.of(15, 20), ScreeningType.REGULAR));
-        screenings.add(new Screening(zootopia, screenAt(screens, 6), today.plusDays(5), LocalTime.of(18, 30), ScreeningType.REGULAR));
-        screenings.add(new Screening(zootopia, screenAt(screens, 3), today.plusDays(6), LocalTime.of(20, 30), ScreeningType.REGULAR));
+        // Zootopia 2
+        screenings.add(new Screening(zootopia, screenAt(screens, 1), today.plusDays(1), LocalTime.of(11, 30), ScreeningType.REGULAR_2D));
+        screenings.add(new Screening(zootopia, screenAt(screens, 14), today.plusDays(2), LocalTime.of(15, 20), ScreeningType.REGULAR_3D));
+        screenings.add(new Screening(zootopia, screenAt(screens, 6), today.plusDays(3), LocalTime.of(18, 30), ScreeningType.REGULAR_2D));
+        screenings.add(new Screening(zootopia, screenAt(screens, 3), today.plusDays(4), LocalTime.of(20, 30), ScreeningType.REGULAR_3D));
+        screenings.add(new Screening(zootopia, screenAt(screens, 12), today.plusDays(5), LocalTime.of(16, 0), ScreeningType.REGULAR_2D));
+        screenings.add(new Screening(zootopia, screenAt(screens, 2), today.plusDays(6), LocalTime.of(19, 0), ScreeningType.REGULAR_3D));
 
         screeningRepository.saveAll(screenings);
 
@@ -401,17 +444,17 @@ public class DataInitializer {
     private List<Seat> generateMissingSeats(Screen screen, Set<String> existingSeatNumbers) {
         List<Seat> seats = new ArrayList<>();
         int capacity = screen.getCapacity();
+        HallType hallType = screen.getHallType();
+        int seatsPerRow = getSeatsPerRow(hallType);
 
         for (int i = 0; i < capacity; i++) {
-            String label = buildSeatLabel(i);
+            String label = buildSeatLabel(i, seatsPerRow);
 
             if (existingSeatNumbers.contains(label)) {
                 continue;
             }
 
-            SeatType seatType = i < capacity * 0.7
-                    ? SeatType.LOWER_HALL
-                    : SeatType.UPPER_GALLERY;
+            SeatType seatType = getSeatTypeForPosition(i, capacity, hallType);
 
             seats.add(new Seat(screen, label, seatType));
         }
@@ -419,10 +462,63 @@ public class DataInitializer {
         return seats;
     }
 
-    private String buildSeatLabel(int index) {
-        char row = (char) ('A' + (index / SEATS_PER_ROW));
-        int seatNumber = (index % SEATS_PER_ROW) + 1;
+    private int getSeatsPerRow(HallType hallType) {
+        return switch (hallType) {
+            case IMAX -> IMAX_SEATS_PER_ROW;
+            case PREMIUM -> PREMIUM_SEATS_PER_ROW;
+            case REGULAR -> REGULAR_SEATS_PER_ROW;
+        };
+    }
+
+    private SeatType getSeatTypeForPosition(int index, int capacity, HallType hallType) {
+        int seatsPerRow = getSeatsPerRow(hallType);
+        int totalRows = (int) Math.ceil((double) capacity / seatsPerRow);
+        int row = index / seatsPerRow;
+        int seatInRow = index % seatsPerRow;
+
+        // 中间位置：每排的中间3-4个座位
+        int middleSeatStart = Math.max(0, (seatsPerRow / 2) - 2);
+        int middleSeatEnd = Math.min(seatsPerRow - 1, (seatsPerRow / 2) + 1);
+
+        // 中间区域：排除前2排和后2排
+        boolean isMiddleRow = row >= 2 && row <= totalRows - 3;
+        boolean isCenterSeat = seatInRow >= middleSeatStart && seatInRow <= middleSeatEnd;
+
+        if (isMiddleRow && isCenterSeat) {
+            return SeatType.CENTER;
+        } else if (isMiddleRow) {
+            return SeatType.PREMIUM;
+        } else {
+            return SeatType.STANDARD;
+        }
+    }
+
+    private String buildSeatLabel(int index, int seatsPerRow) {
+        char row = (char) ('A' + (index / seatsPerRow));
+        int seatNumber = (index % seatsPerRow) + 1;
 
         return row + String.valueOf(seatNumber);
+    }
+
+    private void seedUsersIfEmpty(UserAccountRepository userAccountRepository) {
+        if (userAccountRepository.count() > 0) {
+            return;
+        }
+
+        BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+
+        userAccountRepository.save(new UserAccount(
+                "manager", encoder.encode("manager123"),
+                "manager@hcbs.com", "Cinema Manager", UserRole.MANAGER));
+
+        userAccountRepository.save(new UserAccount(
+                "admin", encoder.encode("admin123"),
+                "admin@hcbs.com", "System Admin", UserRole.ADMIN));
+
+        userAccountRepository.save(new UserAccount(
+                "staff", encoder.encode("staff123"),
+                "staff@hcbs.com", "Booking Staff", UserRole.BOOKING_STAFF));
+
+        System.out.println("HCBS demo user accounts created: 3");
     }
 }
