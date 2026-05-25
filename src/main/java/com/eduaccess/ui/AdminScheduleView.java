@@ -8,8 +8,11 @@ import com.eduaccess.domain.ScreeningType;
 import com.eduaccess.repository.CinemaRepository;
 import com.eduaccess.repository.FilmRepository;
 import com.eduaccess.repository.ScreenRepository;
+import com.eduaccess.service.LoginService;
 import com.eduaccess.service.SchedulingService;
 import com.vaadin.flow.component.Component;
+import com.vaadin.flow.router.BeforeEnterEvent;
+import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.combobox.ComboBox;
@@ -38,7 +41,14 @@ import java.util.Objects;
 
 @Route(value = "admin/schedule", layout = MainLayout.class)
 @PageTitle("HCBS — Admin Schedule")
-public class AdminScheduleView extends Div {
+public class AdminScheduleView extends Div implements BeforeEnterObserver {
+
+    private final LoginService loginService;
+
+    @Override
+    public void beforeEnter(BeforeEnterEvent event) {
+        PermissionChecker.checkAdminAccess(event, loginService);
+    }
 
     private static final DateTimeFormatter DAY_FORMAT = DateTimeFormatter.ofPattern("EEE dd MMM", Locale.UK);
     private static final DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm");
@@ -74,12 +84,14 @@ public class AdminScheduleView extends Div {
             SchedulingService schedulingService,
             FilmRepository filmRepository,
             CinemaRepository cinemaRepository,
-            ScreenRepository screenRepository
+            ScreenRepository screenRepository,
+            LoginService loginService
     ) {
         this.schedulingService = schedulingService;
         this.filmRepository = filmRepository;
         this.cinemaRepository = cinemaRepository;
         this.screenRepository = screenRepository;
+        this.loginService = loginService;
 
         // Initialize styled buttons
         stylePrimaryButton(autoButton);

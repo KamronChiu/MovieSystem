@@ -3,7 +3,10 @@ package com.eduaccess.ui;
 import com.eduaccess.domain.Booking;
 import com.eduaccess.domain.BookingStatus;
 import com.eduaccess.service.CancellationService;
+import com.eduaccess.service.LoginService;
 import com.vaadin.flow.component.Html;
+import com.vaadin.flow.router.BeforeEnterEvent;
+import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.dialog.Dialog;
@@ -33,7 +36,14 @@ import java.util.stream.Collectors;
 
 @Route(value = "cancellation", layout = MainLayout.class)
 @PageTitle("HCBS — Cancellation")
-public class CancellationView extends Div {
+public class CancellationView extends Div implements BeforeEnterObserver {
+
+    private final LoginService loginService;
+
+    @Override
+    public void beforeEnter(BeforeEnterEvent event) {
+        PermissionChecker.checkCancellationAccess(event, loginService);
+    }
 
     private static final String DARK_BG = "#020b1d";
     private static final String BLUE = "#0072ce";
@@ -56,8 +66,9 @@ public class CancellationView extends Div {
     private final List<Booking> allBookings = new ArrayList<>();
     private ListDataProvider<Booking> dataProvider;
 
-    public CancellationView(CancellationService cancellationService) {
+    public CancellationView(CancellationService cancellationService, LoginService loginService) {
         this.cancellationService = cancellationService;
+        this.loginService = loginService;
 
         // Initialize Data Provider with an empty list first
         this.dataProvider = new ListDataProvider<>(allBookings);

@@ -8,6 +8,7 @@ import com.eduaccess.domain.ScreeningType;
 import com.eduaccess.domain.Seat;
 import com.eduaccess.repository.CinemaRepository;
 import com.eduaccess.service.BookingService;
+import com.eduaccess.service.LoginService;
 import com.eduaccess.service.PricingService;
 import com.eduaccess.service.ScreeningService;
 import com.vaadin.flow.component.ClickEvent;
@@ -30,6 +31,8 @@ import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.textfield.EmailField;
 import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.component.textfield.TextField;
+import com.vaadin.flow.router.BeforeEnterEvent;
+import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.BeforeEvent;
 import com.vaadin.flow.router.HasUrlParameter;
 import com.vaadin.flow.router.OptionalParameter;
@@ -52,7 +55,14 @@ import java.util.stream.Collectors;
 
 @Route(value = "booking", layout = MainLayout.class)
 @PageTitle("HCBS — Booking")
-public class BookingView extends Div implements HasUrlParameter<Long> {
+public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnterObserver {
+
+    private final LoginService loginService;
+
+    @Override
+    public void beforeEnter(BeforeEnterEvent event) {
+        PermissionChecker.checkBookingAccess(event, loginService);
+    }
 
     private static final String DARK_BG = "#020b1d";
     private static final String BLUE = "#0072ce";
@@ -115,12 +125,14 @@ public class BookingView extends Div implements HasUrlParameter<Long> {
             CinemaRepository cinemaRepository,
             ScreeningService screeningService,
             BookingService bookingService,
-            PricingService pricingService
+            PricingService pricingService,
+            LoginService loginService
     ) {
         this.cinemaRepository = cinemaRepository;
         this.screeningService = screeningService;
         this.bookingService = bookingService;
         this.pricingService = pricingService;
+        this.loginService = loginService;
 
         setWidthFull();
         getStyle()

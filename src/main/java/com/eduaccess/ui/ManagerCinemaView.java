@@ -3,7 +3,10 @@ package com.eduaccess.ui;
 import com.eduaccess.domain.Cinema;
 import com.eduaccess.domain.Screen;
 import com.eduaccess.service.CinemaService;
+import com.eduaccess.service.LoginService;
 import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.router.BeforeEnterEvent;
+import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.Div;
@@ -24,7 +27,14 @@ import java.util.List;
 
 @Route(value = "manager/cinemas", layout = MainLayout.class)
 @PageTitle("HCBS — Manager Cinemas")
-public class ManagerCinemaView extends Div {
+public class ManagerCinemaView extends Div implements BeforeEnterObserver {
+
+    private final LoginService loginService;
+
+    @Override
+    public void beforeEnter(BeforeEnterEvent event) {
+        PermissionChecker.checkManagerAccess(event, loginService);
+    }
 
     private final CinemaService cinemaService;
 
@@ -37,8 +47,9 @@ public class ManagerCinemaView extends Div {
 
     private final List<IntegerField> screenCapacityFields = new ArrayList<>();
 
-    public ManagerCinemaView(CinemaService cinemaService) {
+    public ManagerCinemaView(CinemaService cinemaService, LoginService loginService) {
         this.cinemaService = cinemaService;
+        this.loginService = loginService;
 
         setWidthFull();
         getStyle()

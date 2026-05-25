@@ -1,6 +1,8 @@
 package com.eduaccess.ui;
 
+import com.eduaccess.domain.UserAccount;
 import com.eduaccess.repository.CinemaRepository;
+import com.eduaccess.service.LoginService;
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.applayout.AppLayout;
@@ -20,9 +22,12 @@ import java.util.List;
 public class MainLayout extends AppLayout {
 
     private final CinemaRepository cinemaRepository;
+    private final LoginService loginService;
+    private Div authSection;
 
-    public MainLayout(CinemaRepository cinemaRepository) {
+    public MainLayout(CinemaRepository cinemaRepository, LoginService loginService) {
         this.cinemaRepository = cinemaRepository;
+        this.loginService = loginService;
         createHeader();
     }
 
@@ -65,21 +70,7 @@ public class MainLayout extends AppLayout {
                 .set("color", "white")
                 .set("line-height", "1");
 
-        Div nav = new Div();
-        nav.getStyle()
-                .set("display", "flex")
-                .set("align-items", "center")
-                .set("gap", "32px");
-
-        nav.add(
-                navLink("Films", FilmListingView.class),
-                navLink("Booking", BookingView.class),
-                navLink("Cancellation", CancellationView.class),
-                navLink("Admin", AdminScheduleView.class),
-                navLink("Manager", ManagerCinemaView.class),
-                navLink("Home", HomeView.class)
-        );
-
+        Div nav = createNav();
         left.add(logo, nav);
 
         Div right = new Div();
@@ -102,12 +93,101 @@ public class MainLayout extends AppLayout {
         searchButton.getElement().setProperty("title", "Search films or cinemas");
         searchButton.addClickListener(event -> openSearchDialog());
 
-        right.add(locationButton, cityLabel, searchButton);
+        authSection = new Div();
+        authSection.getStyle()
+                .set("display", "flex")
+                .set("align-items", "center")
+                .set("gap", "12px");
+        updateAuthSection();
+
+        right.add(locationButton, cityLabel, searchButton, authSection);
 
         inner.add(left, right);
         header.add(inner);
 
         addToNavbar(header);
+    }
+
+    private Div createNav() {
+        Div nav = new Div();
+        nav.getStyle()
+                .set("display", "flex")
+                .set("align-items", "center")
+                .set("gap", "32px");
+
+        nav.add(navLink("Films", FilmListingView.class));
+        nav.add(navLink("Home", HomeView.class));
+        nav.add(navLink("Booking", BookingView.class));
+        nav.add(navLink("Cancellation", CancellationView.class));
+
+        UserAccount currentUser = loginService.getCurrentUser();
+        if (currentUser != null) {
+            if (loginService.canAccessAdmin()) {
+                nav.add(navLink("Admin", AdminScheduleView.class));
+            }
+            
+            if (loginService.canAccessManager()) {
+                nav.add(navLink("Manager", ManagerCinemaView.class));
+            }
+        }
+
+        return nav;
+    }
+
+    private void updateAuthSection() {
+        authSection.removeAll();
+
+        UserAccount currentUser = loginService.getCurrentUser();
+        
+        if (currentUser != null) {
+            Span userInfo = new Span(currentUser.getFullName() + " (" + 
+                    currentUser.getRole().name().replace("_", " ") + ")");
+            userInfo.getStyle()
+                    .set("font-size", "14px")
+                    .set("color", "#dbeafe")
+                    .set("font-weight", "600");
+
+            Button logoutButton = new Button("Logout");
+            logoutButton.getStyle()
+                    .set("height", "36px")
+                    .set("padding", "0 20px")
+                    .set("background", "#dc2626")
+                    .set("color", "white")
+                    .set("font-weight", "700")
+                    .set("border-radius", "6px")
+                    .set("font-size", "14px");
+
+            logoutButton.addClickListener(event -> {
+                loginService.logout();
+                updateAuthSection();
+                UI.getCurrent().getPage().reload();
+            });
+
+            authSection.add(userInfo, logoutButton);
+        } else {
+            RouterLink loginLink = new RouterLink("Login", LoginView.class);
+            loginLink.getStyle()
+                    .set("color", "#0099ff")
+                    .set("text-decoration", "none")
+                    .set("font-weight", "700")
+                    .set("font-size", "15px");
+
+            Button registerButton = new Button("Register");
+            registerButton.getStyle()
+                    .set("height", "36px")
+                    .set("padding", "0 20px")
+                    .set("background", "#0072ce")
+                    .set("color", "white")
+                    .set("font-weight", "700")
+                    .set("border-radius", "6px")
+                    .set("font-size", "14px");
+
+            registerButton.addClickListener(event -> {
+                UI.getCurrent().navigate("register");
+            });
+
+            authSection.add(loginLink, registerButton);
+        }
     }
 
     private RouterLink navLink(String text, Class<? extends Component> target) {
