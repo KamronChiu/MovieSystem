@@ -1,6 +1,7 @@
 package com.eduaccess.service;
 
 import com.eduaccess.domain.*;
+import com.eduaccess.exception.ResourceNotFoundException;
 import com.eduaccess.repository.BookingRepository;
 import com.eduaccess.repository.BookingSeatRepository;
 import com.eduaccess.repository.ScreeningRepository;
@@ -45,10 +46,7 @@ public class BookingService {
                 screening.getScreen().getId()
         );
 
-        List<Long> bookedSeatIds = bookingSeatRepository.findBookedSeatIdsByScreeningId(
-                screeningId,
-                BookingStatus.CONFIRMED
-        );
+        Set<Long> bookedSeatIds = bookingSeatRepository.findBookedSeatIdsByScreeningId(screeningId);
 
         return allSeats.stream()
                 .filter(seat -> !bookedSeatIds.contains(seat.getId()))
@@ -189,21 +187,20 @@ public class BookingService {
     @Transactional(readOnly = true)
     public List<SeatOption> findSeatOptions(Long screeningId) {
         Screening screening = screeningRepository.findById(screeningId)
-                .orElseThrow(() -> new IllegalArgumentException("Screening not found."));
+                .orElseThrow(() -> new ResourceNotFoundException("Screening not found."));
 
-        List<Seat> allSeats = seatRepository.findByScreenIdOrderBySeatNumberAsc(
+        List<Seat> seats = seatRepository.findByScreenIdOrderBySeatNumberAsc(
                 screening.getScreen().getId()
         );
 
-        Set<Long> bookedSeatIds = new HashSet<>(
-                bookingSeatRepository.findBookedSeatIdsByScreeningId(
-                        screeningId,
-                        BookingStatus.CONFIRMED
-                )
-        );
+        Set<Long> bookedSeatIds =
+                bookingSeatRepository.findBookedSeatIdsByScreeningId(screeningId);
 
-        return allSeats.stream()
-                .map(seat -> new SeatOption(seat, !bookedSeatIds.contains(seat.getId())))
+        return seats.stream()
+                .map(seat -> new SeatOption(
+                        seat,
+                        !bookedSeatIds.contains(seat.getId())
+                ))
                 .toList();
     }
 
