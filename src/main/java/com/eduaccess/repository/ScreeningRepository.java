@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 
 public interface ScreeningRepository extends JpaRepository<Screening, Long> {
@@ -35,6 +36,46 @@ public interface ScreeningRepository extends JpaRepository<Screening, Long> {
     List<Screening> findByScreenIdAndScreeningDateOrderByStartTimeAsc(
             Long screenId,
             LocalDate screeningDate
+    );
+
+
+    @Query("""
+            select distinct s
+            from Screening s
+            join fetch s.film f
+            join fetch s.screen sc
+            join fetch sc.cinema c
+            where f.id = :filmId
+              and c.id = :cinemaId
+              and s.screeningDate = :screeningDate
+            order by s.startTime asc, sc.screenNumber asc, s.id asc
+            """)
+    List<Screening> findShowtimesForFilmCinemaAndDate(
+            @Param("filmId") Long filmId,
+            @Param("cinemaId") Long cinemaId,
+            @Param("screeningDate") LocalDate screeningDate
+    );
+
+    boolean existsByScreen_IdAndScreeningDateAndStartTime(
+            Long screenId,
+            LocalDate screeningDate,
+            LocalTime startTime
+    );
+
+    @Query("""
+            select count(s) > 0
+            from Screening s
+            where s.screen.id = :screenId
+              and s.screeningDate = :screeningDate
+              and (:excludeId is null or s.id <> :excludeId)
+              and (:startTime < s.endTime and :endTime > s.startTime)
+            """)
+    boolean existsOverlappingScreening(
+            @Param("screenId") Long screenId,
+            @Param("screeningDate") LocalDate screeningDate,
+            @Param("startTime") LocalTime startTime,
+            @Param("endTime") LocalTime endTime,
+            @Param("excludeId") Long excludeId
     );
 
     @Query("""

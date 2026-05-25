@@ -237,10 +237,19 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
                 .set("padding", "18px 22px")
                 .set("box-shadow", "0 16px 40px rgba(0,0,0,0.28)")
                 .set("margin", "32px 0 50px 0")
+                .set("box-sizing", "border-box")
+                .set("width", "100%")
+                .set("max-width", "100%")
+                .set("overflow", "hidden");
+
+        Div grid = new Div();
+        grid.getStyle()
                 .set("display", "grid")
-                .set("grid-template-columns", "1fr 1fr 0.7fr 0.7fr 1fr 220px")
+                .set("grid-template-columns", "repeat(auto-fit, minmax(160px, 1fr))")
                 .set("gap", "14px")
-                .set("align-items", "end");
+                .set("align-items", "end")
+                .set("width", "100%")
+                .set("box-sizing", "border-box");
 
         filmBox.setWidthFull();
         cinemaBox.setWidthFull();
@@ -248,34 +257,58 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
         formatBox.setWidthFull();
         datePicker.setWidthFull();
 
+        /*
+         * Vaadin input components have their own default minimum widths.
+         * Setting min-width to 0 allows the CSS grid to shrink/wrap
+         * instead of pushing the Search button outside the white panel.
+         */
+        filmBox.getStyle().set("min-width", "0");
+        cinemaBox.getStyle().set("min-width", "0");
+        hallTypeBox.getStyle().set("min-width", "0");
+        formatBox.getStyle().set("min-width", "0");
+        datePicker.getStyle().set("min-width", "0");
+
         Button searchButton = new Button("Search", event -> reloadScreenings());
         searchButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        searchButton.setWidthFull();
         searchButton.getStyle()
-                .set("height", "46px")
-                .set("font-weight", "800")
+                .set("height", "52px")
+                .set("min-width", "0")
+                .set("font-size", "18px")
+                .set("font-weight", "900")
+                .set("letter-spacing", "0.04em")
                 .set("background", BLUE)
+                .set("color", "white")
                 .set("border-radius", "0")
+                .set("box-sizing", "border-box")
                 .set("clip-path", "polygon(0 0, 100% 0, 92% 100%, 0 100%)");
 
-        wrapper.add(filmBox, cinemaBox, hallTypeBox, formatBox, datePicker, searchButton);
+        grid.add(filmBox, cinemaBox, hallTypeBox, formatBox, datePicker, searchButton);
+        wrapper.add(grid);
+
         return wrapper;
     }
 
     private void reloadScreenings() {
-        LocalDate fromDate = datePicker.getValue() == null ? LocalDate.now() : datePicker.getValue();
-        LocalDate toDate = fromDate.plusDays(7);
-
+        LocalDate selectedDate = datePicker.getValue() == null ? LocalDate.now() : datePicker.getValue();
         Cinema selectedCinema = cinemaBox.getValue();
 
+        /*
+         * The booking search is date-specific. Previously this used selectedDate.plusDays(7),
+         * which meant showtimes from several dates could appear together and look like
+         * duplicate times on the page. We now load only the chosen date.
+         */
         if (selectedCinema == null) {
-            currentScreenings = screeningService.findScreeningsBetween(fromDate, toDate);
+            currentScreenings = screeningService.findScreeningsBetween(selectedDate, selectedDate);
         } else {
             currentScreenings = screeningService.findScreeningsByCinemaBetween(
                     selectedCinema.getId(),
-                    fromDate,
-                    toDate
+                    selectedDate,
+                    selectedDate
             );
         }
+
+        currentScreenings = sortAndRemoveDuplicateShowtimes(currentScreenings);
 
         List<Film> films = currentScreenings.stream()
                 .map(Screening::getFilm)
@@ -287,6 +320,7 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
                 ))
                 .values()
                 .stream()
+                .sorted(Comparator.comparing(Film::getTitle, String.CASE_INSENSITIVE_ORDER))
                 .toList();
 
         filmBox.setItems(films);
@@ -601,24 +635,28 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
             return;
         }
 
-        List<Screening> screenings = currentScreenings.stream()
-                .filter(screening -> Objects.equals(screening.getFilm().getId(), selectedFilmId))
-                .filter(screening -> {
-                    HallType selected = hallTypeBox.getValue();
-                    return selected == null || screening.getScreen().getHallType() == selected;
-                })
-                .filter(screening -> {
-                    String selectedFormat = formatBox.getValue();
-                    if (selectedFormat == null || selectedFormat.equals("All")) {
-                        return true;
-                    }
-                    return screening.getScreeningType() != null && screening.getScreeningType().getFormat().equals(selectedFormat);
-                })
-                .sorted(screeningComparator())
-                .toList();
+        List<Screening> screenings = sortAndRemoveDuplicateShowtimes(
+                currentScreenings.stream()
+                        .filter(screening -> Objects.equals(screening.getFilm().getId(), selectedFilmId))
+                        .filter(screening -> {
+                            HallType selected = hallTypeBox.getValue();
+                            return selected == null || screening.getScreen().getHallType() == selected;
+                        })
+                        .filter(screening -> {
+                            String selectedFormat = formatBox.getValue();
+                            if (selectedFormat == null || selectedFormat.equals("All")) {
+                                return true;
+                            }
+
+                            return screening.getScreeningType() != null
+                                    && selectedFormat.equals(screening.getScreeningType().getFormat());
+                        })
+                        .sorted(screeningComparator())
+                        .toList()
+        );
 
         if (screenings.isEmpty()) {
-            Paragraph empty = new Paragraph("No showtimes are available for this film and hall type combination.");
+            Paragraph empty = new Paragraph("No showtimes are available for this film, date, hall type and format combination.");
             empty.getStyle().set("color", "#cbd5e1");
             showtimeArea.add(empty);
             return;
@@ -639,6 +677,8 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
     }
 
     private Div buildCinemaShowtimeSection(String cinemaName, List<Screening> screenings) {
+        screenings = sortAndRemoveDuplicateShowtimes(screenings);
+
         Div section = new Div();
         section.getStyle().set("margin-bottom", "54px");
 
@@ -1944,11 +1984,35 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
         );
     }
 
+
+    private List<Screening> sortAndRemoveDuplicateShowtimes(List<Screening> screenings) {
+        Map<String, Screening> unique = new LinkedHashMap<>();
+
+        screenings.stream()
+                .filter(Objects::nonNull)
+                .sorted(screeningComparator())
+                .forEach(screening -> {
+                    String key = screening.getScreen().getId()
+                            + "-"
+                            + screening.getScreeningDate()
+                            + "-"
+                            + screening.getStartTime();
+
+                    unique.putIfAbsent(key, screening);
+                });
+
+        return unique.values()
+                .stream()
+                .toList();
+    }
     private Comparator<Screening> screeningComparator() {
         return Comparator
-                .comparing((Screening screening) -> screening.getScreen().getCinema().getName())
+                .comparing((Screening screening) -> screening.getScreen().getCinema().getName(), String.CASE_INSENSITIVE_ORDER)
+                .thenComparing(screening -> screening.getScreen().getHallType().getLabel(), String.CASE_INSENSITIVE_ORDER)
                 .thenComparing(Screening::getScreeningDate)
-                .thenComparing(Screening::getStartTime);
+                .thenComparing(Screening::getStartTime)
+                .thenComparing(screening -> screening.getScreen().getScreenNumber())
+                .thenComparing(Screening::getId);
     }
 
     private Comparator<BookingService.SeatOption> seatOptionComparator() {

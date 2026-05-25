@@ -35,6 +35,10 @@ public class FilmListingView extends Div implements BeforeEnterObserver {
     private final ComboBox<String> cityFilter = new ComboBox<>();
     private final ComboBox<String> genreFilter = new ComboBox<>();
 
+    /*
+     * UI-only promotional carousel configuration.
+     * The real Film data used for listing and booking still comes from the database.
+     */
     private final List<PromoSlide> promoSlides = List.of(
             new PromoSlide(
                     "ZOOTOPIA 2",
@@ -473,7 +477,10 @@ public class FilmListingView extends Div implements BeforeEnterObserver {
     }
 
     private void loadData() {
-        allFilms = filmRepository.findAll();
+        allFilms = filmRepository.findAll()
+                .stream()
+                .sorted(Comparator.comparing(Film::getTitle, String.CASE_INSENSITIVE_ORDER))
+                .toList();
 
         screeningWindow = screeningService.findScreeningsBetween(
                 LocalDate.now(),
@@ -566,13 +573,19 @@ public class FilmListingView extends Div implements BeforeEnterObserver {
     private boolean hasRegularUpcomingScreening(Film film) {
         return screeningWindow.stream()
                 .filter(screening -> Objects.equals(screening.getFilm().getId(), film.getId()))
-                .anyMatch(screening -> screening.getScreeningType().isRegular());
+                .anyMatch(screening ->
+                        screening.getScreeningType() != null
+                                && screening.getScreeningType().isRegular()
+                );
     }
 
     private boolean hasAdvancePreviewScreening(Film film) {
         return screeningWindow.stream()
                 .filter(screening -> Objects.equals(screening.getFilm().getId(), film.getId()))
-                .anyMatch(screening -> !screening.getScreeningType().isRegular());
+                .anyMatch(screening ->
+                        screening.getScreeningType() != null
+                                && !screening.getScreeningType().isRegular()
+                );
     }
 
     private boolean matchesKeyword(Film film, String keyword) {

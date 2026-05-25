@@ -5,6 +5,7 @@ import com.eduaccess.domain.Film;
 import com.eduaccess.domain.Screen;
 import com.eduaccess.domain.Screening;
 import com.eduaccess.domain.ScreeningType;
+import com.eduaccess.repository.BookingRepository;
 import com.eduaccess.repository.CinemaRepository;
 import com.eduaccess.repository.FilmRepository;
 import com.eduaccess.repository.ScreenRepository;
@@ -22,10 +23,13 @@ import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.H3;
 import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.html.Span;
+import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 
+import java.math.BigDecimal;
+import java.text.NumberFormat;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -58,6 +62,7 @@ public class AdminScheduleView extends Div implements BeforeEnterObserver {
     private final FilmRepository filmRepository;
     private final CinemaRepository cinemaRepository;
     private final ScreenRepository screenRepository;
+    private final BookingRepository bookingRepository;
 
     private final ComboBox<Cinema> cinemaBox = new ComboBox<>("Cinema");
     private final ComboBox<Screen> screenBox = new ComboBox<>("Screen");
@@ -85,12 +90,14 @@ public class AdminScheduleView extends Div implements BeforeEnterObserver {
             FilmRepository filmRepository,
             CinemaRepository cinemaRepository,
             ScreenRepository screenRepository,
+            BookingRepository bookingRepository,
             LoginService loginService
     ) {
         this.schedulingService = schedulingService;
         this.filmRepository = filmRepository;
         this.cinemaRepository = cinemaRepository;
         this.screenRepository = screenRepository;
+        this.bookingRepository = bookingRepository;
         this.loginService = loginService;
 
         // Initialize styled buttons
@@ -101,8 +108,8 @@ public class AdminScheduleView extends Div implements BeforeEnterObserver {
         setWidthFull();
         getStyle()
                 .set("min-height", "100vh")
-                .set("background", "#f5f7fb")
-                .set("color", "#111827")
+                .set("background", "#020b1d")
+                .set("color", "white")
                 .set("padding", "38px 48px 90px 48px")
                 .set("box-sizing", "border-box");
 
@@ -118,17 +125,7 @@ public class AdminScheduleView extends Div implements BeforeEnterObserver {
                 .set("font-weight", "950")
                 .set("letter-spacing", "0.03em")
                 .set("text-transform", "uppercase")
-                .set("color", "#111827");
-
-        Paragraph intro = new Paragraph(
-                "Use Auto-fill week to generate a draft schedule for the selected screen. You can still drag films manually, move cards, delete drafts, and save only when you click Confirm changes."
-        );
-        intro.getStyle()
-                .set("color", "#64748b")
-                .set("font-size", "16px")
-                .set("line-height", "1.7")
-                .set("max-width", "980px")
-                .set("margin", "10px 0 30px 0");
+                .set("color", "white");
 
         configureControls();
         renderFilmList();
@@ -142,7 +139,7 @@ public class AdminScheduleView extends Div implements BeforeEnterObserver {
                 .set("align-items", "start");
 
         app.add(buildFilmPanel(), buildSchedulePanel());
-        page.add(title, intro, app);
+        page.add(title, app);
         add(page);
     }
 
@@ -252,9 +249,9 @@ public class AdminScheduleView extends Div implements BeforeEnterObserver {
                 .set("font-size", "28px")
                 .set("font-weight", "950");
 
-        Paragraph hint = new Paragraph("Drag a film onto the grid, or use Auto-fill week for an initial draft.");
+        Paragraph hint = new Paragraph("Drag a film onto the grid. Draft conflicts are highlighted before you confirm.");
         hint.getStyle()
-                .set("color", "#64748b")
+                .set("color", "#94a3b8")
                 .set("font-size", "15px")
                 .set("line-height", "1.6")
                 .set("margin", "8px 0 18px 0");
@@ -319,7 +316,7 @@ public class AdminScheduleView extends Div implements BeforeEnterObserver {
 
         pendingLabel.getStyle()
                 .set("display", "block")
-                .set("color", "#64748b")
+                .set("color", "#94a3b8")
                 .set("font-size", "14px")
                 .set("font-weight", "800")
                 .set("margin", "0 0 14px 0");
@@ -352,11 +349,11 @@ public class AdminScheduleView extends Div implements BeforeEnterObserver {
         );
 
         card.getStyle()
-                .set("background", "#ffffff")
-                .set("border", "1px solid #d8e2ef")
-                .set("border-left", "5px solid #0072ce")
+                .set("background", "#081426")
+                .set("border", "1px solid rgba(148,163,184,0.28)")
+                .set("border-left", "5px solid #38bdf8")
                 .set("padding", "16px")
-                .set("box-shadow", "0 10px 24px rgba(15,23,42,0.08)")
+                .set("box-shadow", "0 14px 30px rgba(0,0,0,0.22)")
                 .set("cursor", "grab")
                 .set("user-select", "none");
 
@@ -366,13 +363,13 @@ public class AdminScheduleView extends Div implements BeforeEnterObserver {
                 .set("font-size", "19px")
                 .set("font-weight", "950")
                 .set("line-height", "1.1")
-                .set("color", "#111827");
+                .set("color", "white");
 
         Span meta = new Span(film.getAgeRating() + " · " + formatDuration(film.getDurationMinutes()) + " · " + film.getGenre());
         meta.getStyle()
                 .set("font-size", "13px")
                 .set("font-weight", "800")
-                .set("color", "#64748b");
+                .set("color", "#cbd5e1");
 
         card.add(title, meta);
         return card;
@@ -416,8 +413,8 @@ public class AdminScheduleView extends Div implements BeforeEnterObserver {
         grid.getStyle()
                 .set("display", "grid")
                 .set("grid-template-columns", "90px repeat(7, minmax(120px, 1fr))")
-                .set("border", "1px solid #d8e2ef")
-                .set("background", "#ffffff")
+                .set("border", "1px solid rgba(148,163,184,0.24)")
+                .set("background", "#071225")
                 .set("overflow", "hidden");
 
         grid.add(headerCell("Time"));
@@ -452,27 +449,39 @@ public class AdminScheduleView extends Div implements BeforeEnterObserver {
     }
 
     private Div scheduleCard(ScheduleItem item) {
+        boolean conflict = hasDraftConflict(item);
+        long soldSeats = soldSeatsFor(item);
+        BigDecimal revenue = revenueFor(item);
+
         Div card = new Div();
         card.getElement().setAttribute("draggable", "true");
         card.getElement().executeJs(
                 "this.addEventListener('dragstart', function(e) { "
                         + "e.dataTransfer.setData('text/plain', $0); "
                         + "e.dataTransfer.effectAllowed = 'move'; "
-                        + "});",
+                        + "}); "
+                        + "this.addEventListener('mouseenter', function() { this.style.transform='translateY(-3px)'; }); "
+                        + "this.addEventListener('mouseleave', function() { this.style.transform='translateY(0)'; });",
                 "ITEM:" + item.uid
         );
 
+        String border = conflict ? "2px solid #ef4444" : item.isChanged() ? "2px solid #f59e0b" : "1px solid rgba(148,163,184,0.35)";
+        String accent = conflict ? "#ef4444" : accentFor(item);
+
         card.getStyle()
-                .set("background", "#ffffff")
-                .set("border", item.isChanged() ? "2px solid #f59e0b" : "1px solid #cbd5e1")
-                .set("border-left", "5px solid #0072ce")
-                .set("box-shadow", "0 10px 24px rgba(15,23,42,0.10)")
+                .set("background", "linear-gradient(180deg, #0b172a 0%, #071225 100%)")
+                .set("border", border)
+                .set("border-left", "5px solid " + accent)
+                .set("box-shadow", conflict ? "0 0 0 1px rgba(239,68,68,0.30), 0 16px 34px rgba(0,0,0,0.35)" : "0 16px 34px rgba(0,0,0,0.28)")
                 .set("padding", "10px")
                 .set("margin-bottom", "8px")
                 .set("position", "relative")
-                .set("min-height", "74px")
+                .set("min-height", "118px")
                 .set("cursor", "grab")
-                .set("user-select", "none");
+                .set("user-select", "none")
+                .set("transition", "transform 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease")
+                .set("border-radius", "10px")
+                .set("overflow", "hidden");
 
         Span title = new Span(item.film.getTitle());
         title.getStyle()
@@ -480,42 +489,70 @@ public class AdminScheduleView extends Div implements BeforeEnterObserver {
                 .set("font-size", "14px")
                 .set("font-weight", "950")
                 .set("line-height", "1.15")
-                .set("padding-right", "42px")
-                .set("color", "#111827");
+                .set("padding-right", "58px")
+                .set("color", "white");
 
         Span time = new Span(
                 item.startTime.format(TIME_FORMAT)
                         + " - "
+                        + item.endTime().format(TIME_FORMAT)
+                        + " · "
                         + formatDuration(item.film.getDurationMinutes())
         );
         time.getStyle()
                 .set("display", "block")
-                .set("font-size", "13px")
-                .set("font-weight", "800")
-                .set("color", "#475569")
-                .set("margin-top", "5px");
-
-        Span screen = new Span("Screen " + item.screen.getScreenNumber() + " · " + formatType(item.screeningType));
-        screen.getStyle()
-                .set("display", "block")
                 .set("font-size", "12px")
                 .set("font-weight", "800")
-                .set("color", "#64748b")
+                .set("color", "#cbd5e1")
+                .set("margin-top", "5px");
+
+        Span screen = new Span(
+                "Screen " + item.screen.getScreenNumber()
+                        + " · " + item.screen.getHallType().getLabel()
+                        + " · " + formatType(item.screeningType)
+        );
+        screen.getStyle()
+                .set("display", "block")
+                .set("font-size", "11px")
+                .set("font-weight", "800")
+                .set("color", "#94a3b8")
                 .set("margin-top", "4px");
 
-        if (item.isChanged()) {
-            Span pending = new Span(item.newItem ? "NEW" : "MOVED");
-            pending.getStyle()
-                    .set("display", "inline-block")
-                    .set("margin-top", "6px")
-                    .set("font-size", "10px")
-                    .set("font-weight", "950")
-                    .set("letter-spacing", "0.08em")
-                    .set("color", "#b45309");
-            card.add(title, time, screen, pending);
-        } else {
-            card.add(title, time, screen);
+        Div stats = new Div();
+        stats.getStyle()
+                .set("display", "flex")
+                .set("gap", "6px")
+                .set("flex-wrap", "wrap")
+                .set("margin-top", "8px");
+        stats.add(metricBadge("Sold " + soldSeats + "/" + item.screen.getCapacity(), "#0ea5e9"));
+        stats.add(metricBadge(formatMoney(revenue), "#10b981"));
+
+        Div badges = new Div();
+        badges.getStyle()
+                .set("display", "flex")
+                .set("gap", "6px")
+                .set("flex-wrap", "wrap")
+                .set("margin-top", "7px");
+
+        if (conflict) {
+            badges.add(statusBadge("CONFLICT", "#ef4444", "rgba(239,68,68,0.16)"));
         }
+        if (item.isChanged()) {
+            badges.add(statusBadge(item.newItem ? "NEW" : "MOVED", "#f59e0b", "rgba(245,158,11,0.16)"));
+        }
+        if (!item.screeningType.isRegular()) {
+            badges.add(statusBadge("ADVANCE", "#fb923c", "rgba(251,146,60,0.16)"));
+        }
+        badges.add(statusBadge(item.screeningType.getFormat(), item.screeningType.is3D() ? "#a78bfa" : "#38bdf8", item.screeningType.is3D() ? "rgba(167,139,250,0.18)" : "rgba(56,189,248,0.16)"));
+
+        card.add(title, time, screen, stats, badges);
+
+        Button details = tinyButton("i");
+        details.getStyle()
+                .set("position", "absolute")
+                .set("right", "38px")
+                .set("top", "8px");
+        details.addClickListener(event -> openDetailsDialog(item));
 
         Button delete = tinyButton("×");
         delete.getStyle()
@@ -523,32 +560,46 @@ public class AdminScheduleView extends Div implements BeforeEnterObserver {
                 .set("right", "8px")
                 .set("top", "8px");
         delete.addClickListener(event -> markDeleted(item));
-        card.add(delete);
 
+        Button toggleFormat = tinyButton(item.screeningType.is3D() ? "2D" : "3D");
+        toggleFormat.getStyle()
+                .set("position", "absolute")
+                .set("right", "8px")
+                .set("bottom", "8px")
+                .set("width", "38px")
+                .set("min-width", "38px");
+        toggleFormat.addClickListener(event -> toggleFormat(item));
+
+        card.add(details, delete, toggleFormat);
         return card;
     }
+
 
     private Div dropCell(LocalDate date, LocalTime time) {
         Div cell = new Div();
         cell.getStyle()
                 .set("min-height", "128px")
-                .set("border-left", "1px solid #e2e8f0")
-                .set("border-top", "1px solid #e2e8f0")
+                .set("border-left", "1px solid rgba(148,163,184,0.16)")
+                .set("border-top", "1px solid rgba(148,163,184,0.16)")
                 .set("padding", "8px")
                 .set("box-sizing", "border-box")
-                .set("transition", "background 0.18s ease, border-color 0.18s ease");
+                .set("background", "rgba(15,23,42,0.42)")
+                .set("transition", "background 0.18s ease, box-shadow 0.18s ease");
 
         cell.getElement().executeJs(
                 "this.addEventListener('dragover', function(e) { "
                         + "e.preventDefault(); "
-                        + "this.style.background='rgba(0,114,206,0.08)'; "
+                        + "this.style.background='rgba(56,189,248,0.13)'; "
+                        + "this.style.boxShadow='inset 0 0 0 1px rgba(56,189,248,0.65)'; "
                         + "}); "
                         + "this.addEventListener('dragleave', function(e) { "
-                        + "this.style.background='transparent'; "
+                        + "this.style.background='rgba(15,23,42,0.42)'; "
+                        + "this.style.boxShadow='none'; "
                         + "}); "
                         + "this.addEventListener('drop', function(e) { "
                         + "e.preventDefault(); "
-                        + "this.style.background='transparent'; "
+                        + "this.style.background='rgba(15,23,42,0.42)'; "
+                        + "this.style.boxShadow='none'; "
                         + "});"
         );
 
@@ -559,6 +610,7 @@ public class AdminScheduleView extends Div implements BeforeEnterObserver {
 
         return cell;
     }
+
 
     private void handleDrop(String payload, LocalDate date, LocalTime time) {
         if (payload == null || payload.isBlank()) {
@@ -591,6 +643,244 @@ public class AdminScheduleView extends Div implements BeforeEnterObserver {
         }
     }
 
+
+    private Span metricBadge(String text, String color) {
+        Span badge = new Span(text);
+        badge.getStyle()
+                .set("display", "inline-block")
+                .set("padding", "4px 7px")
+                .set("border", "1px solid " + color)
+                .set("background", color + "22")
+                .set("color", "#e5f6ff")
+                .set("border-radius", "999px")
+                .set("font-size", "10px")
+                .set("font-weight", "950")
+                .set("letter-spacing", "0.03em");
+        return badge;
+    }
+
+    private Span statusBadge(String text, String color, String background) {
+        Span badge = new Span(text);
+        badge.getStyle()
+                .set("display", "inline-block")
+                .set("padding", "4px 7px")
+                .set("border", "1px solid " + color)
+                .set("background", background)
+                .set("color", color)
+                .set("border-radius", "999px")
+                .set("font-size", "10px")
+                .set("font-weight", "950")
+                .set("letter-spacing", "0.08em");
+        return badge;
+    }
+
+    private long soldSeatsFor(ScheduleItem item) {
+        if (item == null || item.screeningId == null || item.newItem) {
+            return 0;
+        }
+        return bookingRepository.countSoldSeatsForScreening(item.screeningId);
+    }
+
+    private BigDecimal revenueFor(ScheduleItem item) {
+        if (item == null || item.screeningId == null || item.newItem) {
+            return BigDecimal.ZERO;
+        }
+        BigDecimal value = bookingRepository.totalRevenueForScreening(item.screeningId);
+        return value == null ? BigDecimal.ZERO : value;
+    }
+
+    private boolean hasDraftConflict(ScheduleItem item) {
+        return conflictMessage(item) != null;
+    }
+
+    private String conflictMessage(ScheduleItem item) {
+        if (item == null || item.deleted) {
+            return null;
+        }
+        try {
+            validateItem(item);
+        } catch (RuntimeException ex) {
+            return ex.getMessage();
+        }
+
+        long sameScreenSameDay = scheduleItems.stream()
+                .filter(candidate -> !candidate.deleted)
+                .filter(candidate -> Objects.equals(candidate.screenId, item.screenId))
+                .filter(candidate -> Objects.equals(candidate.date, item.date))
+                .count();
+        if (sameScreenSameDay > MAX_SHOWS_PER_SCREEN_PER_DAY) {
+            return "This screen has more than four shows on " + item.date + ".";
+        }
+
+        return scheduleItems.stream()
+                .filter(candidate -> candidate != item)
+                .filter(candidate -> !candidate.deleted)
+                .filter(candidate -> Objects.equals(candidate.screenId, item.screenId))
+                .filter(candidate -> Objects.equals(candidate.date, item.date))
+                .filter(candidate -> overlaps(item, candidate))
+                .findFirst()
+                .map(candidate -> "Overlaps with " + candidate.film.getTitle()
+                        + " (" + candidate.startTime.format(TIME_FORMAT)
+                        + " - " + candidate.endTime().format(TIME_FORMAT) + ").")
+                .orElse(null);
+    }
+
+    private String accentFor(ScheduleItem item) {
+        if (item.screen != null && item.screen.getHallType() != null) {
+            return switch (item.screen.getHallType()) {
+                case IMAX -> "#818cf8";
+                case PREMIUM -> "#f59e0b";
+                default -> item.screeningType != null && item.screeningType.is3D() ? "#a78bfa" : "#38bdf8";
+            };
+        }
+        return item.screeningType != null && item.screeningType.is3D() ? "#a78bfa" : "#38bdf8";
+    }
+
+    private void toggleFormat(ScheduleItem item) {
+        if (item == null || item.deleted) {
+            return;
+        }
+        item.screeningType = toggle2D3D(item.screeningType);
+        item.dirty = true;
+        dirty = true;
+        renderTimetable();
+        Notification.show("Format changed to " + item.screeningType.getFormat() + ". Click Confirm changes to save.");
+    }
+
+    private ScreeningType toggle2D3D(ScreeningType type) {
+        if (type == null) {
+            return ScreeningType.REGULAR_3D;
+        }
+        return switch (type) {
+            case REGULAR_2D -> ScreeningType.REGULAR_3D;
+            case REGULAR_3D -> ScreeningType.REGULAR_2D;
+            case ADVANCE_PREVIEW_2D -> ScreeningType.ADVANCE_PREVIEW_3D;
+            case ADVANCE_PREVIEW_3D -> ScreeningType.ADVANCE_PREVIEW_2D;
+        };
+    }
+
+    private void openDetailsDialog(ScheduleItem item) {
+        Dialog dialog = new Dialog();
+        dialog.setCloseOnEsc(true);
+        dialog.setCloseOnOutsideClick(true);
+        dialog.setWidth("480px");
+
+        Div panel = new Div();
+        panel.getStyle()
+                .set("background", "#071225")
+                .set("color", "white")
+                .set("padding", "26px")
+                .set("box-sizing", "border-box")
+                .set("border", "1px solid rgba(148,163,184,0.24)")
+                .set("box-shadow", "0 24px 70px rgba(0,0,0,0.45)");
+
+        H2 title = new H2(item.film.getTitle());
+        title.getStyle()
+                .set("margin", "0 0 12px 0")
+                .set("font-size", "28px")
+                .set("line-height", "1.08")
+                .set("font-weight", "950");
+
+        String conflict = conflictMessage(item);
+        if (conflict != null) {
+            Div warning = new Div();
+            warning.setText("Conflict: " + conflict);
+            warning.getStyle()
+                    .set("background", "rgba(239,68,68,0.14)")
+                    .set("border", "1px solid #ef4444")
+                    .set("color", "#fecaca")
+                    .set("padding", "12px")
+                    .set("border-radius", "12px")
+                    .set("font-weight", "800")
+                    .set("margin", "0 0 16px 0")
+                    .set("line-height", "1.45");
+            panel.add(title, warning);
+        } else {
+            panel.add(title);
+        }
+
+        Div grid = new Div();
+        grid.getStyle()
+                .set("display", "grid")
+                .set("grid-template-columns", "1fr 1fr")
+                .set("gap", "12px")
+                .set("margin", "16px 0");
+
+        grid.add(
+                detailTile("Date", item.date.format(DateTimeFormatter.ofPattern("dd MMM yyyy", Locale.UK))),
+                detailTile("Time", item.startTime.format(TIME_FORMAT) + " - " + item.endTime().format(TIME_FORMAT)),
+                detailTile("Cinema", item.screen.getCinema().getName()),
+                detailTile("Screen", "Screen " + item.screen.getScreenNumber()),
+                detailTile("Hall", item.screen.getHallType().getLabel()),
+                detailTile("Type", formatType(item.screeningType)),
+                detailTile("Sold seats", soldSeatsFor(item) + " / " + item.screen.getCapacity()),
+                detailTile("Revenue", formatMoney(revenueFor(item)))
+        );
+
+        Div footer = new Div();
+        footer.getStyle()
+                .set("display", "flex")
+                .set("justify-content", "space-between")
+                .set("gap", "12px")
+                .set("margin-top", "18px")
+                .set("flex-wrap", "wrap");
+
+        Button switchFormat = secondaryButton(item.screeningType.is3D() ? "Switch to 2D" : "Switch to 3D");
+        switchFormat.addClickListener(event -> {
+            toggleFormat(item);
+            dialog.close();
+        });
+
+        Button remove = secondaryButton("Delete draft");
+        remove.getStyle().set("border", "1px solid #ef4444").set("color", "#fecaca").set("background", "rgba(239,68,68,0.12)");
+        remove.addClickListener(event -> {
+            markDeleted(item);
+            dialog.close();
+        });
+
+        Button close = secondaryButton("Close");
+        close.addClickListener(event -> dialog.close());
+
+        footer.add(switchFormat, remove, close);
+        panel.add(grid, footer);
+        dialog.add(panel);
+        dialog.open();
+    }
+
+    private Div detailTile(String label, String value) {
+        Div tile = new Div();
+        tile.getStyle()
+                .set("background", "rgba(15,23,42,0.78)")
+                .set("border", "1px solid rgba(148,163,184,0.20)")
+                .set("padding", "12px")
+                .set("border-radius", "14px");
+
+        Span top = new Span(label);
+        top.getStyle()
+                .set("display", "block")
+                .set("color", "#94a3b8")
+                .set("font-size", "11px")
+                .set("font-weight", "900")
+                .set("letter-spacing", "0.08em")
+                .set("text-transform", "uppercase")
+                .set("margin-bottom", "5px");
+
+        Span bottom = new Span(value == null || value.isBlank() ? "-" : value);
+        bottom.getStyle()
+                .set("display", "block")
+                .set("color", "white")
+                .set("font-size", "15px")
+                .set("font-weight", "850")
+                .set("line-height", "1.3");
+
+        tile.add(top, bottom);
+        return tile;
+    }
+
+    private String formatMoney(BigDecimal value) {
+        return NumberFormat.getCurrencyInstance(Locale.UK).format(value == null ? BigDecimal.ZERO : value);
+    }
+
     private void addDroppedFilm(Long filmId, Screen screen, LocalDate date, LocalTime time) {
         Film film = filmRepository.findById(filmId)
                 .orElseThrow(() -> new IllegalArgumentException("Film was not found."));
@@ -607,7 +897,10 @@ public class AdminScheduleView extends Div implements BeforeEnterObserver {
         scheduleItems.add(item);
         dirty = true;
         renderTimetable();
-        Notification.show("Placed " + film.getTitle() + ". Click Confirm changes to save.");
+        String conflict = conflictMessage(item);
+        Notification.show(conflict == null
+                ? "Placed " + film.getTitle() + ". Click Confirm changes to save."
+                : "Placed with conflict: " + conflict);
     }
 
     private void moveExistingCard(String uid, Screen screen, LocalDate date, LocalTime time) {
@@ -625,7 +918,10 @@ public class AdminScheduleView extends Div implements BeforeEnterObserver {
 
         dirty = true;
         renderTimetable();
-        Notification.show("Moved " + item.film.getTitle() + ". Click Confirm changes to save.");
+        String conflict = conflictMessage(item);
+        Notification.show(conflict == null
+                ? "Moved " + item.film.getTitle() + ". Click Confirm changes to save."
+                : "Moved with conflict: " + conflict);
     }
 
     private ScreeningType chooseScreeningType(Film film, LocalDate date) {
@@ -935,7 +1231,7 @@ public class AdminScheduleView extends Div implements BeforeEnterObserver {
         long deleted = scheduleItems.stream().filter(item -> item.deleted && !item.newItem).count();
 
         if (!dirty) {
-            pendingLabel.setText("No draft changes. Drag a film onto a time slot to start editing.");
+            pendingLabel.setText("No draft changes. Drag a film onto a time slot or use Auto-fill week.");
             confirmButton.setEnabled(false);
             discardButton.setEnabled(false);
             return;
@@ -953,31 +1249,36 @@ public class AdminScheduleView extends Div implements BeforeEnterObserver {
 
     private Div headerCell(String text) {
         Div cell = new Div();
-        cell.setText(text);
+        LocalDate today = LocalDate.now();
+        boolean isToday = text.toLowerCase(Locale.UK).contains(today.format(DateTimeFormatter.ofPattern("dd MMM", Locale.UK)).toLowerCase(Locale.UK));
+        cell.setText(isToday ? text + " · TODAY" : text);
         cell.getStyle()
-                .set("background", "#eef4fb")
-                .set("border-left", "1px solid #d8e2ef")
+                .set("background", isToday ? "rgba(56,189,248,0.18)" : "#101d33")
+                .set("border-left", "1px solid rgba(148,163,184,0.18)")
                 .set("padding", "14px 10px")
                 .set("font-size", "13px")
                 .set("font-weight", "950")
                 .set("text-transform", "uppercase")
                 .set("letter-spacing", "0.08em")
-                .set("color", "#475569");
+                .set("color", isToday ? "#7dd3fc" : "#cbd5e1");
         return cell;
     }
+
 
     private Div timeCell(String text) {
         Div cell = new Div();
         cell.setText(text);
         cell.getStyle()
-                .set("border-top", "1px solid #e2e8f0")
+                .set("border-top", "1px solid rgba(148,163,184,0.16)")
                 .set("padding", "12px 10px")
                 .set("font-size", "13px")
                 .set("font-weight", "900")
-                .set("color", "#64748b")
+                .set("color", "#94a3b8")
+                .set("background", "#0b172a")
                 .set("box-sizing", "border-box");
         return cell;
     }
+
 
     private static LocalDate startOfWeek(LocalDate date) {
         return date.with(DayOfWeek.MONDAY);
@@ -995,7 +1296,7 @@ public class AdminScheduleView extends Div implements BeforeEnterObserver {
         if (screen == null) {
             return "";
         }
-        return "Screen " + screen.getScreenNumber() + " — " + screen.getCapacity() + " seats";
+        return screen.getHallType().getLabel() + " — Screen " + screen.getScreenNumber() + " — " + screen.getCapacity() + " seats";
     }
 
     private String formatDuration(int minutes) {
@@ -1025,13 +1326,15 @@ public class AdminScheduleView extends Div implements BeforeEnterObserver {
     private Div darkCard() {
         Div card = new Div();
         card.getStyle()
-                .set("background", "#ffffff")
-                .set("border", "1px solid #d8e2ef")
-                .set("box-shadow", "0 16px 40px rgba(15,23,42,0.08)")
+                .set("background", "rgba(7,18,37,0.96)")
+                .set("border", "1px solid rgba(148,163,184,0.22)")
+                .set("box-shadow", "0 20px 50px rgba(0,0,0,0.32)")
                 .set("padding", "24px")
-                .set("box-sizing", "border-box");
+                .set("box-sizing", "border-box")
+                .set("border-radius", "18px");
         return card;
     }
+
 
     private void stylePrimaryButton(Button button) {
         button.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
@@ -1047,12 +1350,13 @@ public class AdminScheduleView extends Div implements BeforeEnterObserver {
     private void styleSecondaryButton(Button button) {
         button.getStyle()
                 .set("height", "42px")
-                .set("background", "#ffffff")
-                .set("color", "#111827")
-                .set("border", "1px solid #cbd5e1")
+                .set("background", "rgba(15,23,42,0.72)")
+                .set("color", "#e5e7eb")
+                .set("border", "1px solid rgba(148,163,184,0.32)")
                 .set("border-radius", "0")
                 .set("font-weight", "800");
     }
+
 
     private Button secondaryButton(String text) {
         Button button = new Button(text);
@@ -1067,24 +1371,26 @@ public class AdminScheduleView extends Div implements BeforeEnterObserver {
                 .set("height", "24px")
                 .set("min-width", "24px")
                 .set("padding", "0")
-                .set("border-radius", "0")
-                .set("background", "#eef4fb")
-                .set("color", "#111827")
-                .set("border", "1px solid #cbd5e1")
+                .set("border-radius", "999px")
+                .set("background", "rgba(15,23,42,0.88)")
+                .set("color", "#e5e7eb")
+                .set("border", "1px solid rgba(148,163,184,0.45)")
                 .set("font-weight", "900");
         return button;
     }
 
+
     private void styleDarkField(Component component) {
         component.getElement().getStyle()
-                .set("--vaadin-input-field-background", "#eef4fb")
-                .set("--vaadin-input-field-value-color", "#111827")
-                .set("--vaadin-input-field-label-color", "#334155")
-                .set("--vaadin-input-field-placeholder-color", "#64748b")
-                .set("--vaadin-input-field-border-color", "#cbd5e1")
-                .set("--vaadin-input-field-focused-highlight", "#0072ce")
-                .set("color", "#111827");
+                .set("--vaadin-input-field-background", "rgba(15,23,42,0.90)")
+                .set("--vaadin-input-field-value-color", "#e5e7eb")
+                .set("--vaadin-input-field-label-color", "#cbd5e1")
+                .set("--vaadin-input-field-placeholder-color", "#94a3b8")
+                .set("--vaadin-input-field-border-color", "rgba(148,163,184,0.32)")
+                .set("--vaadin-input-field-focused-highlight", "#38bdf8")
+                .set("color", "#e5e7eb");
     }
+
 
     private static class ScheduleItem {
         private final String uid;

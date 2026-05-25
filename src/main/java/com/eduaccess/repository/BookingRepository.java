@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
@@ -46,4 +47,20 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
             @Param("seatId") Long seatId,
             @Param("status") BookingStatus status
     );
+
+    @Query("""
+            select count(bs)
+            from BookingSeat bs
+            where bs.booking.screening.id = :screeningId
+              and bs.booking.status = com.eduaccess.domain.BookingStatus.CONFIRMED
+            """)
+    long countSoldSeatsForScreening(@Param("screeningId") Long screeningId);
+
+    @Query("""
+            select coalesce(sum(b.totalCost), 0)
+            from Booking b
+            where b.screening.id = :screeningId
+              and b.status = com.eduaccess.domain.BookingStatus.CONFIRMED
+            """)
+    BigDecimal totalRevenueForScreening(@Param("screeningId") Long screeningId);
 }
