@@ -64,7 +64,8 @@ public class RegisterView extends Div {
                 .set("--vaadin-input-field-text-color", "#ffffff")
                 .set("--vaadin-input-field-label-color", "rgba(255,255,255,0.9)")
                 .set("--vaadin-input-field-placeholder-color", "rgba(255,255,255,0.6)")
-                .set("--vaadin-input-field-focus-ring-color", "#0099ff");
+                .set("--vaadin-input-field-focus-ring-color", "#0099ff")
+                .set("color", "#ffffff");
 
         TextField usernameField = new TextField("Username");
         usernameField.setWidthFull();
@@ -75,7 +76,8 @@ public class RegisterView extends Div {
                 .set("--vaadin-input-field-text-color", "#ffffff")
                 .set("--vaadin-input-field-label-color", "rgba(255,255,255,0.9)")
                 .set("--vaadin-input-field-placeholder-color", "rgba(255,255,255,0.6)")
-                .set("--vaadin-input-field-focus-ring-color", "#0099ff");
+                .set("--vaadin-input-field-focus-ring-color", "#0099ff")
+                .set("color", "#ffffff");
 
         EmailField emailField = new EmailField("Email");
         emailField.setWidthFull();
@@ -86,7 +88,8 @@ public class RegisterView extends Div {
                 .set("--vaadin-input-field-text-color", "#ffffff")
                 .set("--vaadin-input-field-label-color", "rgba(255,255,255,0.9)")
                 .set("--vaadin-input-field-placeholder-color", "rgba(255,255,255,0.6)")
-                .set("--vaadin-input-field-focus-ring-color", "#0099ff");
+                .set("--vaadin-input-field-focus-ring-color", "#0099ff")
+                .set("color", "#ffffff");
 
         PasswordField passwordField = new PasswordField("Password");
         passwordField.setWidthFull();
@@ -97,7 +100,8 @@ public class RegisterView extends Div {
                 .set("--vaadin-input-field-text-color", "#ffffff")
                 .set("--vaadin-input-field-label-color", "rgba(255,255,255,0.9)")
                 .set("--vaadin-input-field-placeholder-color", "rgba(255,255,255,0.6)")
-                .set("--vaadin-input-field-focus-ring-color", "#0099ff");
+                .set("--vaadin-input-field-focus-ring-color", "#0099ff")
+                .set("color", "#ffffff");
 
         PasswordField confirmPasswordField = new PasswordField("Confirm Password");
         confirmPasswordField.setWidthFull();
@@ -108,7 +112,8 @@ public class RegisterView extends Div {
                 .set("--vaadin-input-field-text-color", "#ffffff")
                 .set("--vaadin-input-field-label-color", "rgba(255,255,255,0.9)")
                 .set("--vaadin-input-field-placeholder-color", "rgba(255,255,255,0.6)")
-                .set("--vaadin-input-field-focus-ring-color", "#0099ff");
+                .set("--vaadin-input-field-focus-ring-color", "#0099ff")
+                .set("color", "#ffffff");
 
         ComboBox<UserRole> roleComboBox = new ComboBox<>("User Role");
         roleComboBox.setWidthFull();
@@ -128,7 +133,8 @@ public class RegisterView extends Div {
                 .set("--vaadin-input-field-text-color", "#ffffff")
                 .set("--vaadin-input-field-label-color", "rgba(255,255,255,0.9)")
                 .set("--vaadin-input-field-placeholder-color", "rgba(255,255,255,0.6)")
-                .set("--vaadin-input-field-focus-ring-color", "#0099ff");
+                .set("--vaadin-input-field-focus-ring-color", "#0099ff")
+                .set("color", "#ffffff");
 
         Button registerButton = new Button("Register");
         registerButton.setWidthFull();

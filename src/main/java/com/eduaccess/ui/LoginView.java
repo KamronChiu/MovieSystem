@@ -67,7 +67,8 @@ public class LoginView extends Div implements HasUrlParameter<String> {
                 .set("--vaadin-input-field-text-color", "#ffffff")
                 .set("--vaadin-input-field-label-color", "rgba(255,255,255,0.9)")
                 .set("--vaadin-input-field-placeholder-color", "rgba(255,255,255,0.6)")
-                .set("--vaadin-input-field-focus-ring-color", "#0099ff");
+                .set("--vaadin-input-field-focus-ring-color", "#0099ff")
+                .set("color", "#ffffff");
 
         PasswordField passwordField = new PasswordField("Password");
         passwordField.setWidthFull();
@@ -78,7 +79,8 @@ public class LoginView extends Div implements HasUrlParameter<String> {
                 .set("--vaadin-input-field-text-color", "#ffffff")
                 .set("--vaadin-input-field-label-color", "rgba(255,255,255,0.9)")
                 .set("--vaadin-input-field-placeholder-color", "rgba(255,255,255,0.6)")
-                .set("--vaadin-input-field-focus-ring-color", "#0099ff");
+                .set("--vaadin-input-field-focus-ring-color", "#0099ff")
+                .set("color", "#ffffff");
 
         Button loginButton = new Button("Login");
         loginButton.setWidthFull();
@@ -102,7 +104,7 @@ public class LoginView extends Div implements HasUrlParameter<String> {
 
             if (loginService.login(username, password)) {
                 Notification.show("Login successful!", 2000, Notification.Position.TOP_CENTER);
-                String targetUrl = redirectUrl != null && !redirectUrl.isEmpty() ? redirectUrl : "home";
+                String targetUrl = redirectUrl != null && !redirectUrl.isEmpty() ? redirectUrl : "";
                 UI.getCurrent().navigate(targetUrl);
             } else {
                 Notification.show("Invalid username or password", 3000, Notification.Position.TOP_CENTER);
@@ -158,9 +160,19 @@ public class LoginView extends Div implements HasUrlParameter<String> {
 
         TextField usernameField = new TextField("Username");
         usernameField.setWidthFull();
+        usernameField.getStyle()
+                .set("--vaadin-input-field-background", "rgba(255,255,255,0.1)")
+                .set("--vaadin-input-field-border-color", "rgba(255,255,255,0.3)")
+                .set("--vaadin-input-field-text-color", "#ffffff")
+                .set("--vaadin-input-field-label-color", "rgba(255,255,255,0.9)");
 
         PasswordField passwordField = new PasswordField("Password");
         passwordField.setWidthFull();
+        passwordField.getStyle()
+                .set("--vaadin-input-field-background", "rgba(255,255,255,0.1)")
+                .set("--vaadin-input-field-border-color", "rgba(255,255,255,0.3)")
+                .set("--vaadin-input-field-text-color", "#ffffff")
+                .set("--vaadin-input-field-label-color", "rgba(255,255,255,0.9)");
 
         Button loginButton = new Button("Login");
         loginButton.getStyle()

@@ -116,7 +116,6 @@ public class MainLayout extends AppLayout {
                 .set("gap", "32px");
 
         nav.add(navLink("Films", FilmListingView.class));
-        nav.add(navLink("Home", HomeView.class));
         nav.add(navLink("Booking", BookingView.class));
         nav.add(navLink("Cancellation", CancellationView.class));
 

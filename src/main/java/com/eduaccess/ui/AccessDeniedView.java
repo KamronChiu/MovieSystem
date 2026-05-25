@@ -8,6 +8,7 @@ import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.router.RouterLink;
+import com.eduaccess.ui.FilmListingView;
 
 @Route("access-denied")
 @PageTitle("Access Denied")
@@ -46,7 +47,7 @@ public class AccessDeniedView extends Div {
                 .set("font-weight", "400")
                 .set("margin-bottom", "32px");
 
-        RouterLink homeLink = new RouterLink("Go to Home", HomeView.class);
+        RouterLink homeLink = new RouterLink("Go to Films", FilmListingView.class);
         homeLink.getStyle()
                 .set("display", "inline-block")
                 .set("padding", "12px 32px")
