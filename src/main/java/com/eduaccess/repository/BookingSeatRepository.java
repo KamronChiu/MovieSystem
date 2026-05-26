@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
 import java.util.Set;
 
 public interface BookingSeatRepository extends JpaRepository<BookingSeat, Long> {
@@ -31,4 +32,12 @@ public interface BookingSeatRepository extends JpaRepository<BookingSeat, Long> 
               AND b.status = 'CONFIRMED'
             """, nativeQuery = true)
     Set<Long> findBookedSeatIdsByScreeningId(@Param("screeningId") Long screeningId);
+    @Query("""
+            select bs.seat.seatNumber
+            from BookingSeat bs
+            where bs.booking.id = :bookingId
+            order by bs.seat.seatNumber asc
+            """)
+    List<String> findSeatNumbersByBookingId(@Param("bookingId") Long bookingId);
+
 }

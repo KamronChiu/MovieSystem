@@ -2,6 +2,8 @@ package com.eduaccess.config;
 
 import com.eduaccess.domain.Cinema;
 import com.eduaccess.domain.Film;
+import com.eduaccess.domain.FoodCategory;
+import com.eduaccess.domain.FoodItem;
 import com.eduaccess.domain.HallType;
 import com.eduaccess.domain.Screen;
 import com.eduaccess.domain.Screening;
@@ -10,6 +12,7 @@ import com.eduaccess.domain.Seat;
 import com.eduaccess.domain.SeatType;
 import com.eduaccess.repository.CinemaRepository;
 import com.eduaccess.repository.FilmRepository;
+import com.eduaccess.repository.FoodItemRepository;
 import com.eduaccess.repository.ScreenRepository;
 import com.eduaccess.repository.ScreeningRepository;
 import com.eduaccess.repository.SeatRepository;
@@ -24,6 +27,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
@@ -47,6 +51,7 @@ public class DataInitializer {
             ScreeningRepository screeningRepository,
             SeatRepository seatRepository,
             UserAccountRepository userAccountRepository,
+            FoodItemRepository foodItemRepository,
             EntityManager entityManager,
             PlatformTransactionManager transactionManager
     ) {
@@ -68,6 +73,7 @@ public class DataInitializer {
                 );
 
                 seedUsersIfEmpty(userAccountRepository);
+                seedFoodItemsIfEmpty(foodItemRepository);
 
                 System.out.println("HCBS data maintenance completed.");
                 System.out.println("Expired unbooked screenings removed: " + deletedScreenings);
@@ -76,6 +82,7 @@ public class DataInitializer {
                 System.out.println("Screens in database: " + screenRepository.count());
                 System.out.println("Screenings in database: " + screeningRepository.count());
                 System.out.println("User accounts in database: " + userAccountRepository.count());
+                System.out.println("Food items in database: " + foodItemRepository.count());
             });
         };
     }
@@ -498,6 +505,27 @@ public class DataInitializer {
         int seatNumber = (index % seatsPerRow) + 1;
 
         return row + String.valueOf(seatNumber);
+    }
+
+    private void seedFoodItemsIfEmpty(FoodItemRepository foodItemRepository) {
+        if (foodItemRepository.count() > 0) {
+            return;
+        }
+
+        List<FoodItem> items = List.of(
+                new FoodItem("Small Popcorn", FoodCategory.POPCORN, new BigDecimal("3.50"), null, true),
+                new FoodItem("Large Popcorn", FoodCategory.POPCORN, new BigDecimal("5.50"), null, true),
+                new FoodItem("French Fries", FoodCategory.FRIES, new BigDecimal("3.25"), null, true),
+                new FoodItem("Cheese Fries", FoodCategory.FRIES, new BigDecimal("4.25"), null, true),
+                new FoodItem("Coca-Cola", FoodCategory.DRINK, new BigDecimal("2.80"), null, true),
+                new FoodItem("Sprite", FoodCategory.DRINK, new BigDecimal("2.80"), null, true),
+                new FoodItem("Still Water", FoodCategory.DRINK, new BigDecimal("2.20"), null, true),
+                new FoodItem("Movie Combo", FoodCategory.COMBO, new BigDecimal("8.50"), null, true),
+                new FoodItem("Family Snack Box", FoodCategory.COMBO, new BigDecimal("15.00"), null, true)
+        );
+
+        foodItemRepository.saveAll(items);
+        System.out.println("HCBS demo food items created: " + items.size());
     }
 
     private void seedUsersIfEmpty(UserAccountRepository userAccountRepository) {

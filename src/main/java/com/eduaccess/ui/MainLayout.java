@@ -120,11 +120,15 @@ public class MainLayout extends AppLayout {
         nav.add(navLink("Cancellation", CancellationView.class));
 
         UserAccount currentUser = loginService.getCurrentUser();
+        if (currentUser != null && loginService.canAccessBooking()) {
+            nav.add(navLink("Food Orders", FoodOrdersView.class));
+        }
+
         if (currentUser != null) {
             if (loginService.canAccessAdmin()) {
                 nav.add(navLink("Admin", AdminScheduleView.class));
             }
-            
+
             if (loginService.canAccessManager()) {
                 nav.add(navLink("Manager", ManagerCinemaView.class));
             }
@@ -137,9 +141,9 @@ public class MainLayout extends AppLayout {
         authSection.removeAll();
 
         UserAccount currentUser = loginService.getCurrentUser();
-        
+
         if (currentUser != null) {
-            Span userInfo = new Span(currentUser.getFullName() + " (" + 
+            Span userInfo = new Span(currentUser.getFullName() + " (" +
                     currentUser.getRole().name().replace("_", " ") + ")");
             userInfo.getStyle()
                     .set("font-size", "14px")
