@@ -4,12 +4,10 @@ import com.eduaccess.domain.Booking;
 import com.eduaccess.domain.BookingStatus;
 import com.eduaccess.service.CancellationService;
 import com.eduaccess.service.LoginService;
-import com.vaadin.flow.component.Html;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
-import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H2;
@@ -19,8 +17,6 @@ import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
-import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
-import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.data.provider.ListDataProvider;
 import com.vaadin.flow.data.value.ValueChangeMode;
@@ -34,6 +30,15 @@ import java.util.List;
 import java.util.Locale;
 import java.util.stream.Collectors;
 
+/**
+ * Cancellation listing page.
+ * <p>
+ * This page lists every booking and lets the user pick one to start (or
+ * resume) the cancellation / refund flow. It does <strong>not</strong>
+ * mutate booking state directly — clicking the action button simply
+ * navigates to {@link CancellationStatusesView}, where the step-by-step
+ * flow drives all status transitions.
+ */
 @Route(value = "cancellation", layout = MainLayout.class)
 @PageTitle("HCBS — Cancellation")
 public class CancellationView extends Div implements BeforeEnterObserver {
@@ -60,7 +65,7 @@ public class CancellationView extends Div implements BeforeEnterObserver {
     // Master-Detail components
     private final Grid<Booking> bookingGrid = new Grid<>(Booking.class, false);
     private final Div detailsCard = new Div();
-    private final Button cancelButton = new Button("Cancel Booking");
+    private final Button actionButton = new Button("Request Refund");
 
     private Booking selectedBooking;
     private final List<Booking> allBookings = new ArrayList<>();
@@ -97,9 +102,9 @@ public class CancellationView extends Div implements BeforeEnterObserver {
         // Content Section (Master-Detail)
         container.add(buildMainContent());
 
-        // Setup Actions
-        cancelButton.addClickListener(e -> confirmCancellation());
-        
+        // Setup Actions: navigate to step-by-step flow (no DB mutation here)
+        actionButton.addClickListener(e -> navigateToFlow());
+
         add(container);
 
         // Load data initially
@@ -177,7 +182,7 @@ public class CancellationView extends Div implements BeforeEnterObserver {
                 .setHeader("Reference")
                 .setAutoWidth(true)
                 .setFlexGrow(1);
-        
+
         bookingGrid.addColumn(b -> {
                     if (b.getScreening() != null && b.getScreening().getFilm() != null) {
                         return b.getScreening().getFilm().getTitle();
@@ -187,6 +192,11 @@ public class CancellationView extends Div implements BeforeEnterObserver {
                 .setHeader("Film")
                 .setAutoWidth(true)
                 .setFlexGrow(2);
+
+        bookingGrid.addColumn(b -> b.getStatus().getDisplayName())
+                .setHeader("Status")
+                .setAutoWidth(true)
+                .setFlexGrow(1);
 
         bookingGrid.setDataProvider(dataProvider);
         bookingGrid.setHeight("650px");
@@ -207,8 +217,8 @@ public class CancellationView extends Div implements BeforeEnterObserver {
                 .set("display", "flex")
                 .set("flex-direction", "column")
                 .set("box-sizing", "border-box");
-        
-        updateDetailsCard(); 
+
+        updateDetailsCard();
     }
 
     private void updateDetailsCard() {
@@ -237,14 +247,14 @@ public class CancellationView extends Div implements BeforeEnterObserver {
                 .set("justify-content", "center")
                 .set("color", LIGHT_MUTED)
                 .set("text-align", "center");
-        
+
         Icon icon = new Icon(VaadinIcon.INFO_CIRCLE_O);
         icon.setSize("48px");
         icon.getStyle().set("margin-bottom", "16px");
-        
-        Span text = new Span("Select a booking from the list to view full details and cancellation options.");
+
+        Span text = new Span("Select a booking from the list to view full details and start the refund flow.");
         text.getStyle().set("max-width", "300px").set("font-style", "italic");
-        
+
         placeholder.add(icon, text);
         detailsCard.add(placeholder);
     }
@@ -252,7 +262,7 @@ public class CancellationView extends Div implements BeforeEnterObserver {
     private void renderBookingDetails() {
         H3 detailTitle = new H3("Booking Detailed Information");
         detailTitle.getStyle().set("margin-top", "0").set("color", BLUE).set("font-weight", "900");
-        
+
         Div grid = new Div();
         grid.getStyle()
                 .set("display", "grid")
@@ -267,14 +277,14 @@ public class CancellationView extends Div implements BeforeEnterObserver {
                 filmTitle = selectedBooking.getScreening().getFilm().getTitle();
             }
             if (selectedBooking.getScreening().getScreen() != null && selectedBooking.getScreening().getScreen().getCinema() != null) {
-                cinemaInfo = selectedBooking.getScreening().getScreen().getCinema().getName() 
+                cinemaInfo = selectedBooking.getScreening().getScreen().getCinema().getName()
                         + " (Screen " + selectedBooking.getScreening().getScreen().getScreenNumber() + ")";
             }
         }
 
         grid.add(createDetailItem("Film Title", filmTitle));
         grid.add(createDetailItem("Cinema & Screen", cinemaInfo));
-        
+
         String seats = "None";
         if (selectedBooking.getBookingSeats() != null && !selectedBooking.getBookingSeats().isEmpty()) {
             seats = selectedBooking.getBookingSeats().stream()
@@ -284,19 +294,42 @@ public class CancellationView extends Div implements BeforeEnterObserver {
                     .collect(Collectors.joining(", "));
         }
         grid.add(createDetailItem("Booked Seats", seats));
-        
+
         grid.add(createDetailItem("Customer Name", selectedBooking.getCustomerName()));
         grid.add(createDetailItem("Customer Email", selectedBooking.getCustomerEmail()));
-        grid.add(createDetailItem("Booking Status", String.valueOf(selectedBooking.getStatus())));
+        grid.add(createStatusBadgeItem("Booking Status", selectedBooking.getStatus()));
         grid.add(createDetailItem("Booking Reference", selectedBooking.getBookingReference()));
         grid.add(createDetailItem("Total Amount Paid", formatMoney(selectedBooking.getTotalCost())));
 
-        cancelButton.setWidthFull();
-        cancelButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_ERROR);
-        cancelButton.getStyle().set("margin-top", "auto").set("height", "50px").set("font-weight", "800");
-        cancelButton.setEnabled(selectedBooking.getStatus() == BookingStatus.CONFIRMED);
+        // VIP indicator (informational only — modified inside the flow)
+        if (selectedBooking.isVip()) {
+            grid.add(createVipBadgeItem());
+        }
 
-        detailsCard.add(detailTitle, grid, cancelButton);
+        // Action button — label and enabled state depend on current status.
+        // Clicking only navigates to the flow page; no DB mutation here.
+        BookingStatus status = selectedBooking.getStatus();
+        actionButton.setText(actionLabelFor(status));
+        actionButton.setWidthFull();
+        actionButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        actionButton.getStyle()
+                .set("margin-top", "auto")
+                .set("height", "50px")
+                .set("font-weight", "800")
+                .set("background", status.isTerminal() ? "#94a3b8" : BLUE)
+                .set("color", "white");
+        actionButton.setEnabled(!status.isTerminal());
+
+        detailsCard.add(detailTitle, grid, actionButton);
+    }
+
+    private String actionLabelFor(BookingStatus status) {
+        return switch (status) {
+            case CONFIRMED -> "Request Refund";
+            case CANCELLED -> "Continue Refund Process";
+            case REFUND_PENDING -> "Continue Refund Process";
+            case REFUNDED -> "Refund Completed";
+        };
     }
 
     private Div createDetailItem(String label, String value) {
@@ -319,13 +352,61 @@ public class CancellationView extends Div implements BeforeEnterObserver {
         return item;
     }
 
+    private Div createStatusBadgeItem(String label, BookingStatus status) {
+        Div item = new Div();
+        Span labelSpan = new Span(label);
+        labelSpan.getStyle()
+                .set("display", "block")
+                .set("font-size", "12px")
+                .set("font-weight", "700")
+                .set("color", LIGHT_MUTED)
+                .set("text-transform", "uppercase")
+                .set("letter-spacing", "0.05em")
+                .set("margin-bottom", "6px");
+        Span badge = new Span(status.getDisplayName());
+        badge.getStyle()
+                .set("display", "inline-block")
+                .set("padding", "5px 14px")
+                .set("border-radius", "999px")
+                .set("background", status.getBadgeBackground())
+                .set("color", status.getBadgeTextColor())
+                .set("font-size", "14px")
+                .set("font-weight", "800");
+        item.add(labelSpan, badge);
+        return item;
+    }
+
+    private Div createVipBadgeItem() {
+        Div item = new Div();
+        Span labelSpan = new Span("Customer Tier");
+        labelSpan.getStyle()
+                .set("display", "block")
+                .set("font-size", "12px")
+                .set("font-weight", "700")
+                .set("color", LIGHT_MUTED)
+                .set("text-transform", "uppercase")
+                .set("letter-spacing", "0.05em")
+                .set("margin-bottom", "6px");
+        Span badge = new Span("VIP");
+        badge.getStyle()
+                .set("display", "inline-block")
+                .set("padding", "5px 14px")
+                .set("border-radius", "999px")
+                .set("background", "#7c3aed")
+                .set("color", "white")
+                .set("font-size", "14px")
+                .set("font-weight", "800");
+        item.add(labelSpan, badge);
+        return item;
+    }
+
     private void applyFilter() {
         String filterText = searchField.getValue().trim().toUpperCase();
-        
+
         if (filterText.isEmpty()) {
             dataProvider.clearFilters();
         } else {
-            dataProvider.setFilter(booking -> 
+            dataProvider.setFilter(booking ->
                 booking.getBookingReference().toUpperCase().contains(filterText) ||
                 booking.getScreening().getFilm().getTitle().toUpperCase().contains(filterText)
             );
@@ -341,52 +422,24 @@ public class CancellationView extends Div implements BeforeEnterObserver {
         }
     }
 
-    private void confirmCancellation() {
-        if (selectedBooking == null) return;
-
-        Dialog dialog = new Dialog();
-        dialog.setHeaderTitle("Confirm Cancellation Request");
-        
-        VerticalLayout dialogContent = new VerticalLayout(
-                new Span("Are you sure you want to cancel booking " + selectedBooking.getBookingReference() + "?"),
-                new Html("<p style='color: var(--lumo-error-text-color); font-size: 14px; font-weight: 600;'>" +
-                        "Warning: A 50% cancellation fee will be automatically deducted from your refund.</p>")
-        );
-        dialogContent.setPadding(false);
-        dialog.add(dialogContent);
-
-        Button confirmBtn = new Button("Confirm Cancellation", e -> {
-            performCancellation();
-            dialog.close();
-        });
-        confirmBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_ERROR);
-        
-        Button closeBtn = new Button("Close", e -> dialog.close());
-        dialog.getFooter().add(closeBtn, confirmBtn);
-        
-        dialog.open();
-    }
-
-    private void performCancellation() {
-        try {
-            CancellationService.CancellationResult result = 
-                    cancellationService.cancelBooking(selectedBooking.getBookingReference());
-            
-            // Update local state
-            refreshBookings();
-            
-            // Re-select updated booking
-            selectedBooking = result.booking();
-            bookingGrid.select(selectedBooking);
-            updateDetailsCard();
-
-            Notification.show("Cancellation successful. Refund of " + formatMoney(result.refundAmount()) + " processed.", 
-                    5000, Notification.Position.MIDDLE)
-                    .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
-
-        } catch (Exception e) {
-            showError(e.getMessage());
+    /**
+     * Navigates to the step-by-step flow page. The flow page reads the
+     * booking's current status from the DB and renders the matching step
+     * (CONFIRMED → step 1, CANCELLED → step 2, etc.). No DB mutation
+     * happens here.
+     */
+    private void navigateToFlow() {
+        if (selectedBooking == null) {
+            return;
         }
+        if (selectedBooking.getStatus().isTerminal()) {
+            Notification.show("This booking is already fully refunded.",
+                            3000, Notification.Position.MIDDLE)
+                    .addThemeVariants(NotificationVariant.LUMO_CONTRAST);
+            return;
+        }
+        getUI().ifPresent(ui ->
+                ui.navigate("cancellation-statuses/" + selectedBooking.getBookingReference()));
     }
 
     private void showError(String message) {

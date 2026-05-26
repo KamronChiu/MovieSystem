@@ -38,10 +38,21 @@ public class Booking {
     @Column(nullable = false)
     private BookingStatus status = BookingStatus.CONFIRMED;
 
+    @Column(name = "vip")
+    private Boolean vip = false;
+
     @OneToMany(mappedBy = "booking", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<BookingSeat> bookingSeats = new ArrayList<>();
 
     protected Booking() {
+    }
+
+    @PrePersist
+    @PreUpdate
+    private void ensureDefaults() {
+        if (vip == null) {
+            vip = false;
+        }
     }
 
     public Booking(
@@ -139,5 +150,38 @@ public class Booking {
 
     public void setBookingSeats(List<BookingSeat> bookingSeats) {
         this.bookingSeats = bookingSeats;
+    }
+
+    public Boolean getVip() {
+        return vip;
+    }
+
+    public void setVip(Boolean vip) {
+        this.vip = vip;
+    }
+
+    public boolean isVip() {
+        return Boolean.TRUE.equals(vip);
+    }
+
+    /**
+     * Transitions this booking to the given target status.
+     * <p>
+     * The actual state-transition rule is defined inside
+     * {@link BookingStatus#canTransitionTo(BookingStatus)}, keeping the enum
+     * as the single source of truth for all transition rules.
+     *
+     * @param target the desired next status
+     * @throws IllegalStateException if the current status does not allow
+     *         this transition
+     */
+    public void transitionTo(BookingStatus target) {
+        if (!status.canTransitionTo(target)) {
+            throw new IllegalStateException(
+                    "Cannot transition from " + status.getDisplayName()
+                            + " to " + target.getDisplayName()
+            );
+        }
+        this.status = target;
     }
 }
