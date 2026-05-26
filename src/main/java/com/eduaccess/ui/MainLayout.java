@@ -11,6 +11,7 @@ import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.Span;
+import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.RouterLink;
 import com.vaadin.flow.server.VaadinSession;
@@ -20,6 +21,11 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 public class MainLayout extends AppLayout {
+
+    private static final String DARK_BG = "#020b1d";
+    private static final String BLUE = "#0072ce";
+    private static final String BORDER = "rgba(255,255,255,0.18)";
+    private static final String SOFT_PANEL = "rgba(255,255,255,0.035)";
 
     private final CinemaRepository cinemaRepository;
     private final LoginService loginService;
@@ -35,40 +41,46 @@ public class MainLayout extends AppLayout {
         Div header = new Div();
         header.setWidthFull();
         header.getStyle()
-                .set("height", "76px")
+                .set("height", "78px")
                 .set("width", "100%")
                 .set("display", "flex")
                 .set("align-items", "center")
                 .set("justify-content", "center")
-                .set("background", "#020b1d")
+                .set("background", DARK_BG)
                 .set("color", "white")
                 .set("border-bottom", "1px solid rgba(255,255,255,0.08)")
-                .set("box-sizing", "border-box");
+                .set("box-sizing", "border-box")
+                .set("position", "relative")
+                .set("z-index", "10");
 
         Div inner = new Div();
         inner.setWidthFull();
         inner.getStyle()
-                .set("max-width", "1320px")
+                .set("max-width", "1520px")
                 .set("height", "100%")
                 .set("display", "flex")
                 .set("align-items", "center")
                 .set("justify-content", "space-between")
-                .set("padding", "0 48px")
-                .set("box-sizing", "border-box");
+                .set("padding", "0 28px")
+                .set("box-sizing", "border-box")
+                .set("gap", "18px");
 
         Div left = new Div();
         left.getStyle()
                 .set("display", "flex")
                 .set("align-items", "center")
-                .set("gap", "36px");
+                .set("gap", "28px")
+                .set("min-width", "0");
 
-        Span logo = new Span("HCBS");
+        RouterLink logo = new RouterLink("Group5", FilmListingView.class);
         logo.getStyle()
                 .set("font-size", "34px")
-                .set("font-weight", "900")
-                .set("letter-spacing", "0.20em")
+                .set("font-weight", "950")
+                .set("letter-spacing", "0.16em")
                 .set("color", "white")
-                .set("line-height", "1");
+                .set("line-height", "1")
+                .set("text-decoration", "none")
+                .set("white-space", "nowrap");
 
         Div nav = createNav();
         left.add(logo, nav);
@@ -77,20 +89,13 @@ public class MainLayout extends AppLayout {
         right.getStyle()
                 .set("display", "flex")
                 .set("align-items", "center")
-                .set("gap", "18px");
+                .set("gap", "12px")
+                .set("flex-shrink", "0");
 
-        Button locationButton = iconButton("⌖");
-        locationButton.getElement().setProperty("title", "Choose city");
+        Button locationButton = iconButton("map-marker", "Choose city");
         locationButton.addClickListener(event -> openCityDialog());
 
-        Span cityLabel = new Span(getSelectedCityLabel());
-        cityLabel.getStyle()
-                .set("font-size", "15px")
-                .set("font-weight", "700")
-                .set("color", "#dbeafe");
-
-        Button searchButton = iconButton("⌕");
-        searchButton.getElement().setProperty("title", "Search films or cinemas");
+        Button searchButton = iconButton("search", "Search films or cinemas");
         searchButton.addClickListener(event -> openSearchDialog());
 
         authSection = new Div();
@@ -100,7 +105,7 @@ public class MainLayout extends AppLayout {
                 .set("gap", "12px");
         updateAuthSection();
 
-        right.add(locationButton, cityLabel, searchButton, authSection);
+        right.add(locationButton, searchButton, authSection);
 
         inner.add(left, right);
         header.add(inner);
@@ -113,28 +118,77 @@ public class MainLayout extends AppLayout {
         nav.getStyle()
                 .set("display", "flex")
                 .set("align-items", "center")
-                .set("gap", "32px");
+                .set("gap", "12px")
+                .set("flex-wrap", "nowrap");
 
-        nav.add(navLink("Films", FilmListingView.class));
-        nav.add(navLink("Booking", BookingView.class));
-        nav.add(navLink("Cancellation", CancellationView.class));
+        nav.add(iconNavLink("film", "Films", FilmListingView.class));
+        nav.add(iconNavLink("ticket", "Booking", BookingView.class));
+        nav.add(iconNavLink("close-circle", "Cancellation", CancellationView.class));
 
         UserAccount currentUser = loginService.getCurrentUser();
-        if (currentUser != null && loginService.canAccessBooking()) {
-            nav.add(navLink("Food Orders", FoodOrdersView.class));
-        }
-
         if (currentUser != null) {
+            nav.add(iconNavLink("cutlery", "Food Orders", FoodOrdersView.class));
+
             if (loginService.canAccessAdmin()) {
-                nav.add(navLink("Admin", AdminScheduleView.class));
+                nav.add(iconNavLink("calendar-clock", "Admin Schedule", AdminScheduleView.class));
             }
 
             if (loginService.canAccessManager()) {
-                nav.add(navLink("Manager", ManagerCinemaView.class));
+                nav.add(iconNavLink("building", "Manager Cinemas", ManagerCinemaView.class));
             }
         }
 
         return nav;
+    }
+
+    private RouterLink iconNavLink(String iconName, String label, Class<? extends Component> target) {
+        RouterLink link = new RouterLink();
+        link.setRoute(target);
+        link.getElement().setProperty("title", label);
+        link.getElement().setAttribute("aria-label", label);
+        applyIconControlStyle(link);
+
+        Icon icon = vaadinIcon(iconName);
+        link.add(icon);
+
+        return link;
+    }
+
+    private Button iconButton(String iconName, String label) {
+        Button button = new Button(vaadinIcon(iconName));
+        button.getElement().setProperty("title", label);
+        button.getElement().setAttribute("aria-label", label);
+        applyIconControlStyle(button);
+        return button;
+    }
+
+    private Icon vaadinIcon(String iconName) {
+        Icon icon = new Icon("vaadin", iconName);
+        icon.setSize("21px");
+        icon.getStyle()
+                .set("color", "#e5e7eb")
+                .set("line-height", "1");
+        return icon;
+    }
+
+    private void applyIconControlStyle(Component component) {
+        component.getElement().getStyle()
+                .set("width", "50px")
+                .set("height", "44px")
+                .set("display", "inline-flex")
+                .set("align-items", "center")
+                .set("justify-content", "center")
+                .set("padding", "0")
+                .set("margin", "0")
+                .set("border-radius", "999px")
+                .set("background", SOFT_PANEL)
+                .set("border", "1px solid " + BORDER)
+                .set("box-shadow", "0 8px 22px rgba(0,0,0,0.20)")
+                .set("color", "white")
+                .set("text-decoration", "none")
+                .set("cursor", "pointer")
+                .set("box-sizing", "border-box")
+                .set("transition", "transform 0.16s ease, border-color 0.16s ease, background 0.16s ease");
     }
 
     private void updateAuthSection() {
@@ -148,17 +202,21 @@ public class MainLayout extends AppLayout {
             userInfo.getStyle()
                     .set("font-size", "14px")
                     .set("color", "#dbeafe")
-                    .set("font-weight", "600");
+                    .set("font-weight", "750")
+                    .set("white-space", "nowrap");
 
             Button logoutButton = new Button("Logout");
             logoutButton.getStyle()
-                    .set("height", "36px")
-                    .set("padding", "0 20px")
+                    .set("height", "44px")
+                    .set("padding", "0 22px")
                     .set("background", "#dc2626")
                     .set("color", "white")
-                    .set("font-weight", "700")
-                    .set("border-radius", "6px")
-                    .set("font-size", "14px");
+                    .set("font-weight", "850")
+                    .set("border-radius", "999px")
+                    .set("border", "1px solid rgba(255,255,255,0.10)")
+                    .set("font-size", "15px")
+                    .set("letter-spacing", "0.03em")
+                    .set("box-shadow", "0 10px 24px rgba(220,38,38,0.22)");
 
             logoutButton.addClickListener(event -> {
                 loginService.logout();
@@ -170,59 +228,33 @@ public class MainLayout extends AppLayout {
         } else {
             RouterLink loginLink = new RouterLink("Login", LoginView.class);
             loginLink.getStyle()
-                    .set("color", "#0099ff")
+                    .set("height", "44px")
+                    .set("display", "inline-flex")
+                    .set("align-items", "center")
+                    .set("padding", "0 20px")
+                    .set("border-radius", "999px")
+                    .set("border", "1px solid " + BORDER)
+                    .set("background", SOFT_PANEL)
+                    .set("color", "white")
                     .set("text-decoration", "none")
-                    .set("font-weight", "700")
+                    .set("font-weight", "850")
                     .set("font-size", "15px");
 
             Button registerButton = new Button("Register");
             registerButton.getStyle()
-                    .set("height", "36px")
+                    .set("height", "44px")
                     .set("padding", "0 20px")
-                    .set("background", "#0072ce")
+                    .set("background", BLUE)
                     .set("color", "white")
-                    .set("font-weight", "700")
-                    .set("border-radius", "6px")
-                    .set("font-size", "14px");
+                    .set("font-weight", "850")
+                    .set("border-radius", "999px")
+                    .set("border", "1px solid rgba(255,255,255,0.10)")
+                    .set("font-size", "15px");
 
-            registerButton.addClickListener(event -> {
-                UI.getCurrent().navigate("register");
-            });
+            registerButton.addClickListener(event -> UI.getCurrent().navigate("register"));
 
             authSection.add(loginLink, registerButton);
         }
-    }
-
-    private RouterLink navLink(String text, Class<? extends Component> target) {
-        RouterLink link = new RouterLink(text, target);
-
-        link.getStyle()
-                .set("color", "white")
-                .set("text-decoration", "none")
-                .set("font-size", "17px")
-                .set("font-weight", "700")
-                .set("letter-spacing", "0.02em")
-                .set("opacity", "0.94");
-
-        return link;
-    }
-
-    private Button iconButton(String text) {
-        Button button = new Button(text);
-
-        button.getStyle()
-                .set("width", "42px")
-                .set("height", "42px")
-                .set("border-radius", "50%")
-                .set("background", "transparent")
-                .set("color", "white")
-                .set("border", "1px solid rgba(255,255,255,0.35)")
-                .set("font-size", "26px")
-                .set("font-weight", "500")
-                .set("padding", "0")
-                .set("cursor", "pointer");
-
-        return button;
     }
 
     private void openCityDialog() {
@@ -241,7 +273,7 @@ public class MainLayout extends AppLayout {
         title.getStyle()
                 .set("display", "block")
                 .set("font-size", "24px")
-                .set("font-weight", "800")
+                .set("font-weight", "900")
                 .set("margin-bottom", "18px");
 
         List<String> cities = cinemaRepository.findAll()
@@ -277,12 +309,12 @@ public class MainLayout extends AppLayout {
 
         applyButton.getStyle()
                 .set("margin-top", "18px")
-                .set("height", "42px")
-                .set("width", "120px")
-                .set("background", "#0072ce")
+                .set("height", "44px")
+                .set("width", "130px")
+                .set("background", BLUE)
                 .set("color", "white")
-                .set("font-weight", "800")
-                .set("border-radius", "0");
+                .set("font-weight", "850")
+                .set("border-radius", "999px");
 
         content.add(title, cityBox, applyButton);
         dialog.add(content);
@@ -305,7 +337,7 @@ public class MainLayout extends AppLayout {
         title.getStyle()
                 .set("display", "block")
                 .set("font-size", "24px")
-                .set("font-weight", "800")
+                .set("font-weight", "900")
                 .set("margin-bottom", "18px");
 
         TextField searchField = new TextField("Keyword");
@@ -322,12 +354,12 @@ public class MainLayout extends AppLayout {
 
         searchButton.getStyle()
                 .set("margin-top", "18px")
-                .set("height", "42px")
-                .set("width", "120px")
-                .set("background", "#0072ce")
+                .set("height", "44px")
+                .set("width", "130px")
+                .set("background", BLUE)
                 .set("color", "white")
-                .set("font-weight", "800")
-                .set("border-radius", "0");
+                .set("font-weight", "850")
+                .set("border-radius", "999px");
 
         content.add(title, searchField, searchButton);
         dialog.add(content);
@@ -359,11 +391,8 @@ public class MainLayout extends AppLayout {
         if (session == null) {
             return "";
         }
-        return (String) session.getAttribute("selectedCity");
-    }
 
-    private String getSelectedCityLabel() {
-        String city = getSelectedCity();
-        return (city == null || city.isBlank()) ? "Choose city" : city;
+        Object selectedCity = session.getAttribute("selectedCity");
+        return selectedCity == null ? "" : selectedCity.toString();
     }
 }
