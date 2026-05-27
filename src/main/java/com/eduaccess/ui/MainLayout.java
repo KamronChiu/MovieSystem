@@ -140,6 +140,7 @@ public class MainLayout extends AppLayout {
 
             if (loginService.canAccessManager()) {
                 nav.add(iconNavLink("building", "Manager Cinemas", ManagerCinemaView.class));
+                nav.add(iconNavLink("records", "Films Mgmt", ManagerListingsView.class));
             }
         }
 

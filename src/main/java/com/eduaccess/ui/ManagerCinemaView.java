@@ -91,7 +91,7 @@ public class ManagerCinemaView extends Div implements BeforeEnterObserver {
                 .set("display", "grid")
                 .set("grid-template-columns", "420px 1fr")
                 .set("gap", "28px")
-                .set("align-items", "start");
+                .set("align-items", "stretch");
         layout.add(buildFormCard(), buildGridCard());
 
         page.add(title, intro, layout);
@@ -149,14 +149,30 @@ public class ManagerCinemaView extends Div implements BeforeEnterObserver {
 
     private Div buildGridCard() {
         Div card = darkCard();
+        // Make the grid card a flex column so the inner Grid can stretch and
+        // match the form card's height (CSS Grid layout's align-items:stretch).
+        // Do NOT set height: 100% explicitly - that would override stretch.
+        card.getStyle()
+                .set("display", "flex")
+                .set("flex-direction", "column")
+                .set("min-height", "0")
+                .set("overflow", "hidden");
 
         H2 heading = new H2("Existing cinemas");
         heading.getStyle()
                 .set("margin", "0 0 20px 0")
                 .set("font-size", "24px")
-                .set("font-weight", "900");
+                .set("font-weight", "900")
+                .set("flex", "0 0 auto");
 
-        card.add(heading, cinemaGrid);
+        // Wrap the grid so it can flex-grow within the card.
+        Div gridWrapper = new Div(cinemaGrid);
+        gridWrapper.getStyle()
+                .set("flex", "1 1 0")
+                .set("min-height", "0")
+                .set("display", "flex");
+
+        card.add(heading, gridWrapper);
         return card;
     }
 
@@ -225,8 +241,7 @@ public class ManagerCinemaView extends Div implements BeforeEnterObserver {
             return row;
         }).setHeader("Expansion");
 
-        cinemaGrid.setWidthFull();
-        cinemaGrid.setHeight("620px");
+        cinemaGrid.setSizeFull();
         cinemaGrid.getStyle()
                 .set("background", "white")
                 .set("border-radius", "14px")
