@@ -13,6 +13,7 @@ import com.eduaccess.domain.ScreeningType;
 import com.eduaccess.domain.Seat;
 import com.eduaccess.domain.SeatType;
 import com.eduaccess.repository.CinemaRepository;
+import com.eduaccess.repository.FilmRepository;
 import com.eduaccess.service.BookingService;
 import com.eduaccess.service.FoodOrderService;
 import com.eduaccess.service.LoginService;
@@ -50,6 +51,7 @@ import java.math.BigDecimal;
 import java.text.NumberFormat;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -89,6 +91,7 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
     }
 
     private final CinemaRepository cinemaRepository;
+    private final FilmRepository filmRepository;
     private final ScreeningService screeningService;
     private final BookingService bookingService;
     private final PricingService pricingService;
@@ -119,6 +122,7 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
     private List<Screening> currentScreenings = List.of();
     private Long selectedFilmId;
     private Long requestedFilmId;
+    private Film requestedFilm;
     private Screening selectedScreening;
 
     private List<BookingService.SeatOption> currentSeatOptions = List.of();
@@ -139,6 +143,7 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
 
     public BookingView(
             CinemaRepository cinemaRepository,
+            FilmRepository filmRepository,
             ScreeningService screeningService,
             BookingService bookingService,
             PricingService pricingService,
@@ -146,6 +151,7 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
             LoginService loginService
     ) {
         this.cinemaRepository = cinemaRepository;
+        this.filmRepository = filmRepository;
         this.screeningService = screeningService;
         this.bookingService = bookingService;
         this.pricingService = pricingService;
@@ -178,6 +184,28 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
     @Override
     public void setParameter(BeforeEvent event, @OptionalParameter Long filmId) {
         this.requestedFilmId = filmId;
+
+        /*
+         * Load the requested film up-front (before reloadScreenings) so that the
+         * page can always render the film the user actually clicked, even when:
+         *   - the film has no screening on today's date, or
+         *   - the film has no screenings at all yet (e.g. just created by a Manager).
+         *
+         * Without this, reloadScreenings() would build the filmBox from
+         * "films that have a screening on the selected date", fail to find the
+         * requested film, and silently fall back to the first film in the list,
+         * which is what caused clicks on Call Me by Your Name / Chainsaw Man
+         * to land on the GOAT detail page.
+         */
+        if (filmId != null) {
+            requestedFilm = filmRepository.findById(filmId).orElse(null);
+            cinemaBox.clear();
+            screeningService.findEarliestUpcomingDateForFilm(filmId)
+                    .ifPresent(datePicker::setValue);
+        } else {
+            requestedFilm = null;
+        }
+
         reloadScreenings();
     }
 
@@ -338,6 +366,19 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
                 .sorted(Comparator.comparing(Film::getTitle, String.CASE_INSENSITIVE_ORDER))
                 .toList();
 
+        /*
+         * Make sure the film the user clicked from the Films page is always
+         * present in the filmBox - even when it has no screening on the
+         * currently selected date - so the hero section shows the correct film
+         * instead of falling back to an unrelated one.
+         */
+        if (requestedFilm != null
+                && films.stream().noneMatch(f -> Objects.equals(f.getId(), requestedFilm.getId()))) {
+            List<Film> merged = new ArrayList<>(films);
+            merged.add(0, requestedFilm);
+            films = merged;
+        }
+
         filmBox.setItems(films);
 
         if (films.isEmpty()) {
@@ -360,12 +401,22 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
                         .orElse(null);
             }
 
-            if (selectedFilm == null) {
+            /*
+             * Only fall back to the first available film when the URL did NOT
+             * specify a film. Otherwise we would silently switch the user to a
+             * different film than the one they clicked.
+             */
+            if (selectedFilm == null && requestedFilmId == null) {
                 selectedFilm = films.get(0);
             }
 
-            selectedFilmId = selectedFilm.getId();
-            filmBox.setValue(selectedFilm);
+            if (selectedFilm == null) {
+                selectedFilmId = null;
+                filmBox.clear();
+            } else {
+                selectedFilmId = selectedFilm.getId();
+                filmBox.setValue(selectedFilm);
+            }
         }
 
         renderHero();
@@ -375,9 +426,22 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
     private void renderHero() {
         hero.removeAll();
 
-        Screening firstScreening = findFirstScreeningForSelectedFilm();
+        /*
+         * Always render the hero based on the film currently selected in filmBox
+         * (which is driven by the URL parameter when the user deep-links from
+         * the Films page), instead of the first matching screening. This way the
+         * detail panel correctly reflects the film the user clicked even when
+         * the film has no screening yet.
+         */
+        Film film = filmBox.getValue();
+        if (film == null) {
+            Screening firstScreening = findFirstScreeningForSelectedFilm();
+            if (firstScreening != null) {
+                film = firstScreening.getFilm();
+            }
+        }
 
-        if (firstScreening == null) {
+        if (film == null) {
             Div empty = new Div();
             empty.setText("No film selected.");
             empty.getStyle()
@@ -387,8 +451,6 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
             hero.add(empty);
             return;
         }
-
-        Film film = firstScreening.getFilm();
 
         Div heroGrid = new Div();
         heroGrid.getStyle()

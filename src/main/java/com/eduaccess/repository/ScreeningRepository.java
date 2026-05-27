@@ -32,6 +32,24 @@ public interface ScreeningRepository extends JpaRepository<Screening, Long> {
     @EntityGraph(attributePaths = {"film", "screen", "screen.cinema"})
     List<Screening> findByFilmIdOrderByScreeningDateAscStartTimeAsc(Long filmId);
 
+    /**
+     * Detached-friendly check used by manager-side delete flows so we don't
+     * need to touch the LAZY {@link com.eduaccess.domain.Film#getScreenings()}
+     * collection (which would throw LazyInitializationException in the UI layer).
+     */
+    boolean existsByFilmId(Long filmId);
+
+    @Query("""
+            select min(s.screeningDate)
+            from Screening s
+            where s.film.id = :filmId
+              and s.screeningDate >= :today
+            """)
+    LocalDate findEarliestUpcomingScreeningDateForFilm(
+            @Param("filmId") Long filmId,
+            @Param("today") LocalDate today
+    );
+
     @EntityGraph(attributePaths = {"film", "screen", "screen.cinema"})
     List<Screening> findByScreenIdAndScreeningDateOrderByStartTimeAsc(
             Long screenId,

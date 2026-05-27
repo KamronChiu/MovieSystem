@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class ScreeningService {
@@ -34,5 +35,18 @@ public class ScreeningService {
                         startDate,
                         endDate
                 );
+    }
+
+    /**
+     * Finds the soonest future screening date (today or later) for the given film.
+     * Returns an empty Optional when the film has no upcoming screenings.
+     */
+    public Optional<LocalDate> findEarliestUpcomingDateForFilm(Long filmId) {
+        if (filmId == null) {
+            return Optional.empty();
+        }
+        return Optional.ofNullable(
+                screeningRepository.findEarliestUpcomingScreeningDateForFilm(filmId, LocalDate.now())
+        );
     }
 }
