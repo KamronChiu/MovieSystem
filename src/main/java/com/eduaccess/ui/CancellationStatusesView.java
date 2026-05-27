@@ -2,6 +2,7 @@ package com.eduaccess.ui;
 
 import com.eduaccess.domain.Booking;
 import com.eduaccess.domain.BookingStatus;
+import com.eduaccess.domain.CancellationRecord;
 import com.eduaccess.domain.RefundSummary;
 import com.eduaccess.exception.CancellationNotAllowedException;
 import com.eduaccess.service.CancellationService;
@@ -18,6 +19,7 @@ import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
+import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.BeforeEvent;
@@ -29,6 +31,7 @@ import com.vaadin.flow.router.WildcardParameter;
 import java.math.BigDecimal;
 import java.text.NumberFormat;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 import java.util.stream.Collectors;
@@ -83,12 +86,21 @@ public class CancellationStatusesView extends Div
             DateTimeFormatter.ofPattern("dd MMM yyyy", Locale.UK);
     private static final DateTimeFormatter TIME_FMT =
             DateTimeFormatter.ofPattern("HH:mm", Locale.UK);
+    private static final DateTimeFormatter STAMP_FMT =
+            DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm", Locale.UK);
 
     private final CancellationService cancellationService;
 
     private String bookingReference;
     private Booking currentBooking;
     private RefundSummary currentRefundSummary;
+
+    /**
+     * Cancellation reason captured from the user's TextArea on steps 1 / 2.
+     * Persisted to {@link CancellationRecord} when the DB transitions into
+     * {@code CANCELLED} (and on every later step that re-renders the field).
+     */
+    private String currentReason = "";
 
     /**
      * UI step pointer (0..3) — independent from DB status.
@@ -146,6 +158,12 @@ public class CancellationStatusesView extends Div
 
         // Calculate refund summary for display
         currentRefundSummary = cancellationService.calculateRefund(bookingReference);
+
+        // TASK 6 — preload any existing cancellation reason so the user can
+        // edit it when resuming the flow at a later step.
+        currentReason = cancellationService.findCancellationRecord(bookingReference)
+                .map(CancellationRecord::getCancellationReason)
+                .orElse("");
 
         // Resume the flow at the step matching the booking's current DB status
         currentStepIndex = initialStepIndexFor(currentBooking.getStatus());
@@ -309,6 +327,14 @@ public class CancellationStatusesView extends Div
         // Booking summary card (always visible — non-financial data only).
         Div summaryCard = buildSummaryCard();
 
+        // TASK 6 — reason TextArea is offered on the early steps where the
+        // user is still describing why they're cancelling. Once the booking
+        // has reached REFUND_PENDING the cancellation rationale is locked.
+        Div reasonSection = new Div();
+        if (stepIndex == 0 || stepIndex == 1) {
+            reasonSection = buildReasonSection();
+        }
+
         // VIP checkbox + refund breakdown card — ONLY visible on step 3
         // (Refund Pending page, stepIndex == 2). Steps 1 and 2 must not
         // expose any financial information whatsoever.
@@ -347,9 +373,35 @@ public class CancellationStatusesView extends Div
         Button backBtn = secondaryButton("Back to Cancellation", e ->
                 getUI().ifPresent(ui -> ui.navigate("cancellation")));
 
-        wrapper.add(heading, description, summaryCard, vipSection, refundCard,
+        wrapper.add(heading, description, summaryCard, reasonSection, vipSection, refundCard,
                 actionRow(backBtn, confirmBtn));
         return wrapper;
+    }
+
+    /**
+     * Builds the "Reason for cancellation" TextArea shown on steps 1 and 2.
+     * The value is bound to {@link #currentReason} and pushed to the
+     * persisted {@link CancellationRecord} when the next confirm advances
+     * the booking past {@code CONFIRMED}.
+     */
+    private Div buildReasonSection() {
+        Div section = new Div();
+        section.getStyle().set("margin-bottom", "22px");
+
+        TextArea reasonField = new TextArea("Reason for cancellation");
+        reasonField.setPlaceholder("Optional. e.g. Schedule conflict, change of plans, etc.");
+        reasonField.setMaxLength(500);
+        reasonField.setWidthFull();
+        reasonField.setValueChangeMode(
+                com.vaadin.flow.data.value.ValueChangeMode.EAGER);
+        reasonField.setValue(currentReason == null ? "" : currentReason);
+        reasonField.addValueChangeListener(e ->
+                currentReason = e.getValue() == null ? "" : e.getValue());
+        reasonField.getStyle()
+                .set("--lumo-contrast-10pct", "#eef4fb")
+                .set("font-weight", "600");
+        section.add(reasonField);
+        return section;
     }
 
     private Div buildCompletedStep() {
@@ -645,6 +697,45 @@ public class CancellationStatusesView extends Div
             }
         }
 
+        // TASK 6 — pull cancellation reason + timestamp from the persisted
+        // record so the receipt reflects the audit trail rather than "now".
+        CancellationRecord record = cancellationService
+                .findCancellationRecord(bookingReference)
+                .orElse(null);
+        String reasonText = record != null && record.getCancellationReason() != null
+                && !record.getCancellationReason().isBlank()
+                ? record.getCancellationReason()
+                : "Not provided";
+        LocalDateTime cancelledAt = record != null && record.getCancelledAt() != null
+                ? record.getCancelledAt()
+                : LocalDateTime.now();
+
+        // Reason block
+        Div reasonBlock = new Div();
+        reasonBlock.getStyle()
+                .set("margin-bottom", "12px");
+
+        Span reasonLabel = new Span("CANCELLATION REASON");
+        reasonLabel.getStyle()
+                .set("display", "block")
+                .set("color", "#065f46")
+                .set("font-size", "12px")
+                .set("letter-spacing", "0.08em")
+                .set("font-weight", "900")
+                .set("margin-bottom", "6px");
+
+        Span reasonValue = new Span(reasonText);
+        reasonValue.getStyle()
+                .set("display", "block")
+                .set("font-size", "15px")
+                .set("font-weight", "700")
+                .set("color", "#047857")
+                .set("line-height", "1.45")
+                .set("white-space", "pre-wrap");
+
+        reasonBlock.add(reasonLabel, reasonValue);
+        card.add(reasonBlock);
+
         // Divider
         Div divider2 = new Div();
         divider2.getStyle()
@@ -652,14 +743,33 @@ public class CancellationStatusesView extends Div
                 .set("margin", "16px 0");
         card.add(divider2);
 
-        // Processing timestamp
-        Span processed = new Span("Processed: " + LocalDate.now().format(DATE_FMT));
-        processed.getStyle()
-                .set("font-size", "13px")
-                .set("font-weight", "700")
-                .set("color", "#065f46");
+        // Timestamps row — cancelled at + processed (today)
+        Div stampsRow = new Div();
+        stampsRow.getStyle()
+                .set("display", "grid")
+                .set("grid-template-columns", "1fr 1fr")
+                .set("gap", "16px");
 
-        card.add(processed);
+        stampsRow.add(
+                receiptInfo("CANCELLED AT", cancelledAt.format(STAMP_FMT)),
+                receiptInfo("PROCESSED ON", LocalDate.now().format(DATE_FMT))
+        );
+        card.add(stampsRow);
+
+        // Refunded indicator
+        if (record != null && record.isRefunded()) {
+            Span refundedBadge = new Span("REFUND ISSUED");
+            refundedBadge.getStyle()
+                    .set("display", "inline-block")
+                    .set("margin-top", "12px")
+                    .set("padding", "4px 12px")
+                    .set("border-radius", "999px")
+                    .set("background", GREEN)
+                    .set("color", "white")
+                    .set("font-size", "12px")
+                    .set("font-weight", "900");
+            card.add(refundedBadge);
+        }
 
         return card;
     }
@@ -732,6 +842,11 @@ public class CancellationStatusesView extends Div
                 case 2 -> advanceIfNeeded(BookingStatus.REFUND_PENDING);
                 default -> { /* Step 4 (Refunded) handled by autoFinaliseToRefunded */ }
             }
+
+            // TASK 6 — push the latest reason text into the persisted record.
+            // No-op if no record exists yet (e.g. step 0 before CANCELLED
+            // transition); otherwise the current TextArea value is saved.
+            cancellationService.updateCancellationReason(bookingReference, currentReason);
 
             // Reload booking + refund summary after potential DB change.
             currentBooking = cancellationService.findBookingByReference(bookingReference)

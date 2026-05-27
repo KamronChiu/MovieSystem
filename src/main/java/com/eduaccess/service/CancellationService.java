@@ -2,15 +2,16 @@ package com.eduaccess.service;
 
 import com.eduaccess.domain.Booking;
 import com.eduaccess.domain.BookingStatus;
+import com.eduaccess.domain.CancellationRecord;
 import com.eduaccess.domain.RefundSummary;
 import com.eduaccess.exception.CancellationNotAllowedException;
 import com.eduaccess.repository.BookingRepository;
+import com.eduaccess.repository.CancellationRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -19,11 +20,17 @@ public class CancellationService {
 
     private final BookingRepository bookingRepository;
     private final RefundCalculator refundCalculator;
+    private final CancellationRepository cancellationRepository;
+    private final AuditService auditService;
 
     public CancellationService(BookingRepository bookingRepository,
-                               RefundCalculator refundCalculator) {
+                               RefundCalculator refundCalculator,
+                               CancellationRepository cancellationRepository,
+                               AuditService auditService) {
         this.bookingRepository = bookingRepository;
         this.refundCalculator = refundCalculator;
+        this.cancellationRepository = cancellationRepository;
+        this.auditService = auditService;
     }
 
     @Transactional(readOnly = true)
@@ -54,8 +61,21 @@ public class CancellationService {
         if (booking == null) {
             return null;
         }
+        boolean previous = booking.isVip();
         booking.setVip(vip);
-        return bookingRepository.save(booking);
+        Booking saved = bookingRepository.save(booking);
+
+        // TASK 7 — audit the VIP toggle (only when it actually changes).
+        if (previous != vip) {
+            auditService.record(
+                    AuditService.ACTION_UPDATE_VIP,
+                    saved.getBookingReference(),
+                    saved.getStatus(),
+                    saved.getStatus(),
+                    "VIP flag set to " + vip
+            );
+        }
+        return saved;
     }
 
     /**
@@ -106,8 +126,21 @@ public class CancellationService {
 
         RefundSummary refundSummary = refundCalculator.calculate(booking);
 
+        BookingStatus oldStatus = booking.getStatus();
         booking.transitionTo(BookingStatus.CANCELLED);
         Booking savedBooking = bookingRepository.save(booking);
+
+        // TASK 6 — persist a cancellation record for this booking.
+        syncCancellationRecord(savedBooking, refundSummary, null);
+
+        // TASK 7 — record the cancellation in the audit log.
+        auditService.record(
+                AuditService.ACTION_CANCEL_BOOKING,
+                savedBooking.getBookingReference(),
+                oldStatus,
+                savedBooking.getStatus(),
+                "Booking cancelled, refund " + refundSummary.getRefundAmount()
+        );
 
         return new CancellationResult(savedBooking, refundSummary);
     }
@@ -142,8 +175,144 @@ public class CancellationService {
         // No date restriction — same-day cancellations are allowed
         // (refund will be £0 per RefundCalculator)
 
+        BookingStatus oldStatus = booking.getStatus();
         booking.transitionTo(targetStatus);
-        return bookingRepository.save(booking);
+        Booking saved = bookingRepository.save(booking);
+
+        // TASK 6 — keep the cancellation record in sync with the new status.
+        syncCancellationRecord(saved, refundCalculator.calculate(saved), null);
+
+        // TASK 7 — record the transition in the audit log.
+        auditService.record(
+                AuditService.ACTION_ADVANCE_STATUS,
+                saved.getBookingReference(),
+                oldStatus,
+                saved.getStatus(),
+                "Status advanced from " + oldStatus.getDisplayName()
+                        + " to " + saved.getStatus().getDisplayName()
+        );
+
+        return saved;
+    }
+
+    // ── TASK 6 — Cancellation record persistence ──────────────────────────
+
+    /**
+     * Updates (or lazily creates) the cancellation record for the given
+     * booking with a user-supplied reason.
+     * <p>
+     * If the booking has not yet transitioned out of {@code CONFIRMED} no
+     * record exists yet — in that case the call is a no-op so the reason
+     * can be re-submitted later when the cancellation is finalised.
+     *
+     * @param bookingReference the booking reference
+     * @param reason           the user-supplied reason (may be blank)
+     * @return the persisted record, or {@code null} if no record exists yet
+     */
+    @Transactional
+    public CancellationRecord updateCancellationReason(String bookingReference, String reason) {
+        if (bookingReference == null || bookingReference.isBlank()) {
+            return null;
+        }
+        String ref = normalizeReference(bookingReference);
+        CancellationRecord record = cancellationRepository.findByBookingReference(ref)
+                .orElse(null);
+        if (record == null) {
+            return null;
+        }
+        String previous = record.getCancellationReason();
+        String next = reason == null ? "" : reason.trim();
+        record.setCancellationReason(next);
+        CancellationRecord saved = cancellationRepository.save(record);
+
+        // TASK 7 — audit reason updates only when the text actually changed.
+        if (!java.util.Objects.equals(previous == null ? "" : previous, next)) {
+            auditService.record(
+                    AuditService.ACTION_UPDATE_REASON,
+                    saved.getBookingReference(),
+                    null,
+                    null,
+                    next.isBlank() ? "Reason cleared" : "Reason: " + next
+            );
+        }
+        return saved;
+    }
+
+    /**
+     * Returns the cancellation record for the given booking, if any.
+     *
+     * @param bookingReference the booking reference
+     * @return the record, or empty if the booking has never been cancelled
+     */
+    @Transactional(readOnly = true)
+    public Optional<CancellationRecord> findCancellationRecord(String bookingReference) {
+        if (bookingReference == null || bookingReference.isBlank()) {
+            return Optional.empty();
+        }
+        return cancellationRepository.findByBookingReference(normalizeReference(bookingReference));
+    }
+
+    /**
+     * Returns every cancellation record ordered most recent first.
+     *
+     * @return all cancellation records, newest first
+     */
+    @Transactional(readOnly = true)
+    public List<CancellationRecord> findAllCancellationRecords() {
+        return cancellationRepository.findAllByOrderByCancelledAtDesc();
+    }
+
+    /**
+     * Internal hook invoked after every successful status transition.
+     * <p>
+     * <ul>
+     *   <li>Booking is still {@code CONFIRMED}: nothing to do.</li>
+     *   <li>Record does not yet exist: insert one with the current refund
+     *       snapshot and {@code refunded = (status == REFUNDED)}.</li>
+     *   <li>Record exists: refresh the refund amount with the latest
+     *       calculation (the refund amount may shift if VIP was toggled),
+     *       and flip {@code refunded = true} once the booking reaches
+     *       {@code REFUNDED}.</li>
+     * </ul>
+     *
+     * @param booking       the booking after its status was updated
+     * @param refundSummary the refund summary for the booking (may be null)
+     * @param reason        an optional reason override (may be null)
+     */
+    private void syncCancellationRecord(Booking booking,
+                                        RefundSummary refundSummary,
+                                        String reason) {
+        BookingStatus status = booking.getStatus();
+        if (status == BookingStatus.CONFIRMED) {
+            return;
+        }
+
+        String ref = booking.getBookingReference();
+        BigDecimal refundAmount = refundSummary != null
+                ? refundSummary.getRefundAmount()
+                : BigDecimal.ZERO;
+
+        CancellationRecord record = cancellationRepository.findByBookingReference(ref)
+                .orElse(null);
+
+        if (record == null) {
+            record = new CancellationRecord(
+                    ref,
+                    refundAmount,
+                    reason == null ? "" : reason.trim(),
+                    LocalDateTime.now(),
+                    status == BookingStatus.REFUNDED
+            );
+        } else {
+            record.setRefundAmount(refundAmount);
+            if (reason != null) {
+                record.setCancellationReason(reason.trim());
+            }
+            if (status == BookingStatus.REFUNDED) {
+                record.setRefunded(true);
+            }
+        }
+        cancellationRepository.save(record);
     }
 
     private String normalizeReference(String bookingReference) {

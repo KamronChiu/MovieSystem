@@ -129,6 +129,11 @@ public class MainLayout extends AppLayout {
         if (currentUser != null) {
             nav.add(iconNavLink("cutlery", "Food Orders", FoodOrdersView.class));
 
+            // Audit Log is restricted to staff that already see Cancellation.
+            if (loginService.canAccessCancellation()) {
+                nav.add(iconNavLink("clipboard-text", "Audit Log", AuditLogView.class));
+            }
+
             if (loginService.canAccessAdmin()) {
                 nav.add(iconNavLink("calendar-clock", "Admin Schedule", AdminScheduleView.class));
             }
