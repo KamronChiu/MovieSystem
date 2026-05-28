@@ -30,3 +30,7 @@ data/*.lock.db
 # Local uploaded files
 uploads/*
 !uploads/.gitkeep
+
+# Browser-agent verification screenshots (repo root only; do not affect
+# poster images under src/main/resources/META-INF/resources/images/).
+/*.png

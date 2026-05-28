@@ -65,6 +65,12 @@ public class DataInitializer {
             // connection in autocommit mode.
             purgeBookingStatusCheckConstraints(dataSource);
 
+            // ── Self-heal: also drop legacy CHECK constraints on the audit
+            // log table. New AuditAction enum values (FILM_CREATED / UPDATED /
+            // DELETED, etc.) would otherwise be rejected by stale CHECK
+            // clauses generated against earlier enum value sets.
+            purgeAuditLogCheckConstraints(dataSource);
+
             TransactionTemplate transactionTemplate = new TransactionTemplate(transactionManager);
 
             transactionTemplate.executeWithoutResult(status -> {
@@ -94,6 +100,44 @@ public class DataInitializer {
                 System.out.println("Food items in database: " + foodItemRepository.count());
             });
         };
+    }
+
+    /**
+     * Drops every CHECK constraint currently attached to the
+     * {@code operation_audit_logs} table. Idempotent.
+     * <p>
+     * Required because Hibernate generates CHECK (action IN (...)) clauses
+     * from the current {@link com.eduaccess.domain.AuditAction} enum, and
+     * {@code ddl-auto=update} does not refresh those clauses when new enum
+     * values are added. Removing the constraints lets new actions persist;
+     * data integrity for the enum is still enforced at the Java layer.
+     */
+    private void purgeAuditLogCheckConstraints(DataSource dataSource) {
+        try (java.sql.Connection conn = dataSource.getConnection();
+             java.sql.Statement stmt = conn.createStatement()) {
+            conn.setAutoCommit(true);
+            String sql = "SELECT tc.CONSTRAINT_NAME "
+                    + "FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc "
+                    + "WHERE UPPER(tc.TABLE_NAME) = 'OPERATION_AUDIT_LOGS' "
+                    + "  AND tc.CONSTRAINT_TYPE = 'CHECK'";
+            try (java.sql.ResultSet rs = stmt.executeQuery(sql)) {
+                List<String> names = new ArrayList<>();
+                while (rs.next()) {
+                    names.add(rs.getString(1));
+                }
+                for (String name : names) {
+                    System.out.println("[DataInitializer] Dropping legacy CHECK on operation_audit_logs: "
+                            + name);
+                    try (java.sql.Statement drop = conn.createStatement()) {
+                        drop.executeUpdate(
+                                "ALTER TABLE OPERATION_AUDIT_LOGS DROP CONSTRAINT IF EXISTS " + name);
+                    }
+                }
+            }
+        } catch (java.sql.SQLException ex) {
+            System.out.println("[DataInitializer] Audit-log CHECK-constraint scan failed: "
+                    + ex.getMessage());
+        }
     }
 
     /**
@@ -623,24 +667,38 @@ public class DataInitializer {
     }
 
     private void seedUsersIfEmpty(UserAccountRepository userAccountRepository) {
-        if (userAccountRepository.count() > 0) {
-            return;
+        // Idempotent per-username seeding: ensures the three demo role accounts
+        // (manager / admin / staff) always exist even if a teammate's DB was
+        // previously populated with their own user records. Without this,
+        // teammates who pulled the project couldn't see role-gated views
+        // (e.g. Manager Cinemas / Films Mgmt) because the seeds only ran when
+        // the user table was completely empty.
+        BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+        int created = 0;
+
+        if (!userAccountRepository.existsByUsername("manager")) {
+            userAccountRepository.save(new UserAccount(
+                    "manager", encoder.encode("manager123"),
+                    "manager@hcbs.com", "Cinema Manager", UserRole.MANAGER));
+            created++;
         }
 
-        BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+        if (!userAccountRepository.existsByUsername("admin")) {
+            userAccountRepository.save(new UserAccount(
+                    "admin", encoder.encode("admin123"),
+                    "admin@hcbs.com", "System Admin", UserRole.ADMIN));
+            created++;
+        }
 
-        userAccountRepository.save(new UserAccount(
-                "manager", encoder.encode("manager123"),
-                "manager@hcbs.com", "Cinema Manager", UserRole.MANAGER));
+        if (!userAccountRepository.existsByUsername("staff")) {
+            userAccountRepository.save(new UserAccount(
+                    "staff", encoder.encode("staff123"),
+                    "staff@hcbs.com", "Booking Staff", UserRole.BOOKING_STAFF));
+            created++;
+        }
 
-        userAccountRepository.save(new UserAccount(
-                "admin", encoder.encode("admin123"),
-                "admin@hcbs.com", "System Admin", UserRole.ADMIN));
-
-        userAccountRepository.save(new UserAccount(
-                "staff", encoder.encode("staff123"),
-                "staff@hcbs.com", "Booking Staff", UserRole.BOOKING_STAFF));
-
-        System.out.println("HCBS demo user accounts created: 3");
+        if (created > 0) {
+            System.out.println("HCBS demo user accounts ensured (newly created: " + created + ")");
+        }
     }
 }

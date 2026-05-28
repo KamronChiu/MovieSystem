@@ -1,10 +1,13 @@
 package com.eduaccess.ui;
 
 import com.eduaccess.config.WebConfig;
+import com.eduaccess.domain.AuditAction;
 import com.eduaccess.domain.Film;
 import com.eduaccess.repository.FilmRepository;
 import com.eduaccess.repository.ScreeningRepository;
+import com.eduaccess.service.AuditLogService;
 import com.eduaccess.service.LoginService;
+import com.vaadin.flow.component.AttachEvent;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.combobox.ComboBox;
@@ -58,6 +61,7 @@ public class ManagerListingsView extends Div implements BeforeEnterObserver {
     private final LoginService loginService;
     private final FilmRepository filmRepository;
     private final ScreeningRepository screeningRepository;
+    private final AuditLogService auditLogService;
 
     // ── Form fields (matches the public film detail page sections) ──
     private final TextField titleField = new TextField("Title");
@@ -93,10 +97,12 @@ public class ManagerListingsView extends Div implements BeforeEnterObserver {
 
     public ManagerListingsView(FilmRepository filmRepository,
                                ScreeningRepository screeningRepository,
-                               LoginService loginService) {
+                               LoginService loginService,
+                               AuditLogService auditLogService) {
         this.filmRepository = filmRepository;
         this.screeningRepository = screeningRepository;
         this.loginService = loginService;
+        this.auditLogService = auditLogService;
 
         setWidthFull();
         getStyle()
@@ -458,9 +464,25 @@ public class ManagerListingsView extends Div implements BeforeEnterObserver {
         dialog.setConfirmButtonTheme("error primary");
         dialog.addConfirmListener(e -> {
             try {
+                String deletedTitle = film.getTitle();
+                Long deletedId = film.getId();
+                String deletedGenre = film.getGenre();
                 filmRepository.delete(film);
-                Notification.show("Deleted: " + film.getTitle());
-                if (selectedFilm != null && Objects.equals(selectedFilm.getId(), film.getId())) {
+
+                auditLogService.record(
+                        AuditAction.FILM_DELETED,
+                        "Film",
+                        deletedId,
+                        null,
+                        deletedTitle,
+                        null,
+                        null,
+                        "Film deleted: " + deletedTitle,
+                        "Genre: " + (deletedGenre == null ? "-" : deletedGenre)
+                );
+
+                Notification.show("Deleted: " + deletedTitle);
+                if (selectedFilm != null && Objects.equals(selectedFilm.getId(), deletedId)) {
                     clearForm();
                 }
                 refreshGrid();
@@ -489,6 +511,19 @@ public class ManagerListingsView extends Div implements BeforeEnterObserver {
             );
 
             filmRepository.save(film);
+
+            auditLogService.record(
+                    AuditAction.FILM_CREATED,
+                    "Film",
+                    film.getId(),
+                    null,
+                    film.getTitle(),
+                    null,
+                    null,
+                    "Film created: " + film.getTitle(),
+                    filmAuditDetails(film)
+            );
+
             Notification.show("Film created. It is now visible on the Films page.");
             clearForm();
             refreshGrid();
@@ -520,6 +555,19 @@ public class ManagerListingsView extends Div implements BeforeEnterObserver {
             }
 
             filmRepository.save(selectedFilm);
+
+            auditLogService.record(
+                    AuditAction.FILM_UPDATED,
+                    "Film",
+                    selectedFilm.getId(),
+                    null,
+                    selectedFilm.getTitle(),
+                    null,
+                    null,
+                    "Film updated: " + selectedFilm.getTitle(),
+                    filmAuditDetails(selectedFilm)
+            );
+
             Notification.show("Film updated.");
             clearForm();
             refreshGrid();
@@ -597,6 +645,23 @@ public class ManagerListingsView extends Div implements BeforeEnterObserver {
 
     private String nullIfBlank(String s) {
         return (s == null || s.isBlank()) ? null : s;
+    }
+
+    /**
+     * Build a one-line audit detail string for a Film. Kept compact so the
+     * value fits comfortably in the Audit Log grid's Details column.
+     */
+    private String filmAuditDetails(Film film) {
+        if (film == null) {
+            return "-";
+        }
+        StringBuilder sb = new StringBuilder();
+        sb.append("Genre: ").append(safe(film.getGenre()).isEmpty() ? "-" : film.getGenre());
+        sb.append("; Rating: ").append(safe(film.getAgeRating()).isEmpty() ? "-" : film.getAgeRating());
+        sb.append("; Runtime: ").append(film.getDurationMinutes()).append(" min");
+        sb.append("; Release: ")
+                .append(film.getReleaseDate() == null ? "-" : film.getReleaseDate().toString());
+        return sb.toString();
     }
 
     /**
@@ -678,5 +743,28 @@ public class ManagerListingsView extends Div implements BeforeEnterObserver {
                 .set("--vaadin-input-field-border-color", "rgba(255,255,255,0.20)")
                 .set("--vaadin-input-field-focused-highlight", "#38bdf8")
                 .set("color", "white");
+    }
+
+    @Override
+    protected void onAttach(AttachEvent attachEvent) {
+        super.onAttach(attachEvent);
+        // Inject chip styles directly into document.head so we don't depend on
+        // the Vaadin frontend bundle being rebuilt. The MultiSelectComboBox
+        // chip web component lives outside the input field's CSS-variable
+        // scope, so the only reliable cross-shadow-DOM way is a global rule.
+        attachEvent.getUI().getPage().executeJs(
+                "(()=>{const id='hcbs-chip-style';" +
+                "if(document.getElementById(id))return;" +
+                "const s=document.createElement('style');s.id=id;" +
+                "s.textContent=\"vaadin-multi-select-combo-box-chip{" +
+                "background:#2563eb !important;color:#fff !important;" +
+                "border-radius:999px !important;padding:2px 10px !important;" +
+                "margin:2px 4px 2px 0 !important;font-weight:600 !important;" +
+                "display:inline-flex !important;align-items:center !important;" +
+                "min-height:24px !important;}" +
+                "vaadin-multi-select-combo-box-chip::part(label){color:#fff !important;}" +
+                "vaadin-multi-select-combo-box-chip::part(remove-button){color:rgba(255,255,255,0.85) !important;}\";" +
+                "document.head.appendChild(s);})();"
+        );
     }
 }

@@ -220,10 +220,20 @@ public class AuditLogView extends Div implements BeforeEnterObserver {
     private List<String> buildActionItems() {
         List<String> items = new ArrayList<>();
         items.add(ALL_ACTIONS);
+        // Cancellation flow (legacy AuditService)
         items.add(AuditService.ACTION_CANCEL_BOOKING);
         items.add(AuditService.ACTION_ADVANCE_STATUS);
         items.add(AuditService.ACTION_UPDATE_REASON);
         items.add(AuditService.ACTION_UPDATE_VIP);
+        // Manager-side operations (Manage Films / Manager Cinemas)
+        items.add("FILM_CREATED");
+        items.add("FILM_UPDATED");
+        items.add("FILM_DELETED");
+        items.add("CINEMA_CREATED");
+        items.add("SCREEN_CREATED");
+        items.add("SCREENING_CREATED");
+        items.add("SCREENING_UPDATED");
+        items.add("SCREENING_DELETED");
         return items;
     }
 
@@ -365,6 +375,16 @@ public class AuditLogView extends Div implements BeforeEnterObserver {
             case AuditService.ACTION_ADVANCE_STATUS -> "#dbeafe";
             case AuditService.ACTION_UPDATE_REASON  -> "#fef3c7";
             case AuditService.ACTION_UPDATE_VIP     -> "#ede9fe";
+            // Film management
+            case "FILM_CREATED"      -> "#dcfce7";
+            case "FILM_UPDATED"      -> "#fef9c3";
+            case "FILM_DELETED"      -> "#fee2e2";
+            // Cinema / Screen / Screening
+            case "CINEMA_CREATED"    -> "#cffafe";
+            case "SCREEN_CREATED"    -> "#e0f2fe";
+            case "SCREENING_CREATED" -> "#dcfce7";
+            case "SCREENING_UPDATED" -> "#fef9c3";
+            case "SCREENING_DELETED" -> "#fee2e2";
             default -> "#e2e8f0";
         };
     }
@@ -378,6 +398,16 @@ public class AuditLogView extends Div implements BeforeEnterObserver {
             case AuditService.ACTION_ADVANCE_STATUS -> "#1d4ed8";
             case AuditService.ACTION_UPDATE_REASON  -> "#92400e";
             case AuditService.ACTION_UPDATE_VIP     -> "#6d28d9";
+            // Film management
+            case "FILM_CREATED"      -> "#15803d";
+            case "FILM_UPDATED"      -> "#854d0e";
+            case "FILM_DELETED"      -> "#b91c1c";
+            // Cinema / Screen / Screening
+            case "CINEMA_CREATED"    -> "#0e7490";
+            case "SCREEN_CREATED"    -> "#0369a1";
+            case "SCREENING_CREATED" -> "#15803d";
+            case "SCREENING_UPDATED" -> "#854d0e";
+            case "SCREENING_DELETED" -> "#b91c1c";
             default -> "#475569";
         };
     }

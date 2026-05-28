@@ -74,7 +74,13 @@ public class FilmListingView extends Div implements BeforeEnterObserver {
     );
 
     private List<Film> allFilms = List.of();
+    // All future screenings within a rolling 6-month window starting today.
+    // This drives the Now showing / Advance bookings / Coming soon tabs so
+    // their semantics stay independent from the optional Date filter.
     private List<Screening> screeningWindow = List.of();
+    // Screenings on the date selected in the Date filter. Empty when the
+    // filter has no value, in which case no per-day filtering is applied.
+    private List<Screening> dateScreenings = List.of();
 
     private FilmTab activeTab = FilmTab.ALL;
 
@@ -446,11 +452,14 @@ public class FilmListingView extends Div implements BeforeEnterObserver {
         genreFilter.addValueChangeListener(event -> applyFilter());
         styleDarkInput(genreFilter);
 
-        dateFilter.setPlaceholder("Date");
+        dateFilter.setPlaceholder("Any date");
         dateFilter.setWidth("170px");
-        dateFilter.setValue(LocalDate.now());
+        // No default value: leaving the date picker empty means "do not
+        // restrict by day" so the tabs (All / Now showing / Advance bookings
+        // / Coming soon) can decide what to show on their own semantics.
+        dateFilter.setClearButtonVisible(true);
         dateFilter.addValueChangeListener(event -> {
-            reloadScreeningWindow();
+            reloadDateScreenings();
             applyFilter();
         });
         styleDarkInput(dateFilter);
@@ -489,10 +498,10 @@ public class FilmListingView extends Div implements BeforeEnterObserver {
             searchField.clear();
             cityFilter.clear();
             genreFilter.clear();
-            dateFilter.setValue(LocalDate.now());
+            dateFilter.clear();
             activeTab = FilmTab.ALL;
             VaadinSession.getCurrent().setAttribute("selectedCity", "");
-            reloadScreeningWindow();
+            reloadDateScreenings();
             renderTabs();
             applyFilter();
         });
@@ -514,6 +523,7 @@ public class FilmListingView extends Div implements BeforeEnterObserver {
                 .toList();
 
         reloadScreeningWindow();
+        reloadDateScreenings();
 
         List<String> genres = allFilms.stream()
                 .map(Film::getGenre)
@@ -527,12 +537,21 @@ public class FilmListingView extends Div implements BeforeEnterObserver {
     }
 
     private void reloadScreeningWindow() {
-        LocalDate selectedDate = selectedListingDate();
-        screeningWindow = screeningService.findScreeningsBetween(selectedDate, selectedDate);
+        // Tabs reason about "any future screening", not "a specific day".
+        // Use a rolling 6-month window starting today so newly created films
+        // with screenings later this season still surface under Now showing
+        // / Advance bookings.
+        LocalDate today = LocalDate.now();
+        screeningWindow = screeningService.findScreeningsBetween(today, today.plusMonths(6));
     }
 
-    private LocalDate selectedListingDate() {
-        return dateFilter.getValue() == null ? LocalDate.now() : dateFilter.getValue();
+    private void reloadDateScreenings() {
+        LocalDate selectedDate = dateFilter.getValue();
+        if (selectedDate == null) {
+            dateScreenings = List.of();
+        } else {
+            dateScreenings = screeningService.findScreeningsBetween(selectedDate, selectedDate);
+        }
     }
 
     private void renderTabs() {
@@ -571,8 +590,11 @@ public class FilmListingView extends Div implements BeforeEnterObserver {
 
         List<Film> base = filmsForActiveTab();
 
+        // Date filter is now optional: only restrict by day when the user
+        // explicitly selects a date. Otherwise the tab semantics (Now showing
+        // / Coming soon / Advance bookings / All) stand on their own.
         List<Film> filtered = base.stream()
-                .filter(this::hasScreeningOnSelectedDate)
+                .filter(this::matchesSelectedDate)
                 .filter(film -> matchesKeyword(film, keyword))
                 .filter(film -> matchesCity(film, selectedCity))
                 .filter(film -> matchesGenre(film, selectedGenre))
@@ -626,8 +648,12 @@ public class FilmListingView extends Div implements BeforeEnterObserver {
                 );
     }
 
-    private boolean hasScreeningOnSelectedDate(Film film) {
-        return screeningWindow.stream()
+    private boolean matchesSelectedDate(Film film) {
+        // No date selected -> the per-day filter is inactive.
+        if (dateFilter.getValue() == null) {
+            return true;
+        }
+        return dateScreenings.stream()
                 .anyMatch(screening -> Objects.equals(screening.getFilm().getId(), film.getId()));
     }
 
@@ -869,7 +895,7 @@ public class FilmListingView extends Div implements BeforeEnterObserver {
         StringBuilder url = new StringBuilder("/booking/")
                 .append(film.getId())
                 .append("?date=")
-                .append(selectedListingDate());
+                .append(dateFilter.getValue() == null ? LocalDate.now() : dateFilter.getValue());
 
         String selectedCity = cityFilter.getValue();
         screeningWindow.stream()

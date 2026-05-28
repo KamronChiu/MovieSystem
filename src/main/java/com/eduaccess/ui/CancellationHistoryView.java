@@ -253,8 +253,8 @@ public class CancellationHistoryView extends Div implements BeforeEnterObserver 
                 .setComparator(Comparator.comparing(HistoryRow::customer,
                         Comparator.nullsLast(String::compareToIgnoreCase)));
 
-        grid.addColumn(r -> MONEY_FMT.format(
-                        r.refundAmount() == null ? BigDecimal.ZERO : r.refundAmount()))
+        grid.addColumn(r -> r.refundAmount() == null
+                        ? "—" : MONEY_FMT.format(r.refundAmount()))
                 .setHeader("Refund Amount")
                 .setAutoWidth(true)
                 .setFlexGrow(0)
@@ -265,7 +265,7 @@ public class CancellationHistoryView extends Div implements BeforeEnterObserver 
 
         Grid.Column<HistoryRow> dateCol = grid.addColumn(r ->
                         r.cancelledAt() == null ? "—" : r.cancelledAt().format(STAMP_FMT))
-                .setHeader("Cancellation Date")
+                .setHeader("Refunded At")
                 .setAutoWidth(true)
                 .setFlexGrow(0)
                 .setSortable(true)
@@ -273,11 +273,12 @@ public class CancellationHistoryView extends Div implements BeforeEnterObserver 
                         Comparator.nullsLast(Comparator.naturalOrder())));
 
         grid.addComponentColumn(this::renderStatusBadge)
-                .setHeader("Refund Status")
+                .setHeader("Status")
                 .setAutoWidth(true)
                 .setFlexGrow(0)
                 .setSortable(true)
-                .setComparator(Comparator.comparing(r -> r.status().name()));
+                .setComparator(Comparator.comparing(r ->
+                        r.status() == null ? "" : r.status().name()));
 
         grid.setDataProvider(dataProvider);
         grid.setHeight("680px");
@@ -289,7 +290,7 @@ public class CancellationHistoryView extends Div implements BeforeEnterObserver 
 
     private Span renderStatusBadge(HistoryRow row) {
         BookingStatus status = row.status();
-        Span pill = new Span(status.getDisplayName());
+        Span pill = new Span(status == null ? "—" : status.getDisplayName());
         pill.getStyle()
                 .set("display", "inline-block")
                 .set("padding", "4px 12px")
@@ -297,8 +298,8 @@ public class CancellationHistoryView extends Div implements BeforeEnterObserver 
                 .set("font-size", "12px")
                 .set("font-weight", "800")
                 .set("letter-spacing", "0.03em")
-                .set("background", status.getBadgeBackground())
-                .set("color", status.getBadgeTextColor());
+                .set("background", status == null ? "#e2e8f0" : status.getBadgeBackground())
+                .set("color", status == null ? "#475569" : status.getBadgeTextColor());
         return pill;
     }
 
@@ -362,7 +363,7 @@ public class CancellationHistoryView extends Div implements BeforeEnterObserver 
         });
 
         int visible = dataProvider.size(new com.vaadin.flow.data.provider.Query<>());
-        totalLabel.setText(visible + " refunds (of " + allRows.size() + ")");
+        totalLabel.setText(visible + " entries (of " + allRows.size() + ")");
     }
 
     /**
