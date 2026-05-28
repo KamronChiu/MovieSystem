@@ -1,56 +1,75 @@
 package com.eduaccess.ui;
 
-import com.eduaccess.domain.AuditAction;
 import com.eduaccess.domain.AuditLog;
-import com.eduaccess.service.AuditLogService;
+import com.eduaccess.domain.BookingStatus;
+import com.eduaccess.service.AuditService;
 import com.eduaccess.service.LoginService;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.combobox.ComboBox;
-import com.vaadin.flow.component.datepicker.DatePicker;
 import com.vaadin.flow.component.grid.Grid;
-import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.html.Div;
-import com.vaadin.flow.component.html.H1;
-import com.vaadin.flow.component.html.Paragraph;
+import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Span;
+import com.vaadin.flow.component.icon.Icon;
+import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.notification.Notification;
+import com.vaadin.flow.component.notification.NotificationVariant;
+import com.vaadin.flow.component.textfield.TextField;
+import com.vaadin.flow.data.provider.ListDataProvider;
+import com.vaadin.flow.data.value.ValueChangeMode;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
-import com.vaadin.flow.server.StreamResource;
 
-import java.io.ByteArrayInputStream;
-import java.nio.charset.StandardCharsets;
-import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
+import java.util.Locale;
 
-@Route(value = "admin/audit", layout = MainLayout.class)
+/**
+ * Audit Log Grid page.
+ * <p>
+ * Lists every audit entry written by {@link AuditService}, with filters for
+ * action keyword, booking reference, and operator. Style mirrors the
+ * {@link CancellationView} grid (dark hero + white master card) so the
+ * page feels native to the rest of the system.
+ */
+@Route(value = "audit-logs", layout = MainLayout.class)
 @PageTitle("HCBS — Audit Log")
 public class AuditLogView extends Div implements BeforeEnterObserver {
 
     private static final String DARK_BG = "#020b1d";
-    private static final String PANEL = "#071428";
-    private static final String BORDER = "rgba(255,255,255,0.13)";
     private static final String BLUE = "#0072ce";
+    private static final String LIGHT_TEXT = "#142033";
+    private static final String LIGHT_MUTED = "#64748b";
+    private static final String CARD_BORDER = "#d8e2ef";
 
+    private static final DateTimeFormatter STAMP_FMT =
+            DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm:ss", Locale.UK);
+
+    private static final String ALL_ACTIONS = "All actions";
+
+    private final AuditService auditService;
     private final LoginService loginService;
-    private final AuditLogService auditLogService;
 
-    private final DatePicker startDate = new DatePicker("Start date");
-    private final DatePicker endDate = new DatePicker("End date");
-    private final ComboBox<AuditAction> actionFilter = new ComboBox<>("Action");
+    private final TextField targetField = new TextField("Booking Reference");
+    private final TextField operatorField = new TextField("Operator");
+    private final ComboBox<String> actionFilter = new ComboBox<>("Action");
+    private final Button refreshButton = new Button("Refresh", new Icon(VaadinIcon.REFRESH));
+    private final Button clearButton = new Button("Clear");
+
     private final Grid<AuditLog> grid = new Grid<>(AuditLog.class, false);
-    private final Div exportHolder = new Div();
+    private final List<AuditLog> allEntries = new ArrayList<>();
+    private final ListDataProvider<AuditLog> dataProvider =
+            new ListDataProvider<>(allEntries);
 
-    private List<AuditLog> currentLogs = List.of();
+    private final Span totalLabel = new Span();
 
-    public AuditLogView(LoginService loginService, AuditLogService auditLogService) {
+    public AuditLogView(AuditService auditService, LoginService loginService) {
+        this.auditService = auditService;
         this.loginService = loginService;
-        this.auditLogService = auditLogService;
 
         setWidthFull();
         getStyle()
@@ -58,261 +77,343 @@ public class AuditLogView extends Div implements BeforeEnterObserver {
                 .set("min-height", "100vh")
                 .set("color", "white");
 
-        Div page = new Div();
-        page.getStyle()
-                .set("max-width", "1420px")
+        Div container = new Div();
+        container.getStyle()
+                .set("max-width", "1320px")
                 .set("margin", "0 auto")
-                .set("padding", "44px 42px 80px")
+                .set("padding", "44px 48px")
                 .set("box-sizing", "border-box");
 
-        configureFilters();
-        configureGrid();
+        container.add(buildHeader());
+        container.add(buildFilterBar());
+        container.add(buildGridCard());
 
-        page.add(buildHeader(), buildFilterBar(), buildGridPanel());
-        add(page);
+        add(container);
 
-        refreshLogs();
+        refreshEntries();
     }
 
     @Override
     public void beforeEnter(BeforeEnterEvent event) {
-        PermissionChecker.checkAdminAccess(event, loginService);
+        // Audit log is reused for the cancellation team — gate behind
+        // cancellation access so non-staff cannot see operator details.
+        PermissionChecker.checkCancellationAccess(event, loginService);
     }
+
+    // ── Header ────────────────────────────────────────────────────────────
 
     private Div buildHeader() {
         Div header = new Div();
         header.getStyle()
                 .set("display", "flex")
+                .set("align-items", "center")
                 .set("justify-content", "space-between")
-                .set("align-items", "end")
-                .set("gap", "20px")
-                .set("margin-bottom", "26px");
+                .set("margin-bottom", "28px")
+                .set("gap", "16px")
+                .set("flex-wrap", "wrap");
 
-        Div text = new Div();
-        H1 title = new H1("AUDIT LOG");
+        Div left = new Div();
+
+        Div titleRow = new Div();
+        titleRow.getStyle()
+                .set("display", "flex")
+                .set("align-items", "center")
+                .set("gap", "14px");
+
+        Icon titleIcon = new Icon(VaadinIcon.CLIPBOARD_TEXT);
+        titleIcon.setSize("28px");
+        titleIcon.getStyle().set("color", "#9ec5ff");
+
+        H2 title = new H2("Audit Log");
         title.getStyle()
                 .set("margin", "0")
-                .set("font-size", "38px")
-                .set("letter-spacing", "0.08em")
-                .set("font-weight", "950");
+                .set("font-weight", "950")
+                .set("letter-spacing", "0.04em");
 
-        Paragraph subtitle = new Paragraph("Track booking, cancellation, cinema management, scheduling, food order and dashboard feedback operations.");
+        titleRow.add(titleIcon, title);
+
+        Span subtitle = new Span(
+                "Immutable trail of every cancellation action — operator, status change, IP, timestamp.");
         subtitle.getStyle()
-                .set("margin", "10px 0 0")
-                .set("color", "#a8b3c7")
-                .set("font-size", "16px");
+                .set("display", "block")
+                .set("color", "#94a3b8")
+                .set("font-size", "14px")
+                .set("margin-top", "8px");
 
-        text.add(title, subtitle);
+        left.add(titleRow, subtitle);
 
-        Span count = new Span();
-        count.getElement().setAttribute("id", "audit-count-label");
-        count.getStyle()
-                .set("padding", "12px 18px")
-                .set("border", "1px solid " + BORDER)
+        totalLabel.getStyle()
+                .set("padding", "8px 16px")
                 .set("border-radius", "999px")
-                .set("background", "rgba(255,255,255,0.04)")
-                .set("font-weight", "900");
+                .set("background", "rgba(255,255,255,0.08)")
+                .set("border", "1px solid rgba(255,255,255,0.15)")
+                .set("font-weight", "800")
+                .set("font-size", "14px")
+                .set("color", "#dbeafe");
 
-        header.add(text, count);
+        header.add(left, totalLabel);
         return header;
     }
 
-    private void configureFilters() {
-        startDate.setValue(LocalDate.now().minusDays(30));
-        endDate.setValue(LocalDate.now());
-
-        actionFilter.setItems(AuditAction.values());
-        actionFilter.setItemLabelGenerator(AuditAction::getLabel);
-        actionFilter.setPlaceholder("All actions");
-        actionFilter.setClearButtonVisible(true);
-
-        styleInput(startDate);
-        styleInput(endDate);
-        styleInput(actionFilter);
-    }
+    // ── Filter bar (white card, mirrors CancellationView search bar) ──────
 
     private Div buildFilterBar() {
         Div bar = new Div();
         bar.getStyle()
+                .set("background", "white")
+                .set("color", LIGHT_TEXT)
+                .set("padding", "20px 24px")
+                .set("margin-bottom", "24px")
                 .set("display", "grid")
-                .set("grid-template-columns", "180px 180px 260px auto auto")
-                .set("gap", "14px")
+                .set("grid-template-columns", "1fr 1fr 1fr 140px 110px")
+                .set("gap", "16px")
                 .set("align-items", "end")
-                .set("background", PANEL)
-                .set("border", "1px solid " + BORDER)
-                .set("border-radius", "22px")
-                .set("padding", "18px")
-                .set("margin-bottom", "24px");
+                .set("box-shadow", "0 10px 30px rgba(0,0,0,0.3)")
+                .set("border-radius", "8px");
 
-        Button apply = new Button("Apply", event -> refreshLogs());
-        apply.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        stylePrimary(apply);
+        actionFilter.setItems(buildActionItems());
+        actionFilter.setValue(ALL_ACTIONS);
+        actionFilter.setWidthFull();
+        actionFilter.setClearButtonVisible(false);
+        actionFilter.addValueChangeListener(e -> applyFilters());
 
-        Button recent = new Button("Last 30 days", event -> {
-            startDate.setValue(LocalDate.now().minusDays(30));
-            endDate.setValue(LocalDate.now());
-            actionFilter.clear();
-            refreshLogs();
+        targetField.setPlaceholder("e.g. HCBS-...");
+        targetField.setWidthFull();
+        targetField.setPrefixComponent(new Icon(VaadinIcon.HASH));
+        targetField.setClearButtonVisible(true);
+        targetField.setValueChangeMode(ValueChangeMode.LAZY);
+        targetField.addValueChangeListener(e -> applyFilters());
+
+        operatorField.setPlaceholder("e.g. admin");
+        operatorField.setWidthFull();
+        operatorField.setPrefixComponent(new Icon(VaadinIcon.USER));
+        operatorField.setClearButtonVisible(true);
+        operatorField.setValueChangeMode(ValueChangeMode.LAZY);
+        operatorField.addValueChangeListener(e -> applyFilters());
+
+        refreshButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        refreshButton.getStyle()
+                .set("background", BLUE)
+                .set("color", "white")
+                .set("height", "44px")
+                .set("font-weight", "800");
+        refreshButton.addClickListener(e -> {
+            refreshEntries();
+            Notification.show("Audit log refreshed",
+                            1500, Notification.Position.TOP_END)
+                    .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
         });
-        styleSecondary(recent);
 
-        exportHolder.getStyle().set("display", "flex").set("align-items", "end");
+        clearButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+        clearButton.getStyle().set("height", "44px");
+        clearButton.addClickListener(e -> {
+            actionFilter.setValue(ALL_ACTIONS);
+            targetField.clear();
+            operatorField.clear();
+            applyFilters();
+        });
 
-        bar.add(startDate, endDate, actionFilter, apply, recent, exportHolder);
+        bar.add(actionFilter, targetField, operatorField, refreshButton, clearButton);
         return bar;
     }
 
-    private Div buildGridPanel() {
-        Div panel = new Div(grid);
-        panel.getStyle()
-                .set("background", PANEL)
-                .set("border", "1px solid " + BORDER)
-                .set("border-radius", "22px")
-                .set("padding", "18px")
-                .set("box-shadow", "0 22px 60px rgba(0,0,0,0.22)");
-        return panel;
+    private List<String> buildActionItems() {
+        List<String> items = new ArrayList<>();
+        items.add(ALL_ACTIONS);
+        items.add(AuditService.ACTION_CANCEL_BOOKING);
+        items.add(AuditService.ACTION_ADVANCE_STATUS);
+        items.add(AuditService.ACTION_UPDATE_REASON);
+        items.add(AuditService.ACTION_UPDATE_VIP);
+        return items;
+    }
+
+    // ── Grid card ─────────────────────────────────────────────────────────
+
+    private Div buildGridCard() {
+        Div card = new Div();
+        card.getStyle()
+                .set("background", "white")
+                .set("color", LIGHT_TEXT)
+                .set("border-radius", "8px")
+                .set("padding", "1px")
+                .set("overflow", "hidden")
+                .set("box-shadow", "0 10px 30px rgba(0,0,0,0.3)")
+                .set("border", "1px solid " + CARD_BORDER);
+
+        configureGrid();
+        card.add(grid);
+        return card;
     }
 
     private void configureGrid() {
-        grid.setWidthFull();
-        grid.setAllRowsVisible(true);
-        grid.addColumn(log -> log.getCreatedAt() == null ? "-" : log.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")))
-                .setHeader("Time")
-                .setAutoWidth(true);
-        grid.addColumn(log -> log.getAction() == null ? "-" : log.getAction().getLabel())
+        grid.addColumn(log -> log.getTimestamp() == null
+                        ? "—" : log.getTimestamp().format(STAMP_FMT))
+                .setHeader("Timestamp")
+                .setAutoWidth(true)
+                .setFlexGrow(0);
+
+        grid.addComponentColumn(this::renderActionBadge)
                 .setHeader("Action")
-                .setAutoWidth(true);
-        grid.addColumn(AuditLog::getActorUsername)
-                .setHeader("User")
-                .setAutoWidth(true);
-        grid.addColumn(AuditLog::getActorRole)
-                .setHeader("Role")
-                .setAutoWidth(true);
-        grid.addColumn(AuditLog::getReference)
-                .setHeader("Reference")
-                .setAutoWidth(true);
-        grid.addColumn(AuditLog::getFilmTitle)
-                .setHeader("Film")
-                .setAutoWidth(true);
-        grid.addColumn(AuditLog::getCinemaName)
-                .setHeader("Cinema")
-                .setAutoWidth(true);
-        grid.addColumn(log -> log.getAmount() == null ? "-" : "£" + log.getAmount())
-                .setHeader("Amount")
-                .setAutoWidth(true);
-        grid.addColumn(AuditLog::getSummary)
-                .setHeader("Summary")
-                .setFlexGrow(1);
-        grid.addColumn(AuditLog::getDetails)
+                .setAutoWidth(true)
+                .setFlexGrow(0);
+
+        grid.addColumn(AuditLog::getOperator)
+                .setHeader("Operator")
+                .setAutoWidth(true)
+                .setFlexGrow(0);
+
+        grid.addColumn(log -> log.getTargetReference() == null
+                        ? "—" : log.getTargetReference())
+                .setHeader("Booking Ref")
+                .setAutoWidth(true)
+                .setFlexGrow(0);
+
+        grid.addComponentColumn(this::renderTransition)
+                .setHeader("Status Change")
+                .setAutoWidth(true)
+                .setFlexGrow(0);
+
+        grid.addColumn(log -> log.getIpAddress() == null
+                        ? "—" : log.getIpAddress())
+                .setHeader("IP Address")
+                .setAutoWidth(true)
+                .setFlexGrow(0);
+
+        grid.addColumn(log -> log.getDetails() == null ? "" : log.getDetails())
                 .setHeader("Details")
-                .setFlexGrow(2);
+                .setFlexGrow(1);
 
-        grid.getStyle()
-                .set("--vaadin-grid-cell-background", PANEL)
-                .set("--vaadin-grid-cell-color", "#e5e7eb")
-                .set("--vaadin-grid-header-cell-background", "#0f1d33")
-                .set("--vaadin-grid-header-cell-color", "#c7d2fe")
-                .set("border-radius", "16px")
-                .set("overflow", "hidden");
+        grid.setDataProvider(dataProvider);
+        grid.setHeight("680px");
+        grid.setMultiSort(true);
     }
 
-    private void refreshLogs() {
-        if (startDate.getValue() != null && endDate.getValue() != null && startDate.getValue().isAfter(endDate.getValue())) {
-            Notification.show("Start date cannot be after end date.");
-            return;
-        }
-
-        List<AuditLog> logs = auditLogService.findLogsBetween(startDate.getValue(), endDate.getValue());
-        AuditAction selectedAction = actionFilter.getValue();
-
-        if (selectedAction != null) {
-            logs = logs.stream()
-                    .filter(log -> Objects.equals(log.getAction(), selectedAction))
-                    .toList();
-        }
-
-        currentLogs = logs;
-        grid.setItems(currentLogs);
-        getElement().executeJs("const el = document.getElementById('audit-count-label'); if (el) el.textContent = $0;", currentLogs.size() + " audit events");
-        updateExportLink();
+    private Span renderActionBadge(AuditLog log) {
+        Span badge = new Span(prettyAction(log.getAction()));
+        badge.getStyle()
+                .set("display", "inline-block")
+                .set("padding", "4px 10px")
+                .set("border-radius", "999px")
+                .set("font-size", "12px")
+                .set("font-weight", "800")
+                .set("letter-spacing", "0.03em")
+                .set("background", actionBackground(log.getAction()))
+                .set("color", actionColor(log.getAction()));
+        return badge;
     }
 
-    private void updateExportLink() {
-        exportHolder.removeAll();
-
-        StreamResource resource = new StreamResource(
-                "audit-log-export.csv",
-                () -> new ByteArrayInputStream(buildCsv().getBytes(StandardCharsets.UTF_8))
-        );
-        resource.setContentType("text/csv");
-
-        Anchor export = new Anchor(resource, "Export CSV");
-        export.getElement().setAttribute("download", true);
-        export.getStyle()
-                .set("height", "44px")
-                .set("display", "inline-flex")
+    private Div renderTransition(AuditLog log) {
+        Div wrap = new Div();
+        wrap.getStyle()
+                .set("display", "flex")
                 .set("align-items", "center")
-                .set("padding", "0 18px")
-                .set("border-radius", "999px")
-                .set("background", BLUE)
-                .set("color", "white")
-                .set("font-weight", "900")
-                .set("text-decoration", "none");
-        exportHolder.add(export);
-    }
+                .set("gap", "6px");
 
-    private String buildCsv() {
-        StringBuilder csv = new StringBuilder("Time,Action,User,Role,Reference,Film,Cinema,Amount,Summary,Details\n");
-        for (AuditLog log : currentLogs) {
-            csv.append(escape(log.getCreatedAt() == null ? "" : log.getCreatedAt().toString())).append(',')
-                    .append(escape(log.getAction() == null ? "" : log.getAction().getLabel())).append(',')
-                    .append(escape(log.getActorUsername())).append(',')
-                    .append(escape(log.getActorRole())).append(',')
-                    .append(escape(log.getReference())).append(',')
-                    .append(escape(log.getFilmTitle())).append(',')
-                    .append(escape(log.getCinemaName())).append(',')
-                    .append(escape(log.getAmount() == null ? "" : log.getAmount().toString())).append(',')
-                    .append(escape(log.getSummary())).append(',')
-                    .append(escape(log.getDetails())).append('\n');
+        if (log.getOldStatus() == null && log.getNewStatus() == null) {
+            Span dash = new Span("—");
+            dash.getStyle().set("color", LIGHT_MUTED);
+            wrap.add(dash);
+            return wrap;
         }
-        return csv.toString();
+
+        wrap.add(statusPill(log.getOldStatus()));
+
+        Icon arrow = new Icon(VaadinIcon.ARROW_RIGHT);
+        arrow.setSize("14px");
+        arrow.getStyle().set("color", LIGHT_MUTED);
+        wrap.add(arrow);
+
+        wrap.add(statusPill(log.getNewStatus()));
+        return wrap;
     }
 
-    private String escape(String value) {
-        if (value == null) {
-            return "";
+    private Span statusPill(BookingStatus status) {
+        if (status == null) {
+            Span empty = new Span("—");
+            empty.getStyle().set("color", LIGHT_MUTED);
+            return empty;
         }
-        String cleaned = value.replace("\n", " ").replace("\r", " ");
-        return "\"" + cleaned.replace("\"", "\"\"") + "\"";
-    }
-
-    private void styleInput(com.vaadin.flow.component.Component component) {
-        component.getElement().getStyle()
-                .set("--vaadin-input-field-background", "rgba(255,255,255,0.07)")
-                .set("--vaadin-input-field-value-color", "white")
-                .set("--vaadin-input-field-label-color", "#a8b3c7")
-                .set("--vaadin-input-field-placeholder-color", "#64748b")
-                .set("--vaadin-input-field-border-color", BORDER);
-    }
-
-    private void stylePrimary(Button button) {
-        button.getStyle()
-                .set("height", "44px")
-                .set("background", BLUE)
-                .set("color", "white")
-                .set("font-weight", "900")
+        Span pill = new Span(status.getDisplayName());
+        pill.getStyle()
+                .set("display", "inline-block")
+                .set("padding", "3px 10px")
                 .set("border-radius", "999px")
-                .set("padding", "0 22px");
+                .set("font-size", "12px")
+                .set("font-weight", "800")
+                .set("background", status.getBadgeBackground())
+                .set("color", status.getBadgeTextColor());
+        return pill;
     }
 
-    private void styleSecondary(Button button) {
-        button.getStyle()
-                .set("height", "44px")
-                .set("background", "rgba(255,255,255,0.05)")
-                .set("color", "white")
-                .set("font-weight", "850")
-                .set("border", "1px solid " + BORDER)
-                .set("border-radius", "999px")
-                .set("padding", "0 20px");
+    private String prettyAction(String action) {
+        if (action == null) {
+            return "—";
+        }
+        return action.replace("_", " ");
+    }
+
+    private String actionBackground(String action) {
+        if (action == null) {
+            return "#e2e8f0";
+        }
+        return switch (action) {
+            case AuditService.ACTION_CANCEL_BOOKING -> "#fee2e2";
+            case AuditService.ACTION_ADVANCE_STATUS -> "#dbeafe";
+            case AuditService.ACTION_UPDATE_REASON  -> "#fef3c7";
+            case AuditService.ACTION_UPDATE_VIP     -> "#ede9fe";
+            default -> "#e2e8f0";
+        };
+    }
+
+    private String actionColor(String action) {
+        if (action == null) {
+            return "#475569";
+        }
+        return switch (action) {
+            case AuditService.ACTION_CANCEL_BOOKING -> "#b91c1c";
+            case AuditService.ACTION_ADVANCE_STATUS -> "#1d4ed8";
+            case AuditService.ACTION_UPDATE_REASON  -> "#92400e";
+            case AuditService.ACTION_UPDATE_VIP     -> "#6d28d9";
+            default -> "#475569";
+        };
+    }
+
+    // ── Data + filters ────────────────────────────────────────────────────
+
+    private void refreshEntries() {
+        allEntries.clear();
+        allEntries.addAll(auditService.findAll());
+        dataProvider.refreshAll();
+        applyFilters();
+    }
+
+    private void applyFilters() {
+        String selectedAction = actionFilter.getValue();
+        String target = targetField.getValue() == null ? "" : targetField.getValue().trim().toUpperCase();
+        String operator = operatorField.getValue() == null ? "" : operatorField.getValue().trim().toLowerCase();
+
+        dataProvider.setFilter(log -> {
+            if (selectedAction != null && !selectedAction.isBlank()
+                    && !ALL_ACTIONS.equals(selectedAction)
+                    && !selectedAction.equals(log.getAction())) {
+                return false;
+            }
+            if (!target.isEmpty()) {
+                String ref = log.getTargetReference();
+                if (ref == null || !ref.toUpperCase().contains(target)) {
+                    return false;
+                }
+            }
+            if (!operator.isEmpty()) {
+                String op = log.getOperator();
+                if (op == null || !op.toLowerCase().contains(operator)) {
+                    return false;
+                }
+            }
+            return true;
+        });
+
+        int visible = dataProvider.size(new com.vaadin.flow.data.provider.Query<>());
+        totalLabel.setText(visible + " entries (of " + allEntries.size() + ")");
     }
 }

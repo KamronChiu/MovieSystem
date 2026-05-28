@@ -112,8 +112,13 @@ public class CancellationView extends Div implements BeforeEnterObserver {
     }
 
     private void refreshBookings() {
+        // TASK 8 — fully refunded bookings live in CancellationHistoryView,
+        // so the main cancellation grid lists only items that still need
+        // staff action (CONFIRMED / CANCELLED / REFUND_PENDING).
         allBookings.clear();
-        allBookings.addAll(cancellationService.findAllBookings());
+        cancellationService.findAllBookings().stream()
+                .filter(b -> b.getStatus() != BookingStatus.REFUNDED)
+                .forEach(allBookings::add);
         dataProvider.refreshAll();
     }
 

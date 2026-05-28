@@ -1,36 +1,28 @@
 package com.eduaccess.repository;
 
-import com.eduaccess.domain.AuditAction;
 import com.eduaccess.domain.AuditLog;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
 
 import java.util.List;
 
 /**
- * Compatibility repository for older cancellation audit code.
- *
- * The new manager audit feature uses AuditLogRepository. This repository is kept
- * so older services that still inject AuditRepository compile and run safely.
+ * Spring Data JPA repository for {@link AuditLog}.
+ * <p>
+ * All query methods are derived from method names — no JPQL strings are
+ * needed. The repository exposes a small, intentional surface: insert
+ * (via {@link JpaRepository#save}), full listing newest-first, and a
+ * filter-by-action helper for future drill-down views.
  */
+@Repository
 public interface AuditRepository extends JpaRepository<AuditLog, Long> {
 
+    /** All audit entries, newest first — drives the Audit Log Grid. */
     List<AuditLog> findAllByOrderByTimestampDesc();
 
-    default List<AuditLog> findByActionOrderByTimestampDesc(String action) {
-        AuditAction target = AuditAction.fromCode(action);
-        return findAllByOrderByTimestampDesc().stream()
-                .filter(log -> log.getAction() == target)
-                .toList();
-    }
+    /** All entries for a given action keyword (e.g. {@code CANCEL_BOOKING}). */
+    List<AuditLog> findByActionOrderByTimestampDesc(String action);
 
-    default List<AuditLog> findByTargetReferenceOrderByTimestampDesc(String targetReference) {
-        if (targetReference == null || targetReference.isBlank()) {
-            return List.of();
-        }
-        String expected = targetReference.trim().toUpperCase();
-        return findAllByOrderByTimestampDesc().stream()
-                .filter(log -> log.getTargetReference() != null)
-                .filter(log -> log.getTargetReference().trim().toUpperCase().equals(expected))
-                .toList();
-    }
+    /** All entries that touch a particular booking reference. */
+    List<AuditLog> findByTargetReferenceOrderByTimestampDesc(String targetReference);
 }
