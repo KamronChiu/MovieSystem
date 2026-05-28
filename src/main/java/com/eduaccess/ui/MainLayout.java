@@ -132,6 +132,7 @@ public class MainLayout extends AppLayout {
             // Refund History (TASK 8) — only staff that can see Cancellation.
             if (loginService.canAccessCancellation()) {
                 nav.add(iconNavLink("archive", "Refund History", CancellationHistoryView.class));
+                nav.add(iconNavLink("envelope-o", "Email Management", EmailManagementView.class));
             }
 
             if (loginService.canAccessAdmin()) {

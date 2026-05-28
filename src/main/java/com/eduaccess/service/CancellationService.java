@@ -3,10 +3,18 @@ package com.eduaccess.service;
 import com.eduaccess.domain.Booking;
 import com.eduaccess.domain.BookingStatus;
 import com.eduaccess.domain.CancellationRecord;
+import com.eduaccess.domain.FoodOrder;
+import com.eduaccess.domain.FoodOrderStatus;
 import com.eduaccess.domain.RefundSummary;
 import com.eduaccess.exception.CancellationNotAllowedException;
 import com.eduaccess.repository.BookingRepository;
 import com.eduaccess.repository.CancellationRepository;
+import com.eduaccess.service.policy.CancellationPolicy;
+import com.eduaccess.service.policy.CancellationPolicyFactory;
+import com.eduaccess.service.policy.PolicyRefundResult;
+import com.eduaccess.service.policy.PolicyType;
+import com.eduaccess.service.policy.RefundContext;
+import com.eduaccess.service.policy.RefundScope;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,19 +26,35 @@ import java.util.Optional;
 @Service
 public class CancellationService {
 
+    /**
+     * Virtual VIP membership add-on price used when the administrator ticks
+     * the &quot;VIP Package&quot; line item in the Refund Decision Panel.
+     * <p>
+     * The current data model does not persist a separate VIP package fee
+     * on the booking, so the value is fixed at £10 — sufficient to demo
+     * the refund-item toggle without altering the existing schema.
+     */
+    public static final BigDecimal VIP_PACKAGE_FEE = new BigDecimal("10.00");
+
     private final BookingRepository bookingRepository;
     private final RefundCalculator refundCalculator;
     private final CancellationRepository cancellationRepository;
     private final AuditService auditService;
+    private final CancellationPolicyFactory policyFactory;
+    private final FoodOrderService foodOrderService;
 
     public CancellationService(BookingRepository bookingRepository,
                                RefundCalculator refundCalculator,
                                CancellationRepository cancellationRepository,
-                               AuditService auditService) {
+                               AuditService auditService,
+                               CancellationPolicyFactory policyFactory,
+                               FoodOrderService foodOrderService) {
         this.bookingRepository = bookingRepository;
         this.refundCalculator = refundCalculator;
         this.cancellationRepository = cancellationRepository;
         this.auditService = auditService;
+        this.policyFactory = policyFactory;
+        this.foodOrderService = foodOrderService;
     }
 
     @Transactional(readOnly = true)
@@ -193,6 +217,180 @@ public class CancellationService {
         );
 
         return saved;
+    }
+
+    // ── TASK 9 — Refund Policy Decision (Strategy Pattern) ────────────────
+
+    /**
+     * Returns the sum of every refundable food-order total for the booking.
+     * <p>
+     * Only orders still in {@link FoodOrderStatus#PENDING} or
+     * {@link FoodOrderStatus#PREPARING} count — {@code DELIVERED} food has
+     * been consumed and {@code CANCELLED} food has already been refunded
+     * out-of-band.
+     *
+     * @param bookingId the booking id
+     * @return total food cost still eligible for refund (never null)
+     */
+    @Transactional(readOnly = true)
+    public BigDecimal calculateRefundableFoodAmount(Long bookingId) {
+        if (bookingId == null) {
+            return BigDecimal.ZERO;
+        }
+        List<FoodOrder> orders = foodOrderService.findOrdersForBooking(bookingId);
+        BigDecimal total = BigDecimal.ZERO;
+        for (FoodOrder order : orders) {
+            if (order.getStatus() == FoodOrderStatus.PENDING
+                    || order.getStatus() == FoodOrderStatus.PREPARING) {
+                BigDecimal cost = order.getTotalCost();
+                if (cost != null) {
+                    total = total.add(cost);
+                }
+            }
+        }
+        return total;
+    }
+
+    /**
+     * Builds the immutable {@link RefundContext} input that drives all
+     * three concrete {@link CancellationPolicy} implementations.
+     *
+     * @param bookingReference  booking identifier
+     * @param policyType        which policy the administrator picked
+     * @param scope             full vs partial refund
+     * @param includeMovie      whether to refund the movie ticket
+     * @param includeFood       whether to refund food orders
+     * @param includeVipPackage whether to refund the VIP package add-on
+     * @return refund context, or {@code null} if the booking is not found
+     */
+    @Transactional(readOnly = true)
+    public RefundContext buildPolicyContext(String bookingReference,
+                                            PolicyType policyType,
+                                            RefundScope scope,
+                                            boolean includeMovie,
+                                            boolean includeFood,
+                                            boolean includeVipPackage) {
+        Booking booking = bookingRepository.findByBookingReference(normalizeReference(bookingReference))
+                .orElse(null);
+        if (booking == null) {
+            return null;
+        }
+        BigDecimal foodAmount = calculateRefundableFoodAmount(booking.getId());
+        BigDecimal vipPackageAmount = booking.isVip() ? VIP_PACKAGE_FEE : BigDecimal.ZERO;
+        return new RefundContext(
+                booking.getTotalCost(),
+                foodAmount,
+                vipPackageAmount,
+                includeMovie,
+                includeFood,
+                includeVipPackage,
+                scope,
+                booking.isVip()
+        );
+    }
+
+    /**
+     * Runs the selected {@link CancellationPolicy} against the given context
+     * and returns the refund breakdown shown live in the Refund Decision
+     * Panel. Pure preview — no DB writes occur.
+     *
+     * @param policyType which policy to apply
+     * @param context    refund context built via
+     *                   {@link #buildPolicyContext(String, PolicyType, RefundScope, boolean, boolean, boolean)}
+     * @return immutable result for UI rendering, or {@code null} if the
+     *         context is null
+     */
+    public PolicyRefundResult quotePolicyRefund(PolicyType policyType, RefundContext context) {
+        if (context == null || policyType == null) {
+            return null;
+        }
+        CancellationPolicy policy = policyFactory.policyFor(policyType);
+        return policy.calculate(context);
+    }
+
+    /**
+     * Finalises the refund step: advances the booking into
+     * {@link BookingStatus#REFUND_PENDING}, persists the policy-driven
+     * refund amount on the cancellation record, optionally cancels
+     * attached food orders, and emits an audit entry that captures the
+     * full administrator decision.
+     *
+     * @param bookingReference  booking identifier
+     * @param policyType        chosen policy
+     * @param scope             chosen refund scope
+     * @param includeMovie      whether the movie ticket is being refunded
+     * @param includeFood       whether attached food orders are being refunded
+     * @param includeVipPackage whether the VIP package add-on is being refunded
+     * @return the updated booking (now {@code REFUND_PENDING})
+     * @throws CancellationNotAllowedException if the booking cannot transition
+     */
+    @Transactional
+    public Booking submitPolicyRefund(String bookingReference,
+                                      PolicyType policyType,
+                                      RefundScope scope,
+                                      boolean includeMovie,
+                                      boolean includeFood,
+                                      boolean includeVipPackage) {
+        Booking booking = bookingRepository.findByBookingReference(normalizeReference(bookingReference))
+                .orElseThrow(() -> new CancellationNotAllowedException(
+                        "Booking reference was not found."));
+
+        // 1) Compute the policy result (we need it for the audit trail).
+        RefundContext context = new RefundContext(
+                booking.getTotalCost(),
+                calculateRefundableFoodAmount(booking.getId()),
+                booking.isVip() ? VIP_PACKAGE_FEE : BigDecimal.ZERO,
+                includeMovie,
+                includeFood,
+                includeVipPackage,
+                scope,
+                booking.isVip()
+        );
+        PolicyRefundResult result = policyFactory.policyFor(policyType).calculate(context);
+
+        // 2) Advance the booking to REFUND_PENDING (idempotent if already there).
+        BookingStatus oldStatus = booking.getStatus();
+        if (oldStatus.canTransitionTo(BookingStatus.REFUND_PENDING)) {
+            booking.transitionTo(BookingStatus.REFUND_PENDING);
+            booking = bookingRepository.save(booking);
+        }
+
+        // 3) Cancel attached food orders when the admin chose to refund food.
+        if (includeFood) {
+            foodOrderService.cancelPendingFoodOrdersForBooking(booking.getId());
+        }
+
+        // 4) Persist the policy-driven refund amount on the cancellation record.
+        CancellationRecord record = cancellationRepository.findByBookingReference(
+                booking.getBookingReference()).orElse(null);
+        if (record == null) {
+            record = new CancellationRecord(
+                    booking.getBookingReference(),
+                    result.getFinalRefund(),
+                    "",
+                    LocalDateTime.now(),
+                    false
+            );
+        } else {
+            record.setRefundAmount(result.getFinalRefund());
+        }
+        cancellationRepository.save(record);
+
+        // 5) Audit the full administrator decision.
+        auditService.record(
+                AuditService.ACTION_ADVANCE_STATUS,
+                booking.getBookingReference(),
+                oldStatus,
+                booking.getStatus(),
+                String.format(
+                        "Refund policy=%s, scope=%s, items=[movie=%s,food=%s,vip=%s], final=£%s, voucher=£%s",
+                        policyType, scope,
+                        includeMovie, includeFood, includeVipPackage,
+                        result.getFinalRefund(), result.getVoucher()
+                )
+        );
+
+        return booking;
     }
 
     // ── TASK 6 — Cancellation record persistence ──────────────────────────

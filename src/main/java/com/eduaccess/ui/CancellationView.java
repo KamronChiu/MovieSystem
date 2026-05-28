@@ -91,10 +91,33 @@ public class CancellationView extends Div implements BeforeEnterObserver {
                 .set("padding", "44px 48px")
                 .set("box-sizing", "border-box");
 
-        // Title Section
+        // Title Section — title on the left, batch-mode entry-point on the right.
+        Div titleRow = new Div();
+        titleRow.getStyle()
+                .set("display", "flex")
+                .set("align-items", "center")
+                .set("justify-content", "space-between")
+                .set("flex-wrap", "wrap")
+                .set("gap", "16px")
+                .set("margin-bottom", "24px");
         H2 title = new H2("Booking Cancellation Management");
-        title.getStyle().set("margin-top", "0").set("font-weight", "950");
-        container.add(title);
+        title.getStyle().set("margin", "0").set("font-weight", "950");
+
+        Button batchButton = new Button("Batch Cancellation Dashboard",
+                new Icon(VaadinIcon.LIST_OL));
+        batchButton.getStyle()
+                .set("background", "rgba(255,255,255,0.08)")
+                .set("color", "white")
+                .set("font-weight", "800")
+                .set("padding", "0 22px")
+                .set("height", "46px")
+                .set("letter-spacing", "0.04em")
+                .set("border", "1.5px solid rgba(255,255,255,0.22)");
+        batchButton.addClickListener(e ->
+                getUI().ifPresent(ui -> ui.navigate("cancellation-batch")));
+
+        titleRow.add(title, batchButton);
+        container.add(titleRow);
 
         // Search Section
         container.add(buildSearchBar());
