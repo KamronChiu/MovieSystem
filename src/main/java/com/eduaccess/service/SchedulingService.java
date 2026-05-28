@@ -1,5 +1,6 @@
 package com.eduaccess.service;
 
+import com.eduaccess.domain.AuditAction;
 import com.eduaccess.domain.Film;
 import com.eduaccess.domain.Screen;
 import com.eduaccess.domain.Screening;
@@ -23,15 +24,18 @@ public class SchedulingService {
     private final ScreeningRepository screeningRepository;
     private final FilmRepository filmRepository;
     private final ScreenRepository screenRepository;
+    private final AuditLogService auditLogService;
 
     public SchedulingService(
             ScreeningRepository screeningRepository,
             FilmRepository filmRepository,
-            ScreenRepository screenRepository
+            ScreenRepository screenRepository,
+            AuditLogService auditLogService
     ) {
         this.screeningRepository = screeningRepository;
         this.filmRepository = filmRepository;
         this.screenRepository = screenRepository;
+        this.auditLogService = auditLogService;
     }
 
     @Transactional(readOnly = true)
@@ -97,7 +101,19 @@ public class SchedulingService {
 
         validateScreening(screening, null);
 
-        return screeningRepository.save(screening);
+        Screening savedScreening = screeningRepository.save(screening);
+        auditLogService.record(
+                AuditAction.SCREENING_CREATED,
+                "Screening",
+                savedScreening.getId(),
+                null,
+                savedScreening.getFilm().getTitle(),
+                savedScreening.getScreen().getCinema().getName(),
+                null,
+                "Screening created: " + savedScreening.getFilm().getTitle(),
+                screeningDetails(savedScreening)
+        );
+        return savedScreening;
     }
 
     @Transactional
@@ -151,7 +167,19 @@ public class SchedulingService {
 
         validateScreening(screening, screeningId);
 
-        return screeningRepository.save(screening);
+        Screening savedScreening = screeningRepository.save(screening);
+        auditLogService.record(
+                AuditAction.SCREENING_UPDATED,
+                "Screening",
+                savedScreening.getId(),
+                null,
+                savedScreening.getFilm().getTitle(),
+                savedScreening.getScreen().getCinema().getName(),
+                null,
+                "Screening updated: " + savedScreening.getFilm().getTitle(),
+                screeningDetails(savedScreening)
+        );
+        return savedScreening;
     }
 
     @Transactional
@@ -164,6 +192,18 @@ public class SchedulingService {
                     "This screening already has bookings, so it cannot be deleted."
             );
         }
+
+        auditLogService.record(
+                AuditAction.SCREENING_DELETED,
+                "Screening",
+                screening.getId(),
+                null,
+                screening.getFilm().getTitle(),
+                screening.getScreen().getCinema().getName(),
+                null,
+                "Screening deleted: " + screening.getFilm().getTitle(),
+                screeningDetails(screening)
+        );
 
         screeningRepository.delete(screening);
     }
@@ -178,6 +218,18 @@ public class SchedulingService {
 
     private ScreeningType normaliseScreeningType(ScreeningType screeningType) {
         return screeningType == null ? ScreeningType.REGULAR_2D : screeningType;
+    }
+
+    private String screeningDetails(Screening screening) {
+        if (screening == null) {
+            return "-";
+        }
+        return "Film: " + screening.getFilm().getTitle()
+                + "; Cinema: " + screening.getScreen().getCinema().getName()
+                + "; Screen: " + screening.getScreen().getScreenNumber()
+                + "; Date: " + screening.getScreeningDate()
+                + "; Time: " + screening.getStartTime() + " - " + screening.getEndTime()
+                + "; Type: " + screening.getScreeningType();
     }
 
     private void validateScreening(Screening screening, Long currentScreeningId) {

@@ -1,182 +1,224 @@
 package com.eduaccess.domain;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Index;
-import jakarta.persistence.PrePersist;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-/**
- * Persistent audit-log entry.
- * <p>
- * Captures every meaningful state-changing operation in the cancellation
- * pipeline so that operators have a complete, immutable trail of who did
- * what, when, and from where.
- * <p>
- * The schema is intentionally generic — {@link #action} is a free-form
- * string (e.g. {@code "CANCEL_BOOKING"}, {@code "ADVANCE_STATUS"}) so the
- * same table can be reused by other modules in the future without DDL
- * changes. The status columns are mapped as {@link BookingStatus} enums
- * but stored as strings, so they remain meaningful even if the enum is
- * extended later.
- */
 @Entity
-@Table(name = "audit_logs",
-        indexes = {
-                @Index(name = "idx_audit_timestamp", columnList = "timestamp"),
-                @Index(name = "idx_audit_action", columnList = "action"),
-                @Index(name = "idx_audit_target", columnList = "target_reference")
-        })
+@Table(name = "operation_audit_logs")
 public class AuditLog {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    /** High-level operation name, e.g. {@code CANCEL_BOOKING}. */
-    @Column(name = "action", nullable = false, length = 80)
-    private String action;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "action", length = 60)
+    private AuditAction action;
 
-    /** Username (or "anonymous") of the user that triggered the action. */
-    @Column(name = "operator", nullable = false, length = 120)
-    private String operator;
+    @Column(name = "actor_username")
+    private String actorUsername;
 
-    /**
-     * Optional booking reference (or other domain key) the action targets.
-     * Kept loose-coupled (string) so this table can also log non-booking
-     * events later without a schema change.
-     */
-    @Column(name = "target_reference", length = 80)
+    @Column(name = "actor_name")
+    private String actorName;
+
+    @Column(name = "actor_role")
+    private String actorRole;
+
+    @Column(name = "entity_type")
+    private String entityType;
+
+    @Column(name = "entity_id")
+    private Long entityId;
+
+    @Column(name = "reference")
+    private String reference;
+
+    @Column(name = "target_reference")
     private String targetReference;
 
-    @Column(name = "old_status", length = 40)
+    @Column(name = "film_title")
+    private String filmTitle;
+
+    @Column(name = "cinema_name")
+    private String cinemaName;
+
+    @Column(name = "amount", precision = 10, scale = 2)
+    private BigDecimal amount;
+
+    @Column(name = "summary", length = 500)
+    private String summary;
+
+    @Column(name = "details", length = 2500)
+    private String details;
+
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
+
+    // Legacy compatibility fields used by older AuditService/AuditRepository code.
+    @Column(name = "operator")
+    private String operator;
+
+    @Column(name = "timestamp")
+    private LocalDateTime timestamp;
+
+    @Column(name = "ip_address")
+    private String ipAddress;
+
+    @Column(name = "old_status")
     @Enumerated(EnumType.STRING)
     private BookingStatus oldStatus;
 
-    @Column(name = "new_status", length = 40)
+    @Column(name = "new_status")
     @Enumerated(EnumType.STRING)
     private BookingStatus newStatus;
 
-    @Column(name = "timestamp", nullable = false)
-    private LocalDateTime timestamp;
-
-    @Column(name = "ip_address", length = 64)
-    private String ipAddress;
-
-    /** Optional human-readable note (e.g. cancellation reason). */
-    @Column(name = "details", length = 500)
-    private String details;
-
-    public AuditLog() {
+    protected AuditLog() {
     }
 
-    public AuditLog(String action,
-                    String operator,
-                    String targetReference,
-                    BookingStatus oldStatus,
-                    BookingStatus newStatus,
-                    String ipAddress,
-                    String details) {
-        this.action = action;
-        this.operator = operator;
+    public AuditLog(
+            AuditAction action,
+            String actorUsername,
+            String actorName,
+            String actorRole,
+            String entityType,
+            Long entityId,
+            String reference,
+            String filmTitle,
+            String cinemaName,
+            BigDecimal amount,
+            String summary,
+            String details
+    ) {
+        this.action = action == null ? AuditAction.SYSTEM_EVENT : action;
+        this.actorUsername = safe(actorUsername, "system");
+        this.actorName = safe(actorName, this.actorUsername);
+        this.actorRole = safe(actorRole, "SYSTEM");
+        this.entityType = safe(entityType, "Unknown");
+        this.entityId = entityId;
+        this.reference = reference;
+        this.targetReference = reference;
+        this.filmTitle = filmTitle;
+        this.cinemaName = cinemaName;
+        this.amount = amount;
+        this.summary = safe(summary, this.action.getLabel());
+        this.details = details;
+        this.createdAt = LocalDateTime.now();
+        this.timestamp = this.createdAt;
+        this.operator = this.actorUsername;
+        this.ipAddress = "unknown";
+    }
+
+    public AuditLog(
+            String action,
+            String operator,
+            String targetReference,
+            BookingStatus oldStatus,
+            BookingStatus newStatus,
+            String ipAddress,
+            String details
+    ) {
+        this.action = AuditAction.fromCode(action);
+        this.actorUsername = safe(operator, "system");
+        this.actorName = this.actorUsername;
+        this.actorRole = "SYSTEM";
+        this.operator = this.actorUsername;
         this.targetReference = targetReference;
+        this.reference = targetReference;
         this.oldStatus = oldStatus;
         this.newStatus = newStatus;
-        this.ipAddress = ipAddress;
+        this.ipAddress = safe(ipAddress, "unknown");
+        this.entityType = "Booking";
+        this.summary = this.action.getLabel();
         this.details = details;
-        this.timestamp = LocalDateTime.now();
+        this.createdAt = LocalDateTime.now();
+        this.timestamp = this.createdAt;
     }
 
-    /**
-     * Defensive default-value hook fired by JPA right before {@code INSERT}.
-     * Guarantees NOT-NULL columns always have a value even when callers
-     * forget to set them explicitly.
-     */
     @PrePersist
-    private void ensureDefaults() {
+    @PreUpdate
+    private void fillDefaults() {
+        if (action == null) {
+            action = AuditAction.SYSTEM_EVENT;
+        }
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now();
+        }
         if (timestamp == null) {
-            timestamp = LocalDateTime.now();
+            timestamp = createdAt;
+        }
+        if (actorUsername == null || actorUsername.isBlank()) {
+            actorUsername = "system";
+        }
+        if (actorName == null || actorName.isBlank()) {
+            actorName = actorUsername;
+        }
+        if (actorRole == null || actorRole.isBlank()) {
+            actorRole = "SYSTEM";
         }
         if (operator == null || operator.isBlank()) {
-            operator = "anonymous";
+            operator = actorUsername;
         }
-        if (action == null || action.isBlank()) {
-            action = "UNKNOWN";
+        if (entityType == null || entityType.isBlank()) {
+            entityType = "Unknown";
+        }
+        if (summary == null || summary.isBlank()) {
+            summary = action.getLabel();
+        }
+        if (ipAddress == null || ipAddress.isBlank()) {
+            ipAddress = "unknown";
+        }
+        if ((reference == null || reference.isBlank()) && targetReference != null) {
+            reference = targetReference;
+        }
+        if ((targetReference == null || targetReference.isBlank()) && reference != null) {
+            targetReference = reference;
         }
     }
 
-    public Long getId() {
-        return id;
+    private String safe(String value, String fallback) {
+        return value == null || value.isBlank() ? fallback : value;
     }
 
-    public String getAction() {
-        return action;
-    }
+    public Long getId() { return id; }
+    public AuditAction getAction() { return action; }
+    public String getActorUsername() { return actorUsername; }
+    public String getActorName() { return actorName; }
+    public String getActorRole() { return actorRole; }
+    public String getEntityType() { return entityType; }
+    public Long getEntityId() { return entityId; }
+    public String getReference() { return reference; }
+    public String getTargetReference() { return targetReference; }
+    public String getFilmTitle() { return filmTitle; }
+    public String getCinemaName() { return cinemaName; }
+    public BigDecimal getAmount() { return amount; }
+    public String getSummary() { return summary; }
+    public String getDetails() { return details; }
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public String getOperator() { return operator; }
+    public LocalDateTime getTimestamp() { return timestamp; }
+    public String getIpAddress() { return ipAddress; }
+    public BookingStatus getOldStatus() { return oldStatus; }
+    public BookingStatus getNewStatus() { return newStatus; }
 
-    public void setAction(String action) {
-        this.action = action;
-    }
-
-    public String getOperator() {
-        return operator;
-    }
-
-    public void setOperator(String operator) {
-        this.operator = operator;
-    }
-
-    public String getTargetReference() {
-        return targetReference;
-    }
-
-    public void setTargetReference(String targetReference) {
-        this.targetReference = targetReference;
-    }
-
-    public BookingStatus getOldStatus() {
-        return oldStatus;
-    }
-
-    public void setOldStatus(BookingStatus oldStatus) {
-        this.oldStatus = oldStatus;
-    }
-
-    public BookingStatus getNewStatus() {
-        return newStatus;
-    }
-
-    public void setNewStatus(BookingStatus newStatus) {
-        this.newStatus = newStatus;
-    }
-
-    public LocalDateTime getTimestamp() {
-        return timestamp;
-    }
-
-    public void setTimestamp(LocalDateTime timestamp) {
-        this.timestamp = timestamp;
-    }
-
-    public String getIpAddress() {
-        return ipAddress;
-    }
-
-    public void setIpAddress(String ipAddress) {
-        this.ipAddress = ipAddress;
-    }
-
-    public String getDetails() {
-        return details;
-    }
-
-    public void setDetails(String details) {
-        this.details = details;
-    }
+    public void setAction(AuditAction action) { this.action = action; }
+    public void setActorUsername(String actorUsername) { this.actorUsername = actorUsername; }
+    public void setActorName(String actorName) { this.actorName = actorName; }
+    public void setActorRole(String actorRole) { this.actorRole = actorRole; }
+    public void setEntityType(String entityType) { this.entityType = entityType; }
+    public void setEntityId(Long entityId) { this.entityId = entityId; }
+    public void setReference(String reference) { this.reference = reference; this.targetReference = reference; }
+    public void setTargetReference(String targetReference) { this.targetReference = targetReference; this.reference = targetReference; }
+    public void setFilmTitle(String filmTitle) { this.filmTitle = filmTitle; }
+    public void setCinemaName(String cinemaName) { this.cinemaName = cinemaName; }
+    public void setAmount(BigDecimal amount) { this.amount = amount; }
+    public void setSummary(String summary) { this.summary = summary; }
+    public void setDetails(String details) { this.details = details; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; this.timestamp = createdAt; }
+    public void setOperator(String operator) { this.operator = operator; this.actorUsername = operator; }
+    public void setTimestamp(LocalDateTime timestamp) { this.timestamp = timestamp; this.createdAt = timestamp; }
+    public void setIpAddress(String ipAddress) { this.ipAddress = ipAddress; }
+    public void setOldStatus(BookingStatus oldStatus) { this.oldStatus = oldStatus; }
+    public void setNewStatus(BookingStatus newStatus) { this.newStatus = newStatus; }
 }

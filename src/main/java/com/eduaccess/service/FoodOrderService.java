@@ -1,5 +1,6 @@
 package com.eduaccess.service;
 
+import com.eduaccess.domain.AuditAction;
 import com.eduaccess.domain.Booking;
 import com.eduaccess.domain.BookingStatus;
 import com.eduaccess.domain.DeliveryMethod;
@@ -28,17 +29,20 @@ public class FoodOrderService {
     private final FoodOrderRepository foodOrderRepository;
     private final BookingRepository bookingRepository;
     private final BookingSeatRepository bookingSeatRepository;
+    private final AuditLogService auditLogService;
 
     public FoodOrderService(
             FoodItemRepository foodItemRepository,
             FoodOrderRepository foodOrderRepository,
             BookingRepository bookingRepository,
-            BookingSeatRepository bookingSeatRepository
+            BookingSeatRepository bookingSeatRepository,
+            AuditLogService auditLogService
     ) {
         this.foodItemRepository = foodItemRepository;
         this.foodOrderRepository = foodOrderRepository;
         this.bookingRepository = bookingRepository;
         this.bookingSeatRepository = bookingSeatRepository;
+        this.auditLogService = auditLogService;
     }
 
     @Transactional(readOnly = true)
@@ -110,7 +114,22 @@ public class FoodOrderService {
         }
 
         order.setTotalCost(total);
-        return foodOrderRepository.save(order);
+        FoodOrder savedOrder = foodOrderRepository.save(order);
+
+        auditLogService.record(
+                AuditAction.FOOD_ORDER_CREATED,
+                "FoodOrder",
+                savedOrder.getId(),
+                booking.getBookingReference(),
+                booking.getScreening().getFilm().getTitle(),
+                booking.getScreening().getScreen().getCinema().getName(),
+                savedOrder.getTotalCost(),
+                "Food order created for " + booking.getBookingReference(),
+                "Delivery: " + savedOrder.getDeliveryMethod().getLabel()
+                        + "; Items: " + foodOrderItemsText(savedOrder)
+        );
+
+        return savedOrder;
     }
 
     @Transactional
@@ -120,6 +139,17 @@ public class FoodOrderService {
         for (FoodOrder order : orders) {
             if (order.getStatus() == FoodOrderStatus.PENDING || order.getStatus() == FoodOrderStatus.PREPARING) {
                 order.setStatus(FoodOrderStatus.CANCELLED);
+                auditLogService.record(
+                        AuditAction.FOOD_ORDER_UPDATED,
+                        "FoodOrder",
+                        order.getId(),
+                        order.getBooking().getBookingReference(),
+                        order.getBooking().getScreening().getFilm().getTitle(),
+                        order.getBooking().getScreening().getScreen().getCinema().getName(),
+                        order.getTotalCost(),
+                        "Food order cancelled after booking cancellation",
+                        foodOrderItemsText(order)
+                );
             }
         }
     }
@@ -136,6 +166,7 @@ public class FoodOrderService {
         }
 
         order.setStatus(FoodOrderStatus.PREPARING);
+        auditFoodOrderStatus(order, "Food order marked preparing");
         return order;
     }
 
@@ -148,6 +179,7 @@ public class FoodOrderService {
         }
 
         order.setStatus(FoodOrderStatus.DELIVERED);
+        auditFoodOrderStatus(order, "Food order marked delivered");
         return order;
     }
 
@@ -160,12 +192,37 @@ public class FoodOrderService {
         }
 
         order.setStatus(FoodOrderStatus.CANCELLED);
+        auditFoodOrderStatus(order, "Food order cancelled");
         return order;
     }
 
     private FoodOrder findOrderOrThrow(Long orderId) {
         return foodOrderRepository.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Food order not found."));
+    }
+
+    private void auditFoodOrderStatus(FoodOrder order, String summary) {
+        auditLogService.record(
+                AuditAction.FOOD_ORDER_UPDATED,
+                "FoodOrder",
+                order.getId(),
+                order.getBooking().getBookingReference(),
+                order.getBooking().getScreening().getFilm().getTitle(),
+                order.getBooking().getScreening().getScreen().getCinema().getName(),
+                order.getTotalCost(),
+                summary,
+                "Status: " + order.getStatus() + "; " + foodOrderItemsText(order)
+        );
+    }
+
+    private String foodOrderItemsText(FoodOrder order) {
+        if (order == null || order.getItems() == null || order.getItems().isEmpty()) {
+            return "No items";
+        }
+
+        return order.getItems().stream()
+                .map(item -> item.getFoodItem().getName() + " x" + item.getQuantity())
+                .collect(java.util.stream.Collectors.joining(", "));
     }
 
     private Map<Long, Integer> cleanQuantities(Map<Long, Integer> itemQuantities) {

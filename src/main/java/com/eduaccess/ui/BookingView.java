@@ -2,7 +2,11 @@ package com.eduaccess.ui;
 
 import com.eduaccess.domain.Booking;
 import com.eduaccess.domain.Cinema;
+import com.eduaccess.domain.DeliveryMethod;
 import com.eduaccess.domain.Film;
+import com.eduaccess.domain.FoodItem;
+import com.eduaccess.domain.FoodOrder;
+import com.eduaccess.domain.FoodOrderItem;
 import com.eduaccess.domain.HallType;
 import com.eduaccess.domain.Screening;
 import com.eduaccess.domain.ScreeningType;
@@ -10,6 +14,7 @@ import com.eduaccess.domain.Seat;
 import com.eduaccess.domain.SeatType;
 import com.eduaccess.repository.CinemaRepository;
 import com.eduaccess.service.BookingService;
+import com.eduaccess.service.FoodOrderService;
 import com.eduaccess.service.LoginService;
 import com.eduaccess.service.PricingService;
 import com.eduaccess.service.ScreeningService;
@@ -90,6 +95,7 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
     private enum BookingStep {
         SEATS,
         TICKETS,
+        CONCESSIONS,
         SUMMARY,
         PAYMENT
     }
@@ -103,6 +109,7 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
     private final ScreeningService screeningService;
     private final BookingService bookingService;
     private final PricingService pricingService;
+    private final FoodOrderService foodOrderService;
 
     private final ComboBox<Film> filmBox = new ComboBox<>();
     private final ComboBox<Cinema> cinemaBox = new ComboBox<>();
@@ -130,13 +137,17 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
     private List<Screening> currentScreenings = List.of();
     private Long selectedFilmId;
     private Long requestedFilmId;
-    private Long requestedCinemaId;
     private LocalDate requestedDate;
+    private Long requestedCinemaId;
     private Screening selectedScreening;
     private ViewMode currentViewMode = ViewMode.LIST;
-    private boolean suppressFilterReload;
+    private boolean suppressFilterReload = false;
 
     private List<BookingService.SeatOption> currentSeatOptions = List.of();
+    private List<FoodItem> availableFoodItems = List.of();
+    private final Map<Long, Integer> selectedFoodQuantities = new LinkedHashMap<>();
+    private DeliveryMethod selectedDeliveryMethod = DeliveryMethod.COUNTER_PICKUP;
+
     private final Set<Long> selectedSeatIds = new LinkedHashSet<>();
     private final Map<Long, Seat> seatById = new LinkedHashMap<>();
 
@@ -145,6 +156,7 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
     private String confirmedReceiptText = "";
     private String confirmedTotalText = "£0.00";
     private Booking confirmedBooking;
+    private FoodOrder confirmedFoodOrder;
     private List<Seat> confirmedSeats = List.of();
 
     public BookingView(
@@ -152,13 +164,16 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
             ScreeningService screeningService,
             BookingService bookingService,
             PricingService pricingService,
+            FoodOrderService foodOrderService,
             LoginService loginService
     ) {
         this.cinemaRepository = cinemaRepository;
         this.screeningService = screeningService;
         this.bookingService = bookingService;
         this.pricingService = pricingService;
+        this.foodOrderService = foodOrderService;
         this.loginService = loginService;
+        this.availableFoodItems = foodOrderService.findActiveFoodItems();
 
         setWidthFull();
         getStyle()
@@ -185,16 +200,36 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
     @Override
     public void setParameter(BeforeEvent event, @OptionalParameter Long filmId) {
         this.requestedFilmId = filmId;
-        this.selectedFilmId = filmId;
+
+        Map<String, List<String>> params = event.getLocation()
+                .getQueryParameters()
+                .getParameters();
+
+        LocalDate dateFromUrl = firstDateParam(params, "date");
+        Long cinemaIdFromUrl = firstLongParam(params, "cinemaId");
+
+        if (dateFromUrl != null) {
+            requestedDate = dateFromUrl;
+        }
+
+        if (cinemaIdFromUrl != null) {
+            requestedCinemaId = cinemaIdFromUrl;
+        }
+
         applyRequestedFilters();
         reloadScreenings();
     }
 
     private void configureFilters() {
-        cinemaBox.setPlaceholder("All cinemas");
+        cinemaBox.setPlaceholder("Select a cinema");
         cinemaBox.setItems(cinemaRepository.findAll());
         cinemaBox.setItemLabelGenerator(Cinema::toString);
         cinemaBox.setClearButtonVisible(true);
+        cinemaBox.addValueChangeListener(event -> {
+            if (!suppressFilterReload) {
+                reloadScreenings();
+            }
+        });
 
         filmBox.setPlaceholder("Select a film");
         filmBox.setItemLabelGenerator(Film::getTitle);
@@ -212,13 +247,6 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
 
         datePicker.setPlaceholder("Select a date");
         datePicker.setValue(LocalDate.now());
-
-        cinemaBox.addValueChangeListener(event -> {
-            if (!suppressFilterReload) {
-                reloadScreenings();
-            }
-        });
-
         datePicker.addValueChangeListener(event -> {
             if (!suppressFilterReload) {
                 reloadScreenings();
@@ -327,9 +355,14 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
     }
 
     private void reloadScreenings() {
-        LocalDate selectedDate = selectedBookingDate();
+        LocalDate selectedDate = datePicker.getValue() == null ? LocalDate.now() : datePicker.getValue();
         Cinema selectedCinema = cinemaBox.getValue();
 
+        /*
+         * The booking search is date-specific. Previously this used selectedDate.plusDays(7),
+         * which meant showtimes from several dates could appear together and look like
+         * duplicate times on the page. We now load only the chosen date.
+         */
         if (selectedCinema == null) {
             currentScreenings = screeningService.findScreeningsBetween(selectedDate, selectedDate);
         } else {
@@ -355,39 +388,34 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
                 .sorted(Comparator.comparing(Film::getTitle, String.CASE_INSENSITIVE_ORDER))
                 .toList();
 
-        suppressFilterReload = true;
-        try {
-            filmBox.setItems(films);
+        filmBox.setItems(films);
 
-            if (films.isEmpty()) {
-                selectedFilmId = null;
-                filmBox.clear();
-            } else {
-                Film selectedFilm = null;
+        if (films.isEmpty()) {
+            selectedFilmId = null;
+            filmBox.clear();
+        } else {
+            Film selectedFilm = null;
 
-                if (requestedFilmId != null) {
-                    selectedFilm = films.stream()
-                            .filter(film -> Objects.equals(film.getId(), requestedFilmId))
-                            .findFirst()
-                            .orElse(null);
-                }
-
-                if (selectedFilm == null && selectedFilmId != null) {
-                    selectedFilm = films.stream()
-                            .filter(film -> Objects.equals(film.getId(), selectedFilmId))
-                            .findFirst()
-                            .orElse(null);
-                }
-
-                if (selectedFilm == null) {
-                    selectedFilm = films.get(0);
-                }
-
-                selectedFilmId = selectedFilm.getId();
-                filmBox.setValue(selectedFilm);
+            if (requestedFilmId != null) {
+                selectedFilm = films.stream()
+                        .filter(film -> Objects.equals(film.getId(), requestedFilmId))
+                        .findFirst()
+                        .orElse(null);
             }
-        } finally {
-            suppressFilterReload = false;
+
+            if (selectedFilm == null && selectedFilmId != null) {
+                selectedFilm = films.stream()
+                        .filter(film -> Objects.equals(film.getId(), selectedFilmId))
+                        .findFirst()
+                        .orElse(null);
+            }
+
+            if (selectedFilm == null) {
+                selectedFilm = films.get(0);
+            }
+
+            selectedFilmId = selectedFilm.getId();
+            filmBox.setValue(selectedFilm);
         }
 
         renderHero();
@@ -832,10 +860,7 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
                 .set("margin-top", "6px");
 
         card.add(icon, label, sub);
-        card.addClickListener(event -> {
-            cinemaBox.clear();
-            reloadScreenings();
-        });
+        card.addClickListener(event -> cinemaBox.clear());
 
         return card;
     }
@@ -892,10 +917,7 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
 
         overlay.add(name, city);
         card.add(image, overlay);
-        card.addClickListener(event -> {
-            cinemaBox.setValue(cinema);
-            reloadScreenings();
-        });
+        card.addClickListener(event -> cinemaBox.setValue(cinema));
 
         return card;
     }
@@ -1316,7 +1338,10 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
         confirmedReceiptText = "";
         confirmedTotalText = "£0.00";
         confirmedBooking = null;
+        confirmedFoodOrder = null;
         confirmedSeats = List.of();
+        selectedFoodQuantities.clear();
+        selectedDeliveryMethod = DeliveryMethod.COUNTER_PICKUP;
         receiptArea.clear();
         receiptArea.setVisible(false);
         receiptContainer.removeAll();
@@ -1430,6 +1455,7 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
         switch (currentStep) {
             case SEATS -> stepContentArea.add(buildSeatsStep());
             case TICKETS -> stepContentArea.add(buildTicketsStep());
+            case CONCESSIONS -> stepContentArea.add(buildConcessionsStep());
             case SUMMARY -> stepContentArea.add(buildSummaryStep());
             case PAYMENT -> stepContentArea.add(buildPaymentStep());
         }
@@ -1439,16 +1465,17 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
         Div steps = new Div();
         steps.getStyle()
                 .set("display", "grid")
-                .set("grid-template-columns", "repeat(4, 1fr)")
-                .set("max-width", "820px")
+                .set("grid-template-columns", "repeat(5, 1fr)")
+                .set("max-width", "980px")
                 .set("margin", "0 auto 28px auto")
                 .set("gap", "12px");
 
         steps.add(
                 stepItem("1", "Seats", BookingStep.SEATS),
                 stepItem("2", "Tickets", BookingStep.TICKETS),
-                stepItem("3", "Summary", BookingStep.SUMMARY),
-                stepItem("4", "Payment", BookingStep.PAYMENT)
+                stepItem("3", "Food", BookingStep.CONCESSIONS),
+                stepItem("4", "Summary", BookingStep.SUMMARY),
+                stepItem("5", "Payment", BookingStep.PAYMENT)
         );
 
         return steps;
@@ -1558,7 +1585,7 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
             renderCurrentBookingStep();
         });
 
-        Button next = primaryButton("Continue to summary", event -> {
+        Button next = primaryButton("Continue to food", event -> {
             if (customerNameField.isEmpty()) {
                 Notification.show("Please enter customer name.");
                 return;
@@ -1569,12 +1596,163 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
                 return;
             }
 
-            currentStep = BookingStep.SUMMARY;
+            currentStep = BookingStep.CONCESSIONS;
             renderCurrentBookingStep();
         });
 
         wrapper.add(heading, help, selectedSeats, form, actionRow(back, next));
         return wrapper;
+    }
+
+    private Div buildConcessionsStep() {
+        Div wrapper = cardPanel();
+
+        H2 heading = sectionHeading("Food and drink");
+
+        Paragraph help = new Paragraph("Optionally add popcorn, fries or drinks to this booking. Food can be collected at the counter or delivered to the selected seats.");
+        help.getStyle()
+                .set("color", LIGHT_MUTED)
+                .set("font-size", "16px")
+                .set("line-height", "1.6")
+                .set("margin", "0 0 22px 0");
+
+        Div foodGrid = new Div();
+        foodGrid.getStyle()
+                .set("display", "grid")
+                .set("grid-template-columns", "repeat(auto-fit, minmax(220px, 1fr))")
+                .set("gap", "14px")
+                .set("margin-bottom", "22px");
+
+        if (availableFoodItems.isEmpty()) {
+            Paragraph empty = new Paragraph("No food items are currently available.");
+            empty.getStyle().set("color", LIGHT_MUTED);
+            foodGrid.add(empty);
+        } else {
+            for (FoodItem item : availableFoodItems) {
+                foodGrid.add(buildFoodItemCard(item));
+            }
+        }
+
+        ComboBox<DeliveryMethod> deliveryBox = new ComboBox<>("Delivery method");
+        deliveryBox.setItems(DeliveryMethod.values());
+        deliveryBox.setItemLabelGenerator(DeliveryMethod::getLabel);
+        deliveryBox.setValue(selectedDeliveryMethod);
+        deliveryBox.setWidthFull();
+        deliveryBox.addValueChangeListener(event -> {
+            selectedDeliveryMethod = event.getValue() == null
+                    ? DeliveryMethod.COUNTER_PICKUP
+                    : event.getValue();
+        });
+
+        Div total = new Div();
+        total.getStyle()
+                .set("display", "flex")
+                .set("justify-content", "space-between")
+                .set("align-items", "center")
+                .set("padding", "18px")
+                .set("background", LIGHT_PANEL_SOFT)
+                .set("border-radius", "14px")
+                .set("font-weight", "900")
+                .set("margin", "18px 0 24px 0");
+
+        Span totalLabel = new Span("Food total");
+        Span totalAmount = new Span(currentFoodTotalText());
+        totalAmount.getStyle()
+                .set("font-size", "24px")
+                .set("color", BLUE);
+        total.add(totalLabel, totalAmount);
+
+        Button back = secondaryButton("Back to tickets", event -> {
+            currentStep = BookingStep.TICKETS;
+            renderCurrentBookingStep();
+        });
+
+        Button next = primaryButton("Continue to summary", event -> {
+            currentStep = BookingStep.SUMMARY;
+            renderCurrentBookingStep();
+        });
+
+        wrapper.add(heading, help, foodGrid, deliveryBox, total, actionRow(back, next));
+        return wrapper;
+    }
+
+    private Div buildFoodItemCard(FoodItem item) {
+        int quantity = selectedFoodQuantities.getOrDefault(item.getId(), 0);
+
+        Div card = new Div();
+        card.getStyle()
+                .set("background", quantity > 0 ? "#dbeafe" : LIGHT_PANEL_SOFT)
+                .set("border", "1px solid " + (quantity > 0 ? BLUE : LIGHT_BORDER))
+                .set("border-radius", "16px")
+                .set("padding", "16px")
+                .set("box-sizing", "border-box");
+
+        Span category = new Span(item.getCategory() == null ? "Food" : item.getCategory().getLabel());
+        category.getStyle()
+                .set("display", "block")
+                .set("font-size", "12px")
+                .set("font-weight", "900")
+                .set("letter-spacing", "0.08em")
+                .set("color", LIGHT_MUTED)
+                .set("margin-bottom", "8px");
+
+        Span name = new Span(item.getName());
+        name.getStyle()
+                .set("display", "block")
+                .set("font-size", "18px")
+                .set("font-weight", "900")
+                .set("color", LIGHT_TEXT)
+                .set("margin-bottom", "8px");
+
+        Span price = new Span(formatMoney(item.getPrice()));
+        price.getStyle()
+                .set("display", "block")
+                .set("font-size", "16px")
+                .set("font-weight", "850")
+                .set("color", BLUE)
+                .set("margin-bottom", "14px");
+
+        Button minus = secondaryButton("−", event -> changeFoodQuantity(item, -1));
+        minus.setWidth("42px");
+        minus.getStyle().set("padding", "0");
+
+        Span count = new Span(String.valueOf(quantity));
+        count.getStyle()
+                .set("min-width", "34px")
+                .set("text-align", "center")
+                .set("font-size", "20px")
+                .set("font-weight", "900")
+                .set("color", LIGHT_TEXT);
+
+        Button plus = primaryButton("+", event -> changeFoodQuantity(item, 1));
+        plus.setWidth("42px");
+        plus.getStyle().set("padding", "0");
+
+        Div controls = new Div(minus, count, plus);
+        controls.getStyle()
+                .set("display", "flex")
+                .set("align-items", "center")
+                .set("gap", "10px");
+
+        card.add(category, name, price, controls);
+        return card;
+    }
+
+    private void changeFoodQuantity(FoodItem item, int delta) {
+        if (item == null || item.getId() == null) {
+            return;
+        }
+
+        int current = selectedFoodQuantities.getOrDefault(item.getId(), 0);
+        int updated = Math.max(0, current + delta);
+
+        if (updated == 0) {
+            selectedFoodQuantities.remove(item.getId());
+        } else {
+            selectedFoodQuantities.put(item.getId(), updated);
+        }
+
+        renderCurrentBookingStep();
     }
 
     private Div buildSummaryStep() {
@@ -1591,8 +1769,8 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
                 .set("font-family", "monospace")
                 .set("font-size", "14px");
 
-        Button back = secondaryButton("Back to tickets", event -> {
-            currentStep = BookingStep.TICKETS;
+        Button back = secondaryButton("Back to food", event -> {
+            currentStep = BookingStep.CONCESSIONS;
             renderCurrentBookingStep();
         });
 
@@ -1633,7 +1811,7 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
                 .set("margin-bottom", "22px");
 
         Span label = new Span(bookingCompleted ? "Paid total" : "Total to pay");
-        Span amount = new Span(bookingCompleted ? confirmedTotalText : currentTotalPriceText());
+        Span amount = new Span(bookingCompleted ? confirmedTotalText : currentGrandTotalPriceText());
         amount.getStyle()
                 .set("font-size", "28px")
                 .set("color", BLUE);
@@ -1647,7 +1825,8 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
                 receiptContainer.add(buildTicketReceiptCard(
                         confirmedBooking,
                         selectedScreening,
-                        confirmedSeats
+                        confirmedSeats,
+                        confirmedFoodOrder
                 ));
             } else {
                 receiptArea.setValue(confirmedReceiptText);
@@ -2030,14 +2209,24 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
                     customerEmailField.getValue()
             );
 
+            FoodOrder foodOrder = null;
+            if (!cleanSelectedFoodQuantities().isEmpty()) {
+                foodOrder = foodOrderService.createFoodOrder(
+                        booking.getId(),
+                        cleanSelectedFoodQuantities(),
+                        selectedDeliveryMethod
+                );
+            }
+
             bookingCompleted = true;
             confirmedBooking = booking;
+            confirmedFoodOrder = foodOrder;
             confirmedSeats = selectedSeats;
-            confirmedTotalText = formatMoney(booking.getTotalCost());
-            confirmedReceiptText = buildReceipt(booking, selectedScreening, selectedSeats);
+            confirmedTotalText = formatMoney(booking.getTotalCost().add(foodOrder == null ? BigDecimal.ZERO : foodOrder.getTotalCost()));
+            confirmedReceiptText = buildReceipt(booking, selectedScreening, selectedSeats, foodOrder);
 
             receiptContainer.removeAll();
-            receiptContainer.add(buildTicketReceiptCard(booking, selectedScreening, selectedSeats));
+            receiptContainer.add(buildTicketReceiptCard(booking, selectedScreening, selectedSeats, confirmedFoodOrder));
             receiptContainer.setVisible(true);
 
             Notification.show("Booking created successfully.");
@@ -2114,7 +2303,75 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
         return formatMoney(pricingService.calculateTotalPrice(selectedScreening, selectedSeats));
     }
 
-    private Component buildTicketReceiptCard(Booking booking, Screening screening, List<Seat> selectedSeats) {
+    private BigDecimal currentFoodTotal() {
+        BigDecimal total = BigDecimal.ZERO;
+
+        for (FoodItem item : availableFoodItems) {
+            int quantity = selectedFoodQuantities.getOrDefault(item.getId(), 0);
+            if (quantity > 0) {
+                total = total.add(item.getPrice().multiply(BigDecimal.valueOf(quantity)));
+            }
+        }
+
+        return total;
+    }
+
+    private String currentFoodTotalText() {
+        return formatMoney(currentFoodTotal());
+    }
+
+    private String currentGrandTotalPriceText() {
+        BigDecimal ticketTotal = BigDecimal.ZERO;
+
+        if (selectedScreening != null && !selectedSeatIds.isEmpty()) {
+            List<Seat> selectedSeats = selectedSeatIds.stream()
+                    .map(seatById::get)
+                    .filter(Objects::nonNull)
+                    .sorted(seatComparator())
+                    .toList();
+            ticketTotal = pricingService.calculateTotalPrice(selectedScreening, selectedSeats);
+        }
+
+        return formatMoney(ticketTotal.add(currentFoodTotal()));
+    }
+
+    private Map<Long, Integer> cleanSelectedFoodQuantities() {
+        return selectedFoodQuantities.entrySet()
+                .stream()
+                .filter(entry -> entry.getKey() != null)
+                .filter(entry -> entry.getValue() != null && entry.getValue() > 0)
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey,
+                        Map.Entry::getValue,
+                        Integer::sum,
+                        LinkedHashMap::new
+                ));
+    }
+
+    private String selectedFoodText() {
+        List<String> lines = availableFoodItems.stream()
+                .filter(item -> selectedFoodQuantities.getOrDefault(item.getId(), 0) > 0)
+                .map(item -> {
+                    int quantity = selectedFoodQuantities.getOrDefault(item.getId(), 0);
+                    BigDecimal lineTotal = item.getPrice().multiply(BigDecimal.valueOf(quantity));
+                    return item.getName() + " x" + quantity + " - " + formatMoney(lineTotal);
+                })
+                .toList();
+
+        return lines.isEmpty() ? "No food selected" : String.join("\n", lines);
+    }
+
+    private String foodOrderText(FoodOrder foodOrder) {
+        if (foodOrder == null || foodOrder.getItems() == null || foodOrder.getItems().isEmpty()) {
+            return "No food order";
+        }
+
+        return foodOrder.getItems().stream()
+                .map(item -> item.getFoodItem().getName() + " x" + item.getQuantity() + " - " + formatMoney(item.getLineTotal()))
+                .collect(Collectors.joining("\n"));
+    }
+
+    private Component buildTicketReceiptCard(Booking booking, Screening screening, List<Seat> selectedSeats, FoodOrder foodOrder) {
         Div outer = new Div();
         outer.setWidthFull();
         outer.getStyle()
@@ -2192,7 +2449,7 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
         timePrice.add(
                 ticketMeta("Date", screening.getScreeningDate().format(DateTimeFormatter.ofPattern("dd MMM"))),
                 ticketMeta("Time", screening.getStartTime().toString()),
-                ticketMeta("Price", formatMoney(booking.getTotalCost()))
+                ticketMeta("Total", formatMoney(booking.getTotalCost().add(foodOrder == null ? BigDecimal.ZERO : foodOrder.getTotalCost())))
         );
 
         Div seatStats = new Div();
@@ -2227,14 +2484,45 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
                 ticketDetail("Hall Type", screening.getScreen().getHallType().getLabel()),
                 ticketDetail("Screening", screeningTypeLabel(screening)),
                 ticketDetail("Customer", safeText(booking.getCustomerName())),
+                ticketDetail("Food", foodOrder == null ? "No food order" : formatMoney(foodOrder.getTotalCost())),
+                ticketDetail("Delivery", foodOrder == null ? "-" : foodOrder.getDeliveryMethod().getLabel()),
                 ticketDetail("Booked At", booking.getBookingDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")))
         );
 
         Div barcode = buildFakeBarcode();
 
-        ticket.add(topBar, title, subtitle, poster, timePrice, seatStats, details, barcode);
+        ticket.add(topBar, title, subtitle, poster, timePrice, seatStats, details, buildTicketFoodBlock(foodOrder), barcode);
         outer.add(ticket);
         return outer;
+    }
+
+    private Component buildTicketFoodBlock(FoodOrder foodOrder) {
+        Div block = new Div();
+        block.getStyle()
+                .set("background", "rgba(255,255,255,0.12)")
+                .set("border", "1px solid rgba(255,255,255,0.18)")
+                .set("border-radius", "16px")
+                .set("padding", "12px")
+                .set("margin", "0 0 16px 0");
+
+        Span heading = new Span("Food order");
+        heading.getStyle()
+                .set("display", "block")
+                .set("font-size", "12px")
+                .set("font-weight", "900")
+                .set("letter-spacing", "0.08em")
+                .set("opacity", "0.82")
+                .set("margin-bottom", "8px");
+
+        Span body = new Span(foodOrderText(foodOrder));
+        body.getStyle()
+                .set("white-space", "pre-line")
+                .set("font-size", "13px")
+                .set("font-weight", "800")
+                .set("line-height", "1.45");
+
+        block.add(heading, body);
+        return block;
     }
 
     private Component buildTicketPoster(Screening screening) {
@@ -2420,7 +2708,12 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
                 Customer Email: %s
                 Number of Tickets: %d
                 Seat Numbers: %s
-                Total Booking Cost: %s
+                Ticket Cost: %s
+                Food Order:
+                %s
+                Food Delivery: %s
+                Food Cost: %s
+                Grand Total: %s
                 """.formatted(
                 selectedScreening.getFilm().getTitle(),
                 selectedScreening.getScreen().getCinema().getName(),
@@ -2434,7 +2727,11 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
                 customerEmailField.getValue(),
                 selectedSeats.size(),
                 selectedSeatNumbersText(),
-                currentTotalPriceText()
+                currentTotalPriceText(),
+                selectedFoodText(),
+                cleanSelectedFoodQuantities().isEmpty() ? "-" : selectedDeliveryMethod.getLabel(),
+                currentFoodTotalText(),
+                currentGrandTotalPriceText()
         );
     }
 
@@ -2475,7 +2772,8 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
     private String buildReceipt(
             Booking booking,
             Screening screening,
-            List<Seat> selectedSeats
+            List<Seat> selectedSeats,
+            FoodOrder foodOrder
     ) {
         String seatNumbers = selectedSeats.stream()
                 .map(Seat::getSeatNumber)
@@ -2492,7 +2790,12 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
                 Screen: %s
                 Number of Tickets: %d
                 Seat Numbers: %s
-                Total Booking Cost: %s
+                Ticket Cost: %s
+                Food Order:
+                %s
+                Food Delivery: %s
+                Food Cost: %s
+                Grand Total: %s
                 Booking Date: %s
                 Screening Type: %s
                 Status: %s
@@ -2508,6 +2811,10 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
                 selectedSeats.size(),
                 seatNumbers,
                 formatMoney(booking.getTotalCost()),
+                foodOrderText(foodOrder),
+                foodOrder == null ? "-" : foodOrder.getDeliveryMethod().getLabel(),
+                formatMoney(foodOrder == null ? BigDecimal.ZERO : foodOrder.getTotalCost()),
+                formatMoney(booking.getTotalCost().add(foodOrder == null ? BigDecimal.ZERO : foodOrder.getTotalCost())),
                 booking.getBookingDate(),
                 screeningTypeLabel(screening),
                 booking.getStatus()

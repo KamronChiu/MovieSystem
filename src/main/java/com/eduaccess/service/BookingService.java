@@ -22,19 +22,22 @@ public class BookingService {
     private final ScreeningRepository screeningRepository;
     private final SeatRepository seatRepository;
     private final PricingService pricingService;
+    private final AuditLogService auditLogService;
 
     public BookingService(
             BookingRepository bookingRepository,
             BookingSeatRepository bookingSeatRepository,
             ScreeningRepository screeningRepository,
             SeatRepository seatRepository,
-            PricingService pricingService
+            PricingService pricingService,
+            AuditLogService auditLogService
     ) {
         this.bookingRepository = bookingRepository;
         this.bookingSeatRepository = bookingSeatRepository;
         this.screeningRepository = screeningRepository;
         this.seatRepository = seatRepository;
         this.pricingService = pricingService;
+        this.auditLogService = auditLogService;
     }
 
     @Transactional(readOnly = true)
@@ -111,7 +114,32 @@ public class BookingService {
 
         booking.setTotalCost(totalCost);
 
-        return bookingRepository.save(booking);
+        Booking savedBooking = bookingRepository.save(booking);
+
+        String seatNumbers = seats.stream()
+                .sorted(Comparator.comparing(Seat::getSeatNumber))
+                .map(Seat::getSeatNumber)
+                .collect(java.util.stream.Collectors.joining(", "));
+
+        auditLogService.record(
+                AuditAction.BOOKING_CREATED,
+                "Booking",
+                savedBooking.getId(),
+                savedBooking.getBookingReference(),
+                screening.getFilm().getTitle(),
+                screening.getScreen().getCinema().getName(),
+                savedBooking.getTotalCost(),
+                "Booking created: " + savedBooking.getBookingReference(),
+                "Film: " + screening.getFilm().getTitle()
+                        + "; Cinema: " + screening.getScreen().getCinema().getName()
+                        + "; Date: " + screening.getScreeningDate()
+                        + "; Time: " + screening.getStartTime()
+                        + "; Screen: " + screening.getScreen().getScreenNumber()
+                        + "; Seats: " + seatNumbers
+                        + "; Customer: " + savedBooking.getCustomerName()
+        );
+
+        return savedBooking;
     }
 
     private void validateCustomer(String customerName, String customerEmail) {

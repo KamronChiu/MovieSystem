@@ -1,5 +1,6 @@
 package com.eduaccess.service;
 
+import com.eduaccess.domain.AuditAction;
 import com.eduaccess.domain.Cinema;
 import com.eduaccess.domain.HallType;
 import com.eduaccess.domain.Screen;
@@ -25,10 +26,16 @@ public class CinemaService {
 
     private final CinemaRepository cinemaRepository;
     private final ScreenRepository screenRepository;
+    private final AuditLogService auditLogService;
 
-    public CinemaService(CinemaRepository cinemaRepository, ScreenRepository screenRepository) {
+    public CinemaService(
+            CinemaRepository cinemaRepository,
+            ScreenRepository screenRepository,
+            AuditLogService auditLogService
+    ) {
         this.cinemaRepository = cinemaRepository;
         this.screenRepository = screenRepository;
+        this.auditLogService = auditLogService;
     }
 
     @Transactional(readOnly = true)
@@ -75,7 +82,23 @@ public class CinemaService {
             cinema.addScreen(screen);
         }
 
-        return cinemaRepository.save(cinema);
+        Cinema savedCinema = cinemaRepository.save(cinema);
+
+        auditLogService.record(
+                AuditAction.CINEMA_CREATED,
+                "Cinema",
+                savedCinema.getId(),
+                null,
+                null,
+                savedCinema.getName(),
+                null,
+                "Cinema created: " + savedCinema.getName(),
+                "City: " + savedCinema.getCity()
+                        + "; Address: " + savedCinema.getAddress()
+                        + "; Screens: " + screenCapacities.size()
+        );
+
+        return savedCinema;
     }
 
     @Transactional
@@ -101,6 +124,21 @@ public class CinemaService {
         addGeneratedSeats(screen, capacity, effectiveHallType);
         cinema.addScreen(screen);
         cinemaRepository.save(cinema);
+
+        auditLogService.record(
+                AuditAction.SCREEN_CREATED,
+                "Screen",
+                screen.getId(),
+                null,
+                null,
+                cinema.getName(),
+                null,
+                "Screen added to " + cinema.getName(),
+                "Screen " + screen.getScreenNumber()
+                        + "; Capacity: " + capacity
+                        + "; Hall type: " + effectiveHallType.getLabel()
+        );
+
         return screen;
     }
 

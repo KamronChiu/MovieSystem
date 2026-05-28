@@ -129,18 +129,14 @@ public class MainLayout extends AppLayout {
         if (currentUser != null) {
             nav.add(iconNavLink("cutlery", "Food Orders", FoodOrdersView.class));
 
-            // Audit Log is restricted to staff that already see Cancellation.
-            if (loginService.canAccessCancellation()) {
-                nav.add(iconNavLink("clipboard-text", "Audit Log", AuditLogView.class));
-            }
-
             if (loginService.canAccessAdmin()) {
                 nav.add(iconNavLink("calendar-clock", "Admin Schedule", AdminScheduleView.class));
+                nav.add(iconNavLink("clipboard-check", "Audit Log", AuditLogView.class));
             }
 
             if (loginService.canAccessManager()) {
+                nav.add(iconNavLink("bar-chart", "Manager Dashboard", ManagerDashboardView.class));
                 nav.add(iconNavLink("building", "Manager Cinemas", ManagerCinemaView.class));
-                nav.add(iconNavLink("records", "Films Mgmt", ManagerListingsView.class));
             }
         }
 
