@@ -289,7 +289,11 @@ public class AuditLogView extends Div implements BeforeEnterObserver {
     }
 
     private Span renderActionBadge(AuditLog log) {
-        Span badge = new Span(prettyAction(log.getAction()));
+        // Upstream changed AuditLog#action from String to the AuditAction enum.
+        // We extract the enum name() so the existing String-keyed pretty/colour
+        // helpers keep working without rewriting their lookup tables.
+        String actionCode = log.getAction() == null ? "" : log.getAction().name();
+        Span badge = new Span(prettyAction(actionCode));
         badge.getStyle()
                 .set("display", "inline-block")
                 .set("padding", "4px 10px")
@@ -297,8 +301,8 @@ public class AuditLogView extends Div implements BeforeEnterObserver {
                 .set("font-size", "12px")
                 .set("font-weight", "800")
                 .set("letter-spacing", "0.03em")
-                .set("background", actionBackground(log.getAction()))
-                .set("color", actionColor(log.getAction()));
+                .set("background", actionBackground(actionCode))
+                .set("color", actionColor(actionCode));
         return badge;
     }
 
@@ -395,7 +399,8 @@ public class AuditLogView extends Div implements BeforeEnterObserver {
         dataProvider.setFilter(log -> {
             if (selectedAction != null && !selectedAction.isBlank()
                     && !ALL_ACTIONS.equals(selectedAction)
-                    && !selectedAction.equals(log.getAction())) {
+                    && (log.getAction() == null
+                            || !selectedAction.equals(log.getAction().name()))) {
                 return false;
             }
             if (!target.isEmpty()) {

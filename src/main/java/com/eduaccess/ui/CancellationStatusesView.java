@@ -308,6 +308,21 @@ public class CancellationStatusesView extends Div
             }
         } catch (CancellationNotAllowedException ignored) {
             // Receipt is still rendered; DB will remain REFUND_PENDING.
+        } catch (IllegalStateException ex) {
+            // Booking.transitionTo throws IllegalStateException when the underlying
+            // status machine rejects the move. Surface it instead of silently
+            // letting Vaadin swallow the exception (which is what made the final
+            // step appear to do nothing).
+            Notification.show("Auto-finalise rejected: " + ex.getMessage(),
+                            6000, Notification.Position.MIDDLE)
+                    .addThemeVariants(NotificationVariant.LUMO_ERROR);
+        } catch (RuntimeException ex) {
+            // Any persistence-level failure (e.g. JDBC CHECK constraint violation
+            // when an old booking_status enum CHECK still lingers in H2) must
+            // not silently break the receipt render.
+            Notification.show("Refund finalise failed: " + ex.getMessage(),
+                            7000, Notification.Position.MIDDLE)
+                    .addThemeVariants(NotificationVariant.LUMO_ERROR);
         }
     }
 
@@ -864,6 +879,20 @@ public class CancellationStatusesView extends Div
 
         } catch (CancellationNotAllowedException ex) {
             Notification.show(ex.getMessage(), 5000, Notification.Position.MIDDLE)
+                    .addThemeVariants(NotificationVariant.LUMO_ERROR);
+        } catch (IllegalStateException ex) {
+            // Booking.transitionTo throws IllegalStateException when the underlying
+            // status machine rejects a move. Surface the message instead of letting
+            // Vaadin swallow it, otherwise the user just sees an unresponsive button.
+            Notification.show("Status transition failed: " + ex.getMessage(),
+                            6000, Notification.Position.MIDDLE)
+                    .addThemeVariants(NotificationVariant.LUMO_ERROR);
+        } catch (RuntimeException ex) {
+            // Any persistence-level failure (e.g. JDBC CHECK constraint violation
+            // when an old booking_status enum CHECK still lingers in H2) must not
+            // silently break the flow.
+            Notification.show("Refund step failed: " + ex.getMessage(),
+                            7000, Notification.Position.MIDDLE)
                     .addThemeVariants(NotificationVariant.LUMO_ERROR);
         }
     }

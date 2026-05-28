@@ -129,6 +129,11 @@ public class MainLayout extends AppLayout {
         if (currentUser != null) {
             nav.add(iconNavLink("cutlery", "Food Orders", FoodOrdersView.class));
 
+            // Refund History (TASK 8) — only staff that can see Cancellation.
+            if (loginService.canAccessCancellation()) {
+                nav.add(iconNavLink("archive", "Refund History", CancellationHistoryView.class));
+            }
+
             if (loginService.canAccessAdmin()) {
                 nav.add(iconNavLink("calendar-clock", "Admin Schedule", AdminScheduleView.class));
                 nav.add(iconNavLink("clipboard-check", "Audit Log", AuditLogView.class));

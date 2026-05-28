@@ -34,8 +34,22 @@ public class Booking {
     @Column(name = "total_cost", nullable = false, precision = 10, scale = 2)
     private BigDecimal totalCost = BigDecimal.ZERO;
 
+    /**
+     * Booking lifecycle status.
+     * <p>
+     * The column is declared as a plain {@code VARCHAR(32)} via
+     * {@link Column#columnDefinition()} so Hibernate does NOT emit an
+     * automatic {@code CHECK ... IN (...)} constraint for the enum.
+     * Without this override, expanding the {@link BookingStatus} enum
+     * (e.g. adding {@code REFUND_PENDING} / {@code REFUNDED}) on top of an
+     * existing H2 file is rejected with H2 error 23513 because
+     * {@code ddl-auto=update} never modifies pre-existing CHECK constraints.
+     * State-transition validity is enforced in the domain layer
+     * ({@link BookingStatus#canTransitionTo(BookingStatus)}), not at the
+     * database level.
+     */
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, length = 32, columnDefinition = "VARCHAR(32) NOT NULL")
     private BookingStatus status = BookingStatus.CONFIRMED;
 
     @Column(name = "vip")

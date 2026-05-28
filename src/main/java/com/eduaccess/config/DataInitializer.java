@@ -20,6 +20,7 @@ import com.eduaccess.domain.UserAccount;
 import com.eduaccess.domain.UserRole;
 import com.eduaccess.repository.UserAccountRepository;
 import jakarta.persistence.EntityManager;
+import javax.sql.DataSource;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
@@ -53,9 +54,17 @@ public class DataInitializer {
             UserAccountRepository userAccountRepository,
             FoodItemRepository foodItemRepository,
             EntityManager entityManager,
+            DataSource dataSource,
             PlatformTransactionManager transactionManager
     ) {
         return args -> {
+            // ── Self-heal: drop any legacy CHECK constraint that mentions the
+            // STATUS column on the bookings table BEFORE the JPA transaction
+            // starts. Native DDL inside a JPA-managed transaction would mark
+            // it rollback-only on failure, so we run this on its own JDBC
+            // connection in autocommit mode.
+            purgeBookingStatusCheckConstraints(dataSource);
+
             TransactionTemplate transactionTemplate = new TransactionTemplate(transactionManager);
 
             transactionTemplate.executeWithoutResult(status -> {
@@ -85,6 +94,91 @@ public class DataInitializer {
                 System.out.println("Food items in database: " + foodItemRepository.count());
             });
         };
+    }
+
+    /**
+     * Drops every CHECK constraint currently attached to the {@code bookings}
+     * table that mentions the {@code status} column. Idempotent.
+     * <p>
+     * Runs on a fresh JDBC connection (autocommit) so that any failure does
+     * NOT mark the surrounding JPA transaction as rollback-only.
+     */
+    private void purgeBookingStatusCheckConstraints(DataSource dataSource) {
+        try (java.sql.Connection conn = dataSource.getConnection();
+             java.sql.Statement stmt = conn.createStatement()) {
+            conn.setAutoCommit(true);
+            // H2 2.x : CHECK constraints live in INFORMATION_SCHEMA.CHECK_CONSTRAINTS
+            // joined to TABLE_CONSTRAINTS for table filtering.
+            String sql = "SELECT tc.CONSTRAINT_NAME, cc.CHECK_CLAUSE "
+                    + "FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc "
+                    + "JOIN INFORMATION_SCHEMA.CHECK_CONSTRAINTS cc "
+                    + "  ON tc.CONSTRAINT_NAME = cc.CONSTRAINT_NAME "
+                    + "WHERE UPPER(tc.TABLE_NAME) = 'BOOKINGS' "
+                    + "  AND tc.CONSTRAINT_TYPE = 'CHECK'";
+            try (java.sql.ResultSet rs = stmt.executeQuery(sql)) {
+                List<String[]> hits = new ArrayList<>();
+                while (rs.next()) {
+                    String name = rs.getString(1);
+                    String clause = rs.getString(2);
+                    hits.add(new String[]{name, clause});
+                }
+                for (String[] hit : hits) {
+                    String name = hit[0];
+                    String clause = hit[1] == null ? "" : hit[1].toUpperCase();
+                    if (clause.contains("STATUS")) {
+                        System.out.println("[DataInitializer] Dropping legacy CHECK on bookings: "
+                                + name + " => " + hit[1]);
+                        try (java.sql.Statement drop = conn.createStatement()) {
+                            drop.executeUpdate(
+                                    "ALTER TABLE BOOKINGS DROP CONSTRAINT IF EXISTS " + name);
+                        }
+                    }
+                }
+            }
+        } catch (java.sql.SQLException ex) {
+            System.out.println("[DataInitializer] CHECK-constraint scan failed: "
+                    + ex.getMessage());
+        }
+    }
+
+    /**
+     * Legacy EntityManager-based version kept for reference; no longer
+     * invoked because native DDL inside a JPA transaction marks it
+     * rollback-only on failure. The {@link #purgeBookingStatusCheckConstraints(DataSource)}
+     * variant runs outside any JPA transaction instead.
+     */
+    @SuppressWarnings({"unchecked", "unused"})
+    private void purgeBookingStatusCheckConstraints(EntityManager entityManager) {
+        try {
+            List<Object[]> rows = entityManager.createNativeQuery(
+                    "SELECT CONSTRAINT_NAME, SQL FROM INFORMATION_SCHEMA.CONSTRAINTS "
+                            + "WHERE TABLE_NAME = 'BOOKINGS' AND CONSTRAINT_TYPE = 'CHECK'")
+                    .getResultList();
+            for (Object[] row : rows) {
+                String name = String.valueOf(row[0]);
+                String sql = row[1] == null ? "" : String.valueOf(row[1]).toUpperCase();
+                if (sql.contains("STATUS")) {
+                    System.out.println("[DataInitializer] Dropping legacy CHECK on bookings: "
+                            + name + " => " + row[1]);
+                    entityManager.createNativeQuery(
+                                    "ALTER TABLE BOOKINGS DROP CONSTRAINT IF EXISTS " + name)
+                            .executeUpdate();
+                }
+            }
+        } catch (RuntimeException ex) {
+            System.out.println("[DataInitializer] CHECK-constraint scan failed ("
+                    + ex.getMessage() + "), falling back to best-effort drop.");
+            for (char c = 'A'; c <= 'Z'; c++) {
+                String name = "CONSTRAINT_" + c;
+                try {
+                    entityManager.createNativeQuery(
+                                    "ALTER TABLE BOOKINGS DROP CONSTRAINT IF EXISTS " + name)
+                            .executeUpdate();
+                } catch (RuntimeException ignored) {
+                    // best effort
+                }
+            }
+        }
     }
 
     private int deleteExpiredUnbookedScreenings(EntityManager entityManager) {
