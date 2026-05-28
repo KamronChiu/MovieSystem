@@ -170,7 +170,10 @@ public class SchedulingService {
 
     @Transactional
     public int cleanupExpiredUnbookedScreenings() {
-        return screeningRepository.deleteExpiredUnbookedScreenings(LocalDate.now());
+        return screeningRepository.deleteExpiredUnbookedScreenings(
+                LocalDate.now(),
+                LocalTime.now()
+        );
     }
 
     private ScreeningType normaliseScreeningType(ScreeningType screeningType) {

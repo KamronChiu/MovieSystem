@@ -169,4 +169,24 @@ public interface ScreeningRepository extends JpaRepository<Screening, Long> {
             nativeQuery = true
     )
     int deleteExpiredUnbookedScreenings(@Param("today") LocalDate today);
+
+    @Modifying
+    @Query(
+            value = """
+                    DELETE FROM screenings
+                    WHERE (
+                            screening_date < :today
+                            OR (screening_date = :today AND end_time < :currentTime)
+                          )
+                      AND id NOT IN (
+                          SELECT screening_id
+                          FROM bookings
+                      )
+                    """,
+            nativeQuery = true
+    )
+    int deleteExpiredUnbookedScreenings(
+            @Param("today") LocalDate today,
+            @Param("currentTime") LocalTime currentTime
+    );
 }

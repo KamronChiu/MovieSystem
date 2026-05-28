@@ -379,20 +379,22 @@ public class AdminScheduleView extends Div implements BeforeEnterObserver {
         scheduleItems.clear();
 
         Screen selectedScreen = screenBox.getValue();
-        Cinema selectedCinema = cinemaBox.getValue();
         LocalDate weekEnd = weekStart.plusDays(6);
 
-        schedulingService.findAllScreeningsForAdmin()
-                .stream()
-                .filter(screening -> !screening.getScreeningDate().isBefore(weekStart))
-                .filter(screening -> !screening.getScreeningDate().isAfter(weekEnd))
-                .filter(screening -> selectedCinema == null
-                        || Objects.equals(screening.getScreen().getCinema().getId(), selectedCinema.getId()))
-                .filter(screening -> selectedScreen == null
-                        || Objects.equals(screening.getScreen().getId(), selectedScreen.getId()))
-                .sorted(Comparator.comparing(Screening::getScreeningDate).thenComparing(Screening::getStartTime))
-                .map(ScheduleItem::fromScreening)
-                .forEach(scheduleItems::add);
+        if (selectedScreen != null) {
+            schedulingService.findScreeningsByScreenBetween(
+                            selectedScreen.getId(),
+                            weekStart,
+                            weekEnd
+                    )
+                    .stream()
+                    .filter(screening -> !isHistoricalScreening(screening))
+                    .sorted(Comparator.comparing(Screening::getScreeningDate)
+                            .thenComparing(Screening::getStartTime)
+                            .thenComparing(Screening::getId))
+                    .map(ScheduleItem::fromScreening)
+                    .forEach(scheduleItems::add);
+        }
 
         dirty = false;
         renderTimetable();
@@ -420,7 +422,7 @@ public class AdminScheduleView extends Div implements BeforeEnterObserver {
         grid.add(headerCell("Time"));
         for (int i = 0; i < 7; i++) {
             LocalDate day = weekStart.plusDays(i);
-            grid.add(headerCell(day.format(DAY_FORMAT)));
+            grid.add(dateHeaderCell(day));
         }
 
         for (int hour = 8; hour <= 22; hour++) {
@@ -452,18 +454,21 @@ public class AdminScheduleView extends Div implements BeforeEnterObserver {
         boolean conflict = hasDraftConflict(item);
         long soldSeats = soldSeatsFor(item);
         BigDecimal revenue = revenueFor(item);
+        boolean locked = isLockedExistingItem(item);
 
         Div card = new Div();
-        card.getElement().setAttribute("draggable", "true");
-        card.getElement().executeJs(
-                "this.addEventListener('dragstart', function(e) { "
-                        + "e.dataTransfer.setData('text/plain', $0); "
-                        + "e.dataTransfer.effectAllowed = 'move'; "
-                        + "}); "
-                        + "this.addEventListener('mouseenter', function() { this.style.transform='translateY(-3px)'; }); "
-                        + "this.addEventListener('mouseleave', function() { this.style.transform='translateY(0)'; });",
-                "ITEM:" + item.uid
-        );
+        if (!locked) {
+            card.getElement().setAttribute("draggable", "true");
+            card.getElement().executeJs(
+                    "this.addEventListener('dragstart', function(e) { "
+                            + "e.dataTransfer.setData('text/plain', $0); "
+                            + "e.dataTransfer.effectAllowed = 'move'; "
+                            + "}); "
+                            + "this.addEventListener('mouseenter', function() { this.style.transform='translateY(-3px)'; }); "
+                            + "this.addEventListener('mouseleave', function() { this.style.transform='translateY(0)'; });",
+                    "ITEM:" + item.uid
+            );
+        }
 
         String border = conflict ? "2px solid #ef4444" : item.isChanged() ? "2px solid #f59e0b" : "1px solid rgba(148,163,184,0.35)";
         String accent = conflict ? "#ef4444" : accentFor(item);
@@ -477,7 +482,8 @@ public class AdminScheduleView extends Div implements BeforeEnterObserver {
                 .set("margin-bottom", "8px")
                 .set("position", "relative")
                 .set("min-height", "118px")
-                .set("cursor", "grab")
+                .set("cursor", locked ? "not-allowed" : "grab")
+                .set("opacity", locked ? "0.82" : "1")
                 .set("user-select", "none")
                 .set("transition", "transform 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease")
                 .set("border-radius", "10px")
@@ -540,6 +546,9 @@ public class AdminScheduleView extends Div implements BeforeEnterObserver {
         if (item.isChanged()) {
             badges.add(statusBadge(item.newItem ? "NEW" : "MOVED", "#f59e0b", "rgba(245,158,11,0.16)"));
         }
+        if (locked) {
+            badges.add(statusBadge("LOCKED", "#94a3b8", "rgba(148,163,184,0.14)"));
+        }
         if (!item.screeningType.isRegular()) {
             badges.add(statusBadge("ADVANCE", "#fb923c", "rgba(251,146,60,0.16)"));
         }
@@ -560,6 +569,7 @@ public class AdminScheduleView extends Div implements BeforeEnterObserver {
                 .set("right", "8px")
                 .set("top", "8px");
         delete.addClickListener(event -> markDeleted(item));
+        delete.setEnabled(!locked);
 
         Button toggleFormat = tinyButton(item.screeningType.is3D() ? "2D" : "3D");
         toggleFormat.getStyle()
@@ -569,6 +579,7 @@ public class AdminScheduleView extends Div implements BeforeEnterObserver {
                 .set("width", "38px")
                 .set("min-width", "38px");
         toggleFormat.addClickListener(event -> toggleFormat(item));
+        toggleFormat.setEnabled(!locked);
 
         card.add(details, delete, toggleFormat);
         return card;
@@ -577,14 +588,35 @@ public class AdminScheduleView extends Div implements BeforeEnterObserver {
 
     private Div dropCell(LocalDate date, LocalTime time) {
         Div cell = new Div();
+        boolean pastSlot = isPastSlot(date, time);
+
         cell.getStyle()
                 .set("min-height", "128px")
                 .set("border-left", "1px solid rgba(148,163,184,0.16)")
                 .set("border-top", "1px solid rgba(148,163,184,0.16)")
                 .set("padding", "8px")
                 .set("box-sizing", "border-box")
-                .set("background", "rgba(15,23,42,0.42)")
+                .set("background", pastSlot ? "repeating-linear-gradient(135deg, rgba(71,85,105,0.18) 0, rgba(71,85,105,0.18) 8px, rgba(15,23,42,0.38) 8px, rgba(15,23,42,0.38) 16px)" : "rgba(15,23,42,0.42)")
+                .set("opacity", pastSlot ? "0.50" : "1")
+                .set("cursor", pastSlot ? "not-allowed" : "default")
                 .set("transition", "background 0.18s ease, box-shadow 0.18s ease");
+
+        if (pastSlot) {
+            if (time.equals(LocalTime.of(8, 0))) {
+                Span label = new Span("PAST");
+                label.getStyle()
+                        .set("display", "inline-block")
+                        .set("font-size", "10px")
+                        .set("font-weight", "950")
+                        .set("letter-spacing", "0.08em")
+                        .set("color", "#94a3b8")
+                        .set("border", "1px solid rgba(148,163,184,0.30)")
+                        .set("border-radius", "999px")
+                        .set("padding", "4px 8px");
+                cell.add(label);
+            }
+            return cell;
+        }
 
         cell.getElement().executeJs(
                 "this.addEventListener('dragover', function(e) { "
@@ -621,6 +653,11 @@ public class AdminScheduleView extends Div implements BeforeEnterObserver {
         Screen selectedScreen = screenBox.getValue();
         if (selectedScreen == null) {
             Notification.show("Please select a screen first.");
+            return;
+        }
+
+        if (isPastSlot(date, time)) {
+            Notification.show("Past dates or times are locked and cannot be scheduled.");
             return;
         }
 
@@ -740,6 +777,10 @@ public class AdminScheduleView extends Div implements BeforeEnterObserver {
         if (item == null || item.deleted) {
             return;
         }
+        if (isLockedExistingItem(item)) {
+            Notification.show("This screening is locked because it is historical or already has bookings.");
+            return;
+        }
         item.screeningType = toggle2D3D(item.screeningType);
         item.dirty = true;
         dirty = true;
@@ -825,13 +866,17 @@ public class AdminScheduleView extends Div implements BeforeEnterObserver {
                 .set("margin-top", "18px")
                 .set("flex-wrap", "wrap");
 
+        boolean locked = isLockedExistingItem(item);
+
         Button switchFormat = secondaryButton(item.screeningType.is3D() ? "Switch to 2D" : "Switch to 3D");
+        switchFormat.setEnabled(!locked);
         switchFormat.addClickListener(event -> {
             toggleFormat(item);
             dialog.close();
         });
 
         Button remove = secondaryButton("Delete draft");
+        remove.setEnabled(!locked);
         remove.getStyle().set("border", "1px solid #ef4444").set("color", "#fecaca").set("background", "rgba(239,68,68,0.12)");
         remove.addClickListener(event -> {
             markDeleted(item);
@@ -882,6 +927,10 @@ public class AdminScheduleView extends Div implements BeforeEnterObserver {
     }
 
     private void addDroppedFilm(Long filmId, Screen screen, LocalDate date, LocalTime time) {
+        if (isPastSlot(date, time)) {
+            throw new IllegalArgumentException("Past dates or times are locked and cannot be scheduled.");
+        }
+
         Film film = filmRepository.findById(filmId)
                 .orElseThrow(() -> new IllegalArgumentException("Film was not found."));
 
@@ -908,6 +957,16 @@ public class AdminScheduleView extends Div implements BeforeEnterObserver {
                 .filter(candidate -> Objects.equals(candidate.uid, uid))
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("The timetable card was not found."));
+
+        if (isLockedExistingItem(item)) {
+            Notification.show("This screening is locked because it is historical or already has bookings.");
+            return;
+        }
+
+        if (isPastSlot(date, time)) {
+            Notification.show("Past dates or times are locked and cannot be scheduled.");
+            return;
+        }
 
         item.screen = screen;
         item.screenId = screen.getId();
@@ -1048,9 +1107,17 @@ public class AdminScheduleView extends Div implements BeforeEnterObserver {
     }
 
     private void markDeleted(ScheduleItem item) {
+        if (item == null) {
+            return;
+        }
+
         if (item.newItem) {
             scheduleItems.remove(item);
         } else {
+            if (isLockedExistingItem(item)) {
+                Notification.show("This screening is locked because it is historical or already has bookings.");
+                return;
+            }
             item.deleted = true;
             item.dirty = true;
         }
@@ -1073,11 +1140,20 @@ public class AdminScheduleView extends Div implements BeforeEnterObserver {
             int created = 0;
 
             for (ScheduleItem item : scheduleItems.stream().filter(item -> item.deleted && !item.newItem).toList()) {
+                if (isLockedExistingItem(item)) {
+                    Notification.show("A historical or booked screening was removed from draft changes instead of being deleted.");
+                    item.deleted = false;
+                    item.dirty = false;
+                    continue;
+                }
                 schedulingService.deleteScreening(item.screeningId);
                 deleted++;
             }
 
             for (ScheduleItem item : scheduleItems.stream().filter(item -> !item.deleted && !item.newItem && item.dirty).toList()) {
+                if (isLockedExistingItem(item)) {
+                    throw new IllegalStateException("This screening is locked because it is historical or already has bookings.");
+                }
                 schedulingService.updateScreening(
                         item.screeningId,
                         item.filmId,
@@ -1179,7 +1255,7 @@ public class AdminScheduleView extends Div implements BeforeEnterObserver {
         if (item.startTime == null) {
             throw new IllegalArgumentException("Start time is required.");
         }
-        if (item.date.isBefore(LocalDate.now())) {
+        if (isPastSlot(item.date, item.startTime)) {
             throw new IllegalArgumentException("Cannot schedule a screening in the past.");
         }
         if (item.startTime.isBefore(LocalTime.of(8, 0))) {
@@ -1200,6 +1276,46 @@ public class AdminScheduleView extends Div implements BeforeEnterObserver {
                             + "."
             );
         }
+    }
+
+    private boolean isHistoricalScreening(Screening screening) {
+        if (screening == null || screening.getScreeningDate() == null) {
+            return false;
+        }
+
+        if (screening.getScreeningDate().isBefore(LocalDate.now())) {
+            return true;
+        }
+
+        return screening.getScreeningDate().isEqual(LocalDate.now())
+                && screening.getEndTime() != null
+                && !screening.getEndTime().isAfter(LocalTime.now());
+    }
+
+    private boolean isPastSlot(LocalDate date, LocalTime startTime) {
+        if (date == null) {
+            return false;
+        }
+
+        if (date.isBefore(LocalDate.now())) {
+            return true;
+        }
+
+        return date.isEqual(LocalDate.now())
+                && startTime != null
+                && startTime.isBefore(LocalTime.now());
+    }
+
+    private boolean isLockedExistingItem(ScheduleItem item) {
+        if (item == null || item.newItem) {
+            return false;
+        }
+
+        if (isPastSlot(item.date, item.startTime)) {
+            return true;
+        }
+
+        return item.screeningId != null && bookingRepository.countSoldSeatsForScreening(item.screeningId) > 0;
     }
 
     private boolean overlaps(ScheduleItem first, ScheduleItem second) {
@@ -1231,7 +1347,7 @@ public class AdminScheduleView extends Div implements BeforeEnterObserver {
         long deleted = scheduleItems.stream().filter(item -> item.deleted && !item.newItem).count();
 
         if (!dirty) {
-            pendingLabel.setText("No draft changes. Drag a film onto a time slot or use Auto-fill week.");
+            pendingLabel.setText("No draft changes. Drag a film onto a future time slot or use Auto-fill week.");
             confirmButton.setEnabled(false);
             discardButton.setEnabled(false);
             return;
@@ -1245,6 +1361,25 @@ public class AdminScheduleView extends Div implements BeforeEnterObserver {
         );
         confirmButton.setEnabled(true);
         discardButton.setEnabled(true);
+    }
+
+    private Div dateHeaderCell(LocalDate day) {
+        Div cell = new Div();
+        boolean isToday = day.isEqual(LocalDate.now());
+        boolean pastDay = day.isBefore(LocalDate.now());
+        String text = day.format(DAY_FORMAT);
+        cell.setText(isToday ? text + " · TODAY" : pastDay ? text + " · PAST" : text);
+        cell.getStyle()
+                .set("background", isToday ? "rgba(56,189,248,0.18)" : pastDay ? "rgba(71,85,105,0.24)" : "#101d33")
+                .set("border-left", "1px solid rgba(148,163,184,0.18)")
+                .set("padding", "14px 10px")
+                .set("font-size", "13px")
+                .set("font-weight", "950")
+                .set("text-transform", "uppercase")
+                .set("letter-spacing", "0.08em")
+                .set("color", isToday ? "#7dd3fc" : pastDay ? "#94a3b8" : "#cbd5e1")
+                .set("opacity", pastDay ? "0.72" : "1");
+        return cell;
     }
 
     private Div headerCell(String text) {
