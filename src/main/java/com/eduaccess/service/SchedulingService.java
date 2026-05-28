@@ -39,6 +39,36 @@ public class SchedulingService {
         return screeningRepository.findAllByOrderByScreeningDateAscStartTimeAsc();
     }
 
+    /**
+     * Loads screenings only for the selected physical screen ID.
+     * This prevents "Screen 1" in one cinema from being treated as the same
+     * as "Screen 1" in another cinema.
+     *
+     * This method deliberately uses the already-stable date-range repository
+     * query and filters by screen.id in Java, instead of depending on a long
+     * Spring Data method name. This avoids merge conflicts where the repository
+     * method was missing after pulling team code.
+     */
+    @Transactional(readOnly = true)
+    public List<Screening> findScreeningsByScreenBetween(
+            Long screenId,
+            LocalDate startDate,
+            LocalDate endDate
+    ) {
+        if (screenId == null || startDate == null || endDate == null) {
+            return List.of();
+        }
+
+        return screeningRepository.findByScreeningDateBetweenOrderByScreeningDateAscStartTimeAsc(
+                        startDate,
+                        endDate
+                )
+                .stream()
+                .filter(screening -> screening.getScreen() != null)
+                .filter(screening -> Objects.equals(screening.getScreen().getId(), screenId))
+                .toList();
+    }
+
     @Transactional
     public Screening createScreening(
             Long filmId,
@@ -63,7 +93,7 @@ public class SchedulingService {
         Screen screen = screenRepository.findById(screenId)
                 .orElseThrow(() -> new IllegalArgumentException("Screen was not found."));
 
-        Screening screening = new Screening(film, screen, screeningDate, startTime, screeningType);
+        Screening screening = new Screening(film, screen, screeningDate, startTime, normaliseScreeningType(screeningType));
 
         validateScreening(screening, null);
 
@@ -117,7 +147,7 @@ public class SchedulingService {
         screening.setScreeningDate(screeningDate);
         screening.setStartTime(startTime);
         screening.setEndTime(startTime.plusMinutes(film.getDurationMinutes()));
-        screening.setScreeningType(screeningType);
+        screening.setScreeningType(normaliseScreeningType(screeningType));
 
         validateScreening(screening, screeningId);
 
@@ -141,6 +171,10 @@ public class SchedulingService {
     @Transactional
     public int cleanupExpiredUnbookedScreenings() {
         return screeningRepository.deleteExpiredUnbookedScreenings(LocalDate.now());
+    }
+
+    private ScreeningType normaliseScreeningType(ScreeningType screeningType) {
+        return screeningType == null ? ScreeningType.REGULAR_2D : screeningType;
     }
 
     private void validateScreening(Screening screening, Long currentScreeningId) {
@@ -184,7 +218,7 @@ public class SchedulingService {
         if (beforeReleaseDate && !advancePreview) {
             throw new IllegalArgumentException(
                     "Cannot schedule a regular screening before the release date. "
-                            + "Use ADVANCE_PREVIEW for early access screenings."
+                            + "Use an advance preview screening type for early access screenings."
             );
         }
 

@@ -33,9 +33,8 @@ public interface ScreeningRepository extends JpaRepository<Screening, Long> {
     List<Screening> findByFilmIdOrderByScreeningDateAscStartTimeAsc(Long filmId);
 
     /**
-     * Detached-friendly check used by manager-side delete flows so we don't
-     * need to touch the LAZY {@link com.eduaccess.domain.Film#getScreenings()}
-     * collection (which would throw LazyInitializationException in the UI layer).
+     * Used by manager/admin film-listing flows before deleting a film.
+     * If a film already has screenings, deleting it would break references.
      */
     boolean existsByFilmId(Long filmId);
 
@@ -54,13 +53,25 @@ public interface ScreeningRepository extends JpaRepository<Screening, Long> {
     List<Screening> findByScreeningDateOrderByStartTimeAsc(LocalDate screeningDate);
 
     @EntityGraph(attributePaths = {"film", "screen", "screen.cinema"})
-    List<Screening> findByFilmIdAndScreeningDateOrderByStartTimeAsc(Long filmId, LocalDate screeningDate);
+    List<Screening> findByFilmIdAndScreeningDateOrderByStartTimeAsc(
+            Long filmId,
+            LocalDate screeningDate
+    );
 
     @EntityGraph(attributePaths = {"film", "screen", "screen.cinema"})
-    List<Screening> findByFilmIdAndScreeningDateBetweenOrderByScreeningDateAscStartTimeAsc(Long filmId, LocalDate startDate, LocalDate endDate);
+    List<Screening> findByFilmIdAndScreeningDateBetweenOrderByScreeningDateAscStartTimeAsc(
+            Long filmId,
+            LocalDate startDate,
+            LocalDate endDate
+    );
 
     @EntityGraph(attributePaths = {"film", "screen", "screen.cinema"})
-    List<Screening> findByFilmIdAndScreenCinemaIdAndScreeningDateBetweenOrderByScreeningDateAscStartTimeAsc(Long filmId, Long cinemaId, LocalDate startDate, LocalDate endDate);
+    List<Screening> findByFilmIdAndScreenCinemaIdAndScreeningDateBetweenOrderByScreeningDateAscStartTimeAsc(
+            Long filmId,
+            Long cinemaId,
+            LocalDate startDate,
+            LocalDate endDate
+    );
 
     @EntityGraph(attributePaths = {"film", "screen", "screen.cinema"})
     List<Screening> findByScreenIdAndScreeningDateOrderByStartTimeAsc(
@@ -68,6 +79,25 @@ public interface ScreeningRepository extends JpaRepository<Screening, Long> {
             LocalDate screeningDate
     );
 
+    /**
+     * Important: admin scheduling must filter by real screen.id, not screen number.
+     * Different cinemas can both have "Screen 1", but their screen IDs are different.
+     */
+    @Query("""
+            select distinct s
+            from Screening s
+            join fetch s.film f
+            join fetch s.screen sc
+            join fetch sc.cinema c
+            where sc.id = :screenId
+              and s.screeningDate between :startDate and :endDate
+            order by s.screeningDate asc, s.startTime asc, s.id asc
+            """)
+    List<Screening> findByScreenIdAndScreeningDateBetweenOrderByScreeningDateAscStartTimeAsc(
+            @Param("screenId") Long screenId,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate
+    );
 
     @Query("""
             select distinct s
