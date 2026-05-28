@@ -13,7 +13,6 @@ import com.eduaccess.domain.ScreeningType;
 import com.eduaccess.domain.Seat;
 import com.eduaccess.domain.SeatType;
 import com.eduaccess.repository.CinemaRepository;
-import com.eduaccess.repository.FilmRepository;
 import com.eduaccess.service.BookingService;
 import com.eduaccess.service.FoodOrderService;
 import com.eduaccess.service.LoginService;
@@ -33,6 +32,8 @@ import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Image;
 import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.html.Span;
+import com.vaadin.flow.component.icon.Icon;
+import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.orderedlayout.FlexComponent.JustifyContentMode;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
@@ -51,7 +52,6 @@ import java.math.BigDecimal;
 import java.text.NumberFormat;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -71,6 +71,16 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
     @Override
     public void beforeEnter(BeforeEnterEvent event) {
         PermissionChecker.checkBookingAccess(event, loginService);
+
+        Map<String, List<String>> params = event.getLocation()
+                .getQueryParameters()
+                .getParameters();
+
+        requestedDate = firstDateParam(params, "date");
+        requestedCinemaId = firstLongParam(params, "cinemaId");
+
+        applyRequestedFilters();
+        reloadScreenings();
     }
 
     private static final String DARK_BG = "#020b1d";
@@ -90,8 +100,12 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
         PAYMENT
     }
 
+    private enum ViewMode {
+        LIST,
+        CALENDAR
+    }
+
     private final CinemaRepository cinemaRepository;
-    private final FilmRepository filmRepository;
     private final ScreeningService screeningService;
     private final BookingService bookingService;
     private final PricingService pricingService;
@@ -104,6 +118,7 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
     private final DatePicker datePicker = new DatePicker();
 
     private final Div hero = new Div();
+    private final Div cinemaCarousel = new Div();
     private final Div showtimeArea = new Div();
 
     private final Dialog seatDialog = new Dialog();
@@ -122,8 +137,11 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
     private List<Screening> currentScreenings = List.of();
     private Long selectedFilmId;
     private Long requestedFilmId;
-    private Film requestedFilm;
+    private LocalDate requestedDate;
+    private Long requestedCinemaId;
     private Screening selectedScreening;
+    private ViewMode currentViewMode = ViewMode.LIST;
+    private boolean suppressFilterReload = false;
 
     private List<BookingService.SeatOption> currentSeatOptions = List.of();
     private List<FoodItem> availableFoodItems = List.of();
@@ -143,7 +161,6 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
 
     public BookingView(
             CinemaRepository cinemaRepository,
-            FilmRepository filmRepository,
             ScreeningService screeningService,
             BookingService bookingService,
             PricingService pricingService,
@@ -151,7 +168,6 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
             LoginService loginService
     ) {
         this.cinemaRepository = cinemaRepository;
-        this.filmRepository = filmRepository;
         this.screeningService = screeningService;
         this.bookingService = bookingService;
         this.pricingService = pricingService;
@@ -175,7 +191,7 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
                 .set("padding", "44px 48px 80px 48px")
                 .set("box-sizing", "border-box");
 
-        page.add(hero, buildSearchBar(), showtimeArea);
+        page.add(hero, buildSearchBar(), cinemaCarousel, showtimeArea);
         add(page);
 
         reloadScreenings();
@@ -185,27 +201,22 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
     public void setParameter(BeforeEvent event, @OptionalParameter Long filmId) {
         this.requestedFilmId = filmId;
 
-        /*
-         * Load the requested film up-front (before reloadScreenings) so that the
-         * page can always render the film the user actually clicked, even when:
-         *   - the film has no screening on today's date, or
-         *   - the film has no screenings at all yet (e.g. just created by a Manager).
-         *
-         * Without this, reloadScreenings() would build the filmBox from
-         * "films that have a screening on the selected date", fail to find the
-         * requested film, and silently fall back to the first film in the list,
-         * which is what caused clicks on Call Me by Your Name / Chainsaw Man
-         * to land on the GOAT detail page.
-         */
-        if (filmId != null) {
-            requestedFilm = filmRepository.findById(filmId).orElse(null);
-            cinemaBox.clear();
-            screeningService.findEarliestUpcomingDateForFilm(filmId)
-                    .ifPresent(datePicker::setValue);
-        } else {
-            requestedFilm = null;
+        Map<String, List<String>> params = event.getLocation()
+                .getQueryParameters()
+                .getParameters();
+
+        LocalDate dateFromUrl = firstDateParam(params, "date");
+        Long cinemaIdFromUrl = firstLongParam(params, "cinemaId");
+
+        if (dateFromUrl != null) {
+            requestedDate = dateFromUrl;
         }
 
+        if (cinemaIdFromUrl != null) {
+            requestedCinemaId = cinemaIdFromUrl;
+        }
+
+        applyRequestedFilters();
         reloadScreenings();
     }
 
@@ -214,6 +225,11 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
         cinemaBox.setItems(cinemaRepository.findAll());
         cinemaBox.setItemLabelGenerator(Cinema::toString);
         cinemaBox.setClearButtonVisible(true);
+        cinemaBox.addValueChangeListener(event -> {
+            if (!suppressFilterReload) {
+                reloadScreenings();
+            }
+        });
 
         filmBox.setPlaceholder("Select a film");
         filmBox.setItemLabelGenerator(Film::getTitle);
@@ -231,11 +247,17 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
 
         datePicker.setPlaceholder("Select a date");
         datePicker.setValue(LocalDate.now());
+        datePicker.addValueChangeListener(event -> {
+            if (!suppressFilterReload) {
+                reloadScreenings();
+            }
+        });
 
         filmBox.addValueChangeListener(event -> {
             Film film = event.getValue();
             selectedFilmId = film == null ? null : film.getId();
             renderHero();
+            renderCinemaCarousel();
             renderShowtimes();
         });
 
@@ -366,19 +388,6 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
                 .sorted(Comparator.comparing(Film::getTitle, String.CASE_INSENSITIVE_ORDER))
                 .toList();
 
-        /*
-         * Make sure the film the user clicked from the Films page is always
-         * present in the filmBox - even when it has no screening on the
-         * currently selected date - so the hero section shows the correct film
-         * instead of falling back to an unrelated one.
-         */
-        if (requestedFilm != null
-                && films.stream().noneMatch(f -> Objects.equals(f.getId(), requestedFilm.getId()))) {
-            List<Film> merged = new ArrayList<>(films);
-            merged.add(0, requestedFilm);
-            films = merged;
-        }
-
         filmBox.setItems(films);
 
         if (films.isEmpty()) {
@@ -401,47 +410,87 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
                         .orElse(null);
             }
 
-            /*
-             * Only fall back to the first available film when the URL did NOT
-             * specify a film. Otherwise we would silently switch the user to a
-             * different film than the one they clicked.
-             */
-            if (selectedFilm == null && requestedFilmId == null) {
+            if (selectedFilm == null) {
                 selectedFilm = films.get(0);
             }
 
-            if (selectedFilm == null) {
-                selectedFilmId = null;
-                filmBox.clear();
-            } else {
-                selectedFilmId = selectedFilm.getId();
-                filmBox.setValue(selectedFilm);
-            }
+            selectedFilmId = selectedFilm.getId();
+            filmBox.setValue(selectedFilm);
         }
 
         renderHero();
+        renderCinemaCarousel();
         renderShowtimes();
+    }
+
+    private LocalDate selectedBookingDate() {
+        return datePicker.getValue() == null ? LocalDate.now() : datePicker.getValue();
+    }
+
+    private void applyRequestedFilters() {
+        suppressFilterReload = true;
+        try {
+            if (requestedDate != null) {
+                datePicker.setValue(requestedDate);
+            }
+
+            if (requestedCinemaId != null) {
+                cinemaRepository.findAll()
+                        .stream()
+                        .filter(cinema -> Objects.equals(cinema.getId(), requestedCinemaId))
+                        .findFirst()
+                        .ifPresent(cinemaBox::setValue);
+            }
+        } finally {
+            suppressFilterReload = false;
+        }
+    }
+
+    private LocalDate firstDateParam(Map<String, List<String>> params, String key) {
+        String value = firstQueryValue(params, key);
+
+        if (value == null) {
+            return null;
+        }
+
+        try {
+            return LocalDate.parse(value);
+        } catch (RuntimeException ignored) {
+            return null;
+        }
+    }
+
+    private Long firstLongParam(Map<String, List<String>> params, String key) {
+        String value = firstQueryValue(params, key);
+
+        if (value == null) {
+            return null;
+        }
+
+        try {
+            return Long.parseLong(value);
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
+    }
+
+    private String firstQueryValue(Map<String, List<String>> params, String key) {
+        List<String> values = params.get(key);
+
+        if (values == null || values.isEmpty()) {
+            return null;
+        }
+
+        String value = values.get(0);
+        return value == null || value.isBlank() ? null : value;
     }
 
     private void renderHero() {
         hero.removeAll();
 
-        /*
-         * Always render the hero based on the film currently selected in filmBox
-         * (which is driven by the URL parameter when the user deep-links from
-         * the Films page), instead of the first matching screening. This way the
-         * detail panel correctly reflects the film the user clicked even when
-         * the film has no screening yet.
-         */
-        Film film = filmBox.getValue();
-        if (film == null) {
-            Screening firstScreening = findFirstScreeningForSelectedFilm();
-            if (firstScreening != null) {
-                film = firstScreening.getFilm();
-            }
-        }
+        Screening firstScreening = findFirstScreeningForSelectedFilm();
 
-        if (film == null) {
+        if (firstScreening == null) {
             Div empty = new Div();
             empty.setText("No film selected.");
             empty.getStyle()
@@ -451,6 +500,8 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
             hero.add(empty);
             return;
         }
+
+        Film film = firstScreening.getFilm();
 
         Div heroGrid = new Div();
         heroGrid.getStyle()
@@ -705,15 +756,266 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
         return block;
     }
 
-    private void renderShowtimes() {
-        showtimeArea.removeAll();
+    private void renderCinemaCarousel() {
+        cinemaCarousel.removeAll();
 
         if (selectedFilmId == null) {
             return;
         }
 
+        List<Screening> filmScreeningsForDate = screeningService.findScreeningsByFilmAndDate(
+                selectedFilmId,
+                selectedBookingDate()
+        );
+
+        List<Cinema> cinemas = filmScreeningsForDate.stream()
+                .map(screening -> screening.getScreen().getCinema())
+                .collect(Collectors.toMap(
+                        Cinema::getId,
+                        cinema -> cinema,
+                        (existing, replacement) -> existing,
+                        LinkedHashMap::new
+                ))
+                .values()
+                .stream()
+                .toList();
+
+        Div titleRow = new Div();
+        titleRow.getStyle()
+                .set("display", "flex")
+                .set("justify-content", "space-between")
+                .set("align-items", "center")
+                .set("margin", "0 0 14px 0")
+                .set("gap", "16px");
+
+        H2 title = new H2("CHOOSE CINEMA");
+        title.getStyle()
+                .set("font-size", "20px")
+                .set("letter-spacing", "0.08em")
+                .set("margin", "0")
+                .set("color", "white");
+
+        Span hint = new Span("Same film · " + selectedBookingDate().format(DateTimeFormatter.ofPattern("d MMM yyyy", Locale.UK)));
+        hint.getStyle()
+                .set("color", "#94a3b8")
+                .set("font-size", "14px")
+                .set("font-weight", "750");
+
+        titleRow.add(title, hint);
+
+        Div row = new Div();
+        row.getStyle()
+                .set("display", "flex")
+                .set("gap", "16px")
+                .set("overflow-x", "auto")
+                .set("padding", "4px 0 16px 0")
+                .set("scrollbar-width", "thin");
+
+        row.add(buildAllCinemasCard());
+
+        for (Cinema cinema : cinemas) {
+            row.add(buildCinemaChoiceCard(cinema));
+        }
+
+        cinemaCarousel.getStyle()
+                .set("margin", "0 0 34px 0");
+        cinemaCarousel.add(titleRow, row);
+    }
+
+    private Component buildAllCinemasCard() {
+        boolean active = cinemaBox.getValue() == null;
+
+        Div card = new Div();
+        card.getStyle()
+                .set("min-width", "210px")
+                .set("height", "138px")
+                .set("border", active ? "2px solid #38bdf8" : "1px solid rgba(255,255,255,0.22)")
+                .set("border-radius", "22px")
+                .set("background", active
+                        ? "linear-gradient(145deg, rgba(0,114,206,0.32), rgba(2,11,29,0.92))"
+                        : "rgba(255,255,255,0.06)")
+                .set("padding", "18px")
+                .set("box-sizing", "border-box")
+                .set("cursor", "pointer")
+                .set("display", "flex")
+                .set("flex-direction", "column")
+                .set("justify-content", "center")
+                .set("box-shadow", active ? "0 18px 38px rgba(56,189,248,0.18)" : "none");
+
+        Icon icon = VaadinIcon.BUILDING.create();
+        icon.setSize("32px");
+        icon.setColor(active ? "#38bdf8" : "white");
+
+        Span label = new Span("All Cinemas");
+        label.getStyle()
+                .set("font-size", "19px")
+                .set("font-weight", "900")
+                .set("margin-top", "12px")
+                .set("color", "white");
+
+        Span sub = new Span("Show every available cinema");
+        sub.getStyle()
+                .set("font-size", "13px")
+                .set("color", "#cbd5e1")
+                .set("margin-top", "6px");
+
+        card.add(icon, label, sub);
+        card.addClickListener(event -> cinemaBox.clear());
+
+        return card;
+    }
+
+    private Component buildCinemaChoiceCard(Cinema cinema) {
+        boolean active = cinemaBox.getValue() != null && Objects.equals(cinemaBox.getValue().getId(), cinema.getId());
+
+        Div card = new Div();
+        card.getStyle()
+                .set("min-width", "250px")
+                .set("height", "158px")
+                .set("position", "relative")
+                .set("overflow", "hidden")
+                .set("border", active ? "2px solid #38bdf8" : "1px solid rgba(255,255,255,0.24)")
+                .set("border-radius", "22px")
+                .set("cursor", "pointer")
+                .set("box-shadow", active ? "0 18px 42px rgba(56,189,248,0.22)" : "0 10px 28px rgba(0,0,0,0.20)")
+                .set("background", "#0f172a");
+
+        Image image = new Image("/images/cinemas/cinema-card.jpg", cinema.getName());
+        image.setWidthFull();
+        image.setHeightFull();
+        image.getStyle()
+                .set("object-fit", "cover")
+                .set("display", "block")
+                .set("filter", "brightness(0.62)");
+
+        Div overlay = new Div();
+        overlay.getStyle()
+                .set("position", "absolute")
+                .set("inset", "0")
+                .set("background", "linear-gradient(180deg, rgba(2,11,29,0.05), rgba(2,11,29,0.88))")
+                .set("padding", "16px")
+                .set("box-sizing", "border-box")
+                .set("display", "flex")
+                .set("flex-direction", "column")
+                .set("justify-content", "flex-end");
+
+        Span name = new Span(cinema.getName());
+        name.getStyle()
+                .set("display", "block")
+                .set("font-size", "17px")
+                .set("font-weight", "950")
+                .set("line-height", "1.15")
+                .set("color", "white");
+
+        Span city = new Span(cinema.getCity());
+        city.getStyle()
+                .set("display", "block")
+                .set("font-size", "13px")
+                .set("font-weight", "800")
+                .set("color", active ? "#67e8f9" : "#cbd5e1")
+                .set("margin-top", "6px");
+
+        overlay.add(name, city);
+        card.add(image, overlay);
+        card.addClickListener(event -> cinemaBox.setValue(cinema));
+
+        return card;
+    }
+
+    private Component buildShowtimeToolbar() {
+        Div toolbar = new Div();
+        toolbar.getStyle()
+                .set("display", "flex")
+                .set("justify-content", "space-between")
+                .set("align-items", "center")
+                .set("gap", "18px")
+                .set("margin", "0 0 24px 0")
+                .set("flex-wrap", "wrap");
+
+        Div left = new Div();
+
+        H2 title = new H2("SHOWTIMES");
+        title.getStyle()
+                .set("font-size", "28px")
+                .set("font-weight", "950")
+                .set("letter-spacing", "0.08em")
+                .set("margin", "0")
+                .set("color", "white");
+
+        Span sub = new Span(currentViewMode == ViewMode.CALENDAR
+                ? "Calendar view · " + selectedBookingDate().format(DateTimeFormatter.ofPattern("d MMM", Locale.UK))
+                + " - " + selectedBookingDate().plusDays(6).format(DateTimeFormatter.ofPattern("d MMM yyyy", Locale.UK))
+                : "List view · " + selectedBookingDate().format(DateTimeFormatter.ofPattern("d MMMM yyyy", Locale.UK)));
+        sub.getStyle()
+                .set("display", "block")
+                .set("margin-top", "6px")
+                .set("color", "#94a3b8")
+                .set("font-size", "14px")
+                .set("font-weight", "750");
+
+        left.add(title, sub);
+        toolbar.add(left, buildViewModeToggle());
+        return toolbar;
+    }
+
+    private Component buildViewModeToggle() {
+        Div toggle = new Div();
+        toggle.getStyle()
+                .set("display", "grid")
+                .set("grid-template-columns", "1fr 1fr")
+                .set("width", "164px")
+                .set("height", "58px")
+                .set("border", "1px solid rgba(255,255,255,0.35)")
+                .set("border-radius", "999px")
+                .set("overflow", "hidden")
+                .set("background", "rgba(255,255,255,0.06)");
+
+        toggle.add(viewModeButton(VaadinIcon.LIST, ViewMode.LIST, "List view"));
+        toggle.add(viewModeButton(VaadinIcon.CALENDAR, ViewMode.CALENDAR, "Calendar view"));
+        return toggle;
+    }
+
+    private Button viewModeButton(VaadinIcon iconType, ViewMode mode, String tooltip) {
+        boolean active = currentViewMode == mode;
+
+        Button button = new Button(iconType.create());
+        button.getElement().setAttribute("title", tooltip);
+        button.getStyle()
+                .set("height", "58px")
+                .set("min-width", "0")
+                .set("width", "100%")
+                .set("border", "none")
+                .set("border-radius", "0")
+                .set("background", active ? "white" : "transparent")
+                .set("color", active ? DARK_BG : "white")
+                .set("box-shadow", "none")
+                .set("cursor", "pointer");
+
+        button.addClickListener(event -> {
+            currentViewMode = mode;
+            renderShowtimes();
+        });
+
+        return button;
+    }
+
+    private void renderShowtimes() {
+        showtimeArea.removeAll();
+        showtimeArea.add(buildShowtimeToolbar());
+
+        if (selectedFilmId == null) {
+            Paragraph empty = new Paragraph("Please select a film to view showtimes.");
+            empty.getStyle().set("color", "#cbd5e1");
+            showtimeArea.add(empty);
+            return;
+        }
+
+        List<Screening> source = currentViewMode == ViewMode.CALENDAR
+                ? calendarScreeningsForSelectedFilm()
+                : currentScreenings;
+
         List<Screening> screenings = sortAndRemoveDuplicateShowtimes(
-                currentScreenings.stream()
+                source.stream()
                         .filter(screening -> Objects.equals(screening.getFilm().getId(), selectedFilmId))
                         .filter(screening -> {
                             HallType selected = hallTypeBox.getValue();
@@ -733,9 +1035,14 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
         );
 
         if (screenings.isEmpty()) {
-            Paragraph empty = new Paragraph("No showtimes are available for this film, date, hall type and format combination.");
+            Paragraph empty = new Paragraph("No showtimes are available for this film, date, cinema, hall type and format combination.");
             empty.getStyle().set("color", "#cbd5e1");
             showtimeArea.add(empty);
+            return;
+        }
+
+        if (currentViewMode == ViewMode.CALENDAR) {
+            showtimeArea.add(buildCalendarShowtimes(screenings));
             return;
         }
 
@@ -751,6 +1058,174 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
         for (Map.Entry<String, List<Screening>> entry : byCinemaAndHallType.entrySet()) {
             showtimeArea.add(buildCinemaShowtimeSection(entry.getKey(), entry.getValue()));
         }
+    }
+
+    private List<Screening> calendarScreeningsForSelectedFilm() {
+        LocalDate startDate = selectedBookingDate();
+        LocalDate endDate = startDate.plusDays(6);
+        Cinema selectedCinema = cinemaBox.getValue();
+
+        if (selectedCinema == null) {
+            return screeningService.findScreeningsByFilmBetween(selectedFilmId, startDate, endDate);
+        }
+
+        return screeningService.findScreeningsByFilmCinemaBetween(
+                selectedFilmId,
+                selectedCinema.getId(),
+                startDate,
+                endDate
+        );
+    }
+
+    private Component buildCalendarShowtimes(List<Screening> screenings) {
+        Div calendar = new Div();
+        calendar.getStyle()
+                .set("border", "1px solid rgba(255,255,255,0.22)")
+                .set("border-radius", "26px")
+                .set("overflow", "hidden")
+                .set("background", "rgba(255,255,255,0.045)")
+                .set("box-shadow", "0 20px 48px rgba(0,0,0,0.24)");
+
+        List<LocalDate> days = java.util.stream.IntStream.range(0, 7)
+                .mapToObj(offset -> selectedBookingDate().plusDays(offset))
+                .toList();
+
+        List<java.time.LocalTime> times = screenings.stream()
+                .map(Screening::getStartTime)
+                .distinct()
+                .sorted()
+                .toList();
+
+        Div header = new Div();
+        header.getStyle()
+                .set("display", "grid")
+                .set("grid-template-columns", "96px repeat(7, minmax(150px, 1fr))")
+                .set("background", "rgba(255,255,255,0.08)")
+                .set("border-bottom", "1px solid rgba(255,255,255,0.18)")
+                .set("min-width", "1140px");
+
+        header.add(calendarHeaderCell("Time", true));
+        for (LocalDate day : days) {
+            header.add(calendarHeaderCell(day.format(DateTimeFormatter.ofPattern("EEE d MMM", Locale.UK)), false));
+        }
+
+        Div body = new Div();
+        body.getStyle()
+                .set("display", "grid")
+                .set("grid-template-columns", "96px repeat(7, minmax(150px, 1fr))")
+                .set("min-width", "1140px");
+
+        Map<String, List<Screening>> byDateTime = screenings.stream()
+                .collect(Collectors.groupingBy(
+                        screening -> screening.getScreeningDate() + "|" + screening.getStartTime(),
+                        LinkedHashMap::new,
+                        Collectors.toList()
+                ));
+
+        for (java.time.LocalTime time : times) {
+            body.add(calendarTimeCell(time.toString()));
+
+            for (LocalDate day : days) {
+                Div cell = calendarScreeningCell();
+                List<Screening> cellScreenings = byDateTime.getOrDefault(day + "|" + time, List.of());
+
+                for (Screening screening : cellScreenings) {
+                    cell.add(buildCalendarShowtimeCard(screening));
+                }
+
+                body.add(cell);
+            }
+        }
+
+        Div scroller = new Div(header, body);
+        scroller.getStyle()
+                .set("overflow-x", "auto")
+                .set("width", "100%");
+
+        calendar.add(scroller);
+        return calendar;
+    }
+
+    private Div calendarHeaderCell(String text, boolean muted) {
+        Div cell = new Div();
+        cell.setText(text);
+        cell.getStyle()
+                .set("padding", "16px 14px")
+                .set("font-size", muted ? "13px" : "15px")
+                .set("font-weight", "900")
+                .set("letter-spacing", "0.04em")
+                .set("color", muted ? "#94a3b8" : "white")
+                .set("border-right", "1px solid rgba(255,255,255,0.12)");
+        return cell;
+    }
+
+    private Div calendarTimeCell(String text) {
+        Div cell = new Div();
+        cell.setText(text);
+        cell.getStyle()
+                .set("padding", "16px 14px")
+                .set("font-size", "15px")
+                .set("font-weight", "950")
+                .set("color", "#38bdf8")
+                .set("border-right", "1px solid rgba(255,255,255,0.12)")
+                .set("border-bottom", "1px solid rgba(255,255,255,0.12)")
+                .set("background", "rgba(2,11,29,0.50)");
+        return cell;
+    }
+
+    private Div calendarScreeningCell() {
+        Div cell = new Div();
+        cell.getStyle()
+                .set("min-height", "108px")
+                .set("padding", "10px")
+                .set("box-sizing", "border-box")
+                .set("border-right", "1px solid rgba(255,255,255,0.10)")
+                .set("border-bottom", "1px solid rgba(255,255,255,0.10)")
+                .set("display", "flex")
+                .set("flex-direction", "column")
+                .set("gap", "8px");
+        return cell;
+    }
+
+    private Component buildCalendarShowtimeCard(Screening screening) {
+        Div card = new Div();
+        card.getStyle()
+                .set("background", "linear-gradient(145deg, rgba(0,114,206,0.28), rgba(15,23,42,0.96))")
+                .set("border", "1px solid rgba(56,189,248,0.32)")
+                .set("border-radius", "16px")
+                .set("padding", "10px")
+                .set("box-shadow", "0 10px 24px rgba(0,0,0,0.22)");
+
+        Span cinema = new Span(screening.getScreen().getCinema().getName());
+        cinema.getStyle()
+                .set("display", "block")
+                .set("font-size", "12px")
+                .set("font-weight", "900")
+                .set("color", "white")
+                .set("line-height", "1.25");
+
+        Span meta = new Span("Screen " + screening.getScreen().getScreenNumber()
+                + " · " + screening.getScreen().getHallType().getLabel()
+                + " · " + screening.getFormat());
+        meta.getStyle()
+                .set("display", "block")
+                .set("font-size", "11px")
+                .set("font-weight", "750")
+                .set("color", "#cbd5e1")
+                .set("margin", "5px 0 9px 0");
+
+        Button book = new Button("Book", event -> openSeatDialog(screening));
+        book.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        book.getStyle()
+                .set("height", "30px")
+                .set("width", "100%")
+                .set("border-radius", "999px")
+                .set("background", BLUE)
+                .set("font-size", "12px")
+                .set("font-weight", "900");
+
+        card.add(cinema, meta, book);
+        return card;
     }
 
     private Div buildCinemaShowtimeSection(String cinemaName, List<Screening> screenings) {

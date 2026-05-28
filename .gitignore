@@ -26,3 +26,7 @@ types.d.ts
 data/*.mv.db
 data/*.trace.db
 data/*.lock.db
+
+# Local uploaded files
+uploads/*
+!uploads/.gitkeep

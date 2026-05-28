@@ -2,7 +2,6 @@ package com.eduaccess.ui;
 
 import com.eduaccess.domain.Film;
 import com.eduaccess.domain.Screening;
-import com.eduaccess.domain.ScreeningType;
 import com.eduaccess.repository.CinemaRepository;
 import com.eduaccess.repository.FilmRepository;
 import com.eduaccess.service.ScreeningService;
@@ -10,6 +9,7 @@ import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.combobox.ComboBox;
+import com.vaadin.flow.component.datepicker.DatePicker;
 import com.vaadin.flow.component.html.*;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.data.value.ValueChangeMode;
@@ -34,6 +34,7 @@ public class FilmListingView extends Div implements BeforeEnterObserver {
     private final TextField searchField = new TextField();
     private final ComboBox<String> cityFilter = new ComboBox<>();
     private final ComboBox<String> genreFilter = new ComboBox<>();
+    private final DatePicker dateFilter = new DatePicker();
 
     /*
      * UI-only promotional carousel configuration.
@@ -405,7 +406,7 @@ public class FilmListingView extends Div implements BeforeEnterObserver {
                 .set("gap", "12px")
                 .set("flex-wrap", "wrap");
 
-        filterBox.add(searchField, cityFilter, genreFilter, resetButton());
+        filterBox.add(searchField, cityFilter, genreFilter, dateFilter, thisWeekendButton(), resetButton());
 
         wrapper.add(tabsContainer, filterBox);
 
@@ -444,6 +445,15 @@ public class FilmListingView extends Div implements BeforeEnterObserver {
         genreFilter.setWidth("180px");
         genreFilter.addValueChangeListener(event -> applyFilter());
         styleDarkInput(genreFilter);
+
+        dateFilter.setPlaceholder("Date");
+        dateFilter.setWidth("170px");
+        dateFilter.setValue(LocalDate.now());
+        dateFilter.addValueChangeListener(event -> {
+            reloadScreeningWindow();
+            applyFilter();
+        });
+        styleDarkInput(dateFilter);
     }
 
     private void styleDarkInput(Component component) {
@@ -455,13 +465,34 @@ public class FilmListingView extends Div implements BeforeEnterObserver {
                 .set("--vaadin-input-field-border-color", "rgba(255,255,255,0.25)");
     }
 
+    private Button thisWeekendButton() {
+        Button weekendButton = new Button("This Weekend", event -> {
+            LocalDate today = LocalDate.now();
+            int daysUntilSaturday = (6 - today.getDayOfWeek().getValue() + 7) % 7;
+            dateFilter.setValue(today.plusDays(daysUntilSaturday));
+        });
+
+        weekendButton.getStyle()
+                .set("background", "transparent")
+                .set("color", "white")
+                .set("border", "1px solid rgba(255,255,255,0.45)")
+                .set("border-radius", "999px")
+                .set("height", "38px")
+                .set("padding", "0 18px")
+                .set("font-weight", "800");
+
+        return weekendButton;
+    }
+
     private Button resetButton() {
         Button resetButton = new Button("Reset", event -> {
             searchField.clear();
             cityFilter.clear();
             genreFilter.clear();
+            dateFilter.setValue(LocalDate.now());
             activeTab = FilmTab.ALL;
             VaadinSession.getCurrent().setAttribute("selectedCity", "");
+            reloadScreeningWindow();
             renderTabs();
             applyFilter();
         });
@@ -482,10 +513,7 @@ public class FilmListingView extends Div implements BeforeEnterObserver {
                 .sorted(Comparator.comparing(Film::getTitle, String.CASE_INSENSITIVE_ORDER))
                 .toList();
 
-        screeningWindow = screeningService.findScreeningsBetween(
-                LocalDate.now(),
-                LocalDate.now().plusDays(7)
-        );
+        reloadScreeningWindow();
 
         List<String> genres = allFilms.stream()
                 .map(Film::getGenre)
@@ -496,6 +524,15 @@ public class FilmListingView extends Div implements BeforeEnterObserver {
                 .toList();
 
         genreFilter.setItems(genres);
+    }
+
+    private void reloadScreeningWindow() {
+        LocalDate selectedDate = selectedListingDate();
+        screeningWindow = screeningService.findScreeningsBetween(selectedDate, selectedDate);
+    }
+
+    private LocalDate selectedListingDate() {
+        return dateFilter.getValue() == null ? LocalDate.now() : dateFilter.getValue();
     }
 
     private void renderTabs() {
@@ -535,6 +572,7 @@ public class FilmListingView extends Div implements BeforeEnterObserver {
         List<Film> base = filmsForActiveTab();
 
         List<Film> filtered = base.stream()
+                .filter(this::hasScreeningOnSelectedDate)
                 .filter(film -> matchesKeyword(film, keyword))
                 .filter(film -> matchesCity(film, selectedCity))
                 .filter(film -> matchesGenre(film, selectedGenre))
@@ -586,6 +624,11 @@ public class FilmListingView extends Div implements BeforeEnterObserver {
                         screening.getScreeningType() != null
                                 && !screening.getScreeningType().isRegular()
                 );
+    }
+
+    private boolean hasScreeningOnSelectedDate(Film film) {
+        return screeningWindow.stream()
+                .anyMatch(screening -> Objects.equals(screening.getFilm().getId(), film.getId()));
     }
 
     private boolean matchesKeyword(Film film, String keyword) {
@@ -666,7 +709,7 @@ public class FilmListingView extends Div implements BeforeEnterObserver {
             return "No advance preview or advance booking films match the selected filter.";
         }
 
-        return "No films match the selected filter.";
+        return "No films have showtimes for the selected date and filters.";
     }
 
     private Div createFilmCard(Film film) {
@@ -772,8 +815,8 @@ public class FilmListingView extends Div implements BeforeEnterObserver {
             meta.add(highlightTag("Advance Booking"));
         }
 
-        Button bookButton = new Button("Book tickets", event ->
-                getUI().ifPresent(ui -> ui.navigate(BookingView.class, film.getId()))
+        Button bookButton = new Button("Find tickets", event ->
+                getUI().ifPresent(ui -> ui.getPage().setLocation(bookingUrlForFilm(film)))
         );
 
         bookButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
@@ -818,6 +861,28 @@ public class FilmListingView extends Div implements BeforeEnterObserver {
         return tag;
     }
 
+    private String bookingUrlForFilm(Film film) {
+        if (film == null || film.getId() == null) {
+            return "/booking";
+        }
+
+        StringBuilder url = new StringBuilder("/booking/")
+                .append(film.getId())
+                .append("?date=")
+                .append(selectedListingDate());
+
+        String selectedCity = cityFilter.getValue();
+        screeningWindow.stream()
+                .filter(screening -> Objects.equals(screening.getFilm().getId(), film.getId()))
+                .filter(screening -> selectedCity == null
+                        || selectedCity.isBlank()
+                        || selectedCity.equalsIgnoreCase(screening.getScreen().getCinema().getCity()))
+                .findFirst()
+                .ifPresent(screening -> url.append("&cinemaId=").append(screening.getScreen().getCinema().getId()));
+
+        return url.toString();
+    }
+
     private String bookingUrlForFilmTitle(String filmTitle) {
         if (filmTitle == null || filmTitle.isBlank()) {
             return "/booking";
@@ -826,7 +891,7 @@ public class FilmListingView extends Div implements BeforeEnterObserver {
         return allFilms.stream()
                 .filter(film -> filmTitle.equalsIgnoreCase(film.getTitle()))
                 .findFirst()
-                .map(film -> "/booking/" + film.getId())
+                .map(this::bookingUrlForFilm)
                 .orElse("/booking");
     }
 

@@ -51,6 +51,18 @@ public interface ScreeningRepository extends JpaRepository<Screening, Long> {
     );
 
     @EntityGraph(attributePaths = {"film", "screen", "screen.cinema"})
+    List<Screening> findByScreeningDateOrderByStartTimeAsc(LocalDate screeningDate);
+
+    @EntityGraph(attributePaths = {"film", "screen", "screen.cinema"})
+    List<Screening> findByFilmIdAndScreeningDateOrderByStartTimeAsc(Long filmId, LocalDate screeningDate);
+
+    @EntityGraph(attributePaths = {"film", "screen", "screen.cinema"})
+    List<Screening> findByFilmIdAndScreeningDateBetweenOrderByScreeningDateAscStartTimeAsc(Long filmId, LocalDate startDate, LocalDate endDate);
+
+    @EntityGraph(attributePaths = {"film", "screen", "screen.cinema"})
+    List<Screening> findByFilmIdAndScreenCinemaIdAndScreeningDateBetweenOrderByScreeningDateAscStartTimeAsc(Long filmId, Long cinemaId, LocalDate startDate, LocalDate endDate);
+
+    @EntityGraph(attributePaths = {"film", "screen", "screen.cinema"})
     List<Screening> findByScreenIdAndScreeningDateOrderByStartTimeAsc(
             Long screenId,
             LocalDate screeningDate

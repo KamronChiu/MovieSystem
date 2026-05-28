@@ -49,4 +49,40 @@ public class ScreeningService {
                 screeningRepository.findEarliestUpcomingScreeningDateForFilm(filmId, LocalDate.now())
         );
     }
+
+    public List<Screening> findScreeningsOn(LocalDate screeningDate) {
+        return screeningRepository.findByScreeningDateOrderByStartTimeAsc(screeningDate);
+    }
+
+    public List<Screening> findScreeningsByFilmAndDate(Long filmId, LocalDate screeningDate) {
+        return screeningRepository.findByFilmIdAndScreeningDateOrderByStartTimeAsc(filmId, screeningDate);
+    }
+
+    public List<Screening> findScreeningsByFilmBetween(
+            Long filmId,
+            LocalDate startDate,
+            LocalDate endDate
+    ) {
+        return screeningRepository
+                .findByFilmIdAndScreeningDateBetweenOrderByScreeningDateAscStartTimeAsc(
+                        filmId,
+                        startDate,
+                        endDate
+                );
+    }
+
+    public List<Screening> findScreeningsByFilmCinemaBetween(
+            Long filmId,
+            Long cinemaId,
+            LocalDate startDate,
+            LocalDate endDate
+    ) {
+        return screeningRepository
+                .findByFilmIdAndScreenCinemaIdAndScreeningDateBetweenOrderByScreeningDateAscStartTimeAsc(
+                        filmId,
+                        cinemaId,
+                        startDate,
+                        endDate
+                );
+    }
 }
