@@ -892,10 +892,15 @@ public class FilmListingView extends Div implements BeforeEnterObserver {
             return "/booking";
         }
 
+        // Use the film's earliest upcoming screening date so the booking page
+        // lands on a day that actually has showtimes for this film.
+        LocalDate earliestDate = screeningService.findEarliestUpcomingDateForFilm(film.getId())
+                .orElse(dateFilter.getValue() == null ? LocalDate.now() : dateFilter.getValue());
+
         StringBuilder url = new StringBuilder("/booking/")
                 .append(film.getId())
                 .append("?date=")
-                .append(dateFilter.getValue() == null ? LocalDate.now() : dateFilter.getValue());
+                .append(earliestDate);
 
         String selectedCity = cityFilter.getValue();
         screeningWindow.stream()

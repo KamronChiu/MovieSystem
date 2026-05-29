@@ -6,6 +6,7 @@ import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.html.Div;
+import com.vaadin.flow.component.html.Image;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.textfield.EmailField;
@@ -296,35 +297,22 @@ public class LoginView extends Div implements HasUrlParameter<String> {
         welcomeContainer = new Div();
         welcomeContainer.getStyle()
                 .set("width", "100%")
+                .set("height", "100%")
                 .set("display", "flex")
                 .set("flex-direction", "column")
                 .set("align-items", "center")
-                .set("text-align", "center");
+                .set("justify-content", "center")
+                .set("text-align", "center")
+                .set("gap", "24px");
 
-        // 欢迎标题
-        Span welcomeTitle = new Span("Welcome to HCBS");
-        welcomeTitle.getStyle()
-                .set("display", "block")
-                .set("font-size", "32px")
-                .set("font-weight", "900")
-                .set("color", "white")
-                .set("margin-bottom", "16px");
-
-        // 欢迎描述
-        Span welcomeDesc = new Span("Your ultimate cinema booking experience awaits. " +
-                "Discover the latest movies and book your seats with ease.");
-        welcomeDesc.getStyle()
-                .set("display", "block")
-                .set("font-size", "14px")
-                .set("color", "rgba(255,255,255,0.7)")
-                .set("line-height", "1.6")
-                .set("margin-bottom", "32px");
-
-        // 装饰图标
-        Span icon = new Span("🎬");
-        icon.getStyle()
-                .set("font-size", "64px")
-                .set("margin-bottom", "24px");
+        // 电影海报
+        Image poster = new Image("/images/posters/star-wars-mandalorian-grogu.jpg", "Movie poster");
+        poster.getStyle()
+                .set("width", "220px")
+                .set("height", "320px")
+                .set("object-fit", "cover")
+                .set("border-radius", "12px")
+                .set("box-shadow", "0 12px 32px rgba(0,0,0,0.4)");
 
         // 切换按钮容器
         Div buttonContainer = new Div();
@@ -366,7 +354,7 @@ public class LoginView extends Div implements HasUrlParameter<String> {
         // 默认隐藏登录按钮（初始状态是登录模式）
         loginSwitchButton.getStyle().set("display", "none");
 
-        welcomeContainer.add(welcomeTitle, welcomeDesc, icon, buttonContainer);
+        welcomeContainer.add(poster, buttonContainer);
     }
 
     private void updateLayout() {

@@ -195,6 +195,12 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
         add(page);
 
         reloadScreenings();
+
+        // If the default date (today) has no screenings, jump to the nearest
+        // future date that does so the page isn't empty on first visit.
+        if (filmBox.getOptionalValue().isEmpty()) {
+            autoSelectNearestScreeningDate();
+        }
     }
 
     @Override
@@ -425,6 +431,26 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
 
     private LocalDate selectedBookingDate() {
         return datePicker.getValue() == null ? LocalDate.now() : datePicker.getValue();
+    }
+
+    private void autoSelectNearestScreeningDate() {
+        LocalDate baseDate = datePicker.getValue() == null ? LocalDate.now() : datePicker.getValue();
+        Cinema selectedCinema = cinemaBox.getValue();
+
+        for (int offset = 1; offset <= 30; offset++) {
+            LocalDate candidate = baseDate.plusDays(offset);
+            List<Screening> screenings;
+            if (selectedCinema == null) {
+                screenings = screeningService.findScreeningsBetween(candidate, candidate);
+            } else {
+                screenings = screeningService.findScreeningsByCinemaBetween(
+                        selectedCinema.getId(), candidate, candidate);
+            }
+            if (!screenings.isEmpty()) {
+                datePicker.setValue(candidate);
+                return;
+            }
+        }
     }
 
     private void applyRequestedFilters() {
