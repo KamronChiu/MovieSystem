@@ -473,7 +473,9 @@ public class EmailReceiptService {
                 .filter(e -> e.getReceipt() == null)
                 .findFirst()
                 .ifPresent(existing -> {
-                    // Re-record so the entry now carries the receipt.
+                    // Remove the old entry (receipt-less) and re-record so
+                    // only one entry per single-cancellation flow remains.
+                    emailLogService.remove(existing);
                     emailLogService.record(
                             existing.getSource(),
                             existing.getBatchOperationId(),
@@ -494,13 +496,16 @@ public class EmailReceiptService {
                 .filter(e -> bookingRef.equals(e.getBookingReference()))
                 .filter(e -> e.getReceipt() == null)
                 .findFirst()
-                .ifPresent(existing -> emailLogService.record(
-                        existing.getSource(),
-                        existing.getBatchOperationId(),
-                        existing.getEmail(),
-                        receipt,
-                        existing.getTemplateKey(),
-                        existing.getStatus()));
+                .ifPresent(existing -> {
+                    emailLogService.remove(existing);
+                    emailLogService.record(
+                            existing.getSource(),
+                            existing.getBatchOperationId(),
+                            existing.getEmail(),
+                            receipt,
+                            existing.getTemplateKey(),
+                            existing.getStatus());
+                });
     }
 
     private String formatMoney(BigDecimal amount) {

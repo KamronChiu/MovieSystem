@@ -117,4 +117,10 @@ public class EmailLogService {
     public void clear() {
         entries.clear();
     }
+
+    /** Removes the given entry from the log. */
+    public boolean remove(EmailLogEntry entry) {
+        if (entry == null) return false;
+        return entries.remove(entry);
+    }
 }
