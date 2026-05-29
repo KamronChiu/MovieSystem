@@ -7,10 +7,10 @@ import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.datepicker.DatePicker;
+import com.vaadin.flow.component.dependency.CssImport;
 import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H1;
-import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.notification.Notification;
@@ -24,27 +24,31 @@ import com.vaadin.flow.server.StreamResource;
 
 import java.io.ByteArrayInputStream;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
 import java.text.NumberFormat;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 
 @Route(value = "manager/dashboard", layout = MainLayout.class)
 @PageTitle("HCBS — Manager Dashboard")
+@CssImport("./styles/manager-dashboard-pro.css")
 public class ManagerDashboardView extends Div implements BeforeEnterObserver {
 
-    private static final String DARK_BG = "#020b1d";
-    private static final String PANEL = "#071428";
-    private static final String PANEL_SOFT = "#0f1d33";
-    private static final String BORDER = "rgba(255,255,255,0.13)";
-    private static final String BLUE = "#0072ce";
-    private static final String CYAN = "#38bdf8";
-    private static final String ORANGE = "#f59e0b";
-    private static final String GREEN = "#10b981";
-    private static final String RED = "#ef4444";
     private static final NumberFormat MONEY = NumberFormat.getCurrencyInstance(Locale.UK);
+    private static final DateTimeFormatter SHORT_DATE = DateTimeFormatter.ofPattern("dd MMM", Locale.UK);
+    private static final DateTimeFormatter FEEDBACK_DATE = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm", Locale.UK);
+
+    private static final String GOLD = "#d6aa42";
+    private static final String GOLD_SOFT = "#f4d47b";
+    private static final String BLUE = "#7c8cff";
+    private static final String CYAN = "#67e8f9";
+    private static final String GREEN = "#34d399";
+    private static final String RED = "#fb7185";
+    private static final String PURPLE = "#a78bfa";
 
     private final LoginService loginService;
     private final ManagerDashboardService dashboardService;
@@ -53,6 +57,8 @@ public class ManagerDashboardView extends Div implements BeforeEnterObserver {
     private final DatePicker endDate = new DatePicker("End date");
     private final Div exportHolder = new Div();
     private final Div content = new Div();
+    private final Div briefCard = new Div();
+    private final Div decisionCard = new Div();
     private final TextField feedbackTitle = new TextField("Feedback title");
     private final TextArea feedbackComment = new TextArea("Manager feedback / interpretation");
 
@@ -63,20 +69,14 @@ public class ManagerDashboardView extends Div implements BeforeEnterObserver {
         this.dashboardService = dashboardService;
 
         setWidthFull();
-        getStyle()
-                .set("background", DARK_BG)
-                .set("min-height", "100vh")
-                .set("color", "white");
-
-        Div page = new Div();
-        page.getStyle()
-                .set("max-width", "1460px")
-                .set("margin", "0 auto")
-                .set("padding", "44px 42px 90px")
-                .set("box-sizing", "border-box");
+        addClassName("manager-dashboard-pro");
 
         configureFields();
-        page.add(buildHeader(), buildControls(), content);
+        briefCard.addClassNames("mdp-brief-card", "mdp-glow-card");
+        decisionCard.addClassNames("mdp-decision-card", "mdp-glow-card");
+
+        Div page = div("mdp-page");
+        page.add(buildTopBar(), buildHero(), content);
         add(page);
 
         refreshDashboard();
@@ -90,72 +90,88 @@ public class ManagerDashboardView extends Div implements BeforeEnterObserver {
     private void configureFields() {
         startDate.setValue(LocalDate.now().minusDays(30));
         endDate.setValue(LocalDate.now());
-        styleInput(startDate);
-        styleInput(endDate);
+
+        startDate.addClassName("mdp-field");
+        endDate.addClassName("mdp-field");
 
         feedbackTitle.setPlaceholder("e.g. Weekly sales review");
         feedbackTitle.setWidthFull();
-        feedbackComment.setPlaceholder("Write your interpretation of sales performance, customer demand, or suggested schedule changes.");
+        feedbackTitle.addClassName("mdp-field");
+
+        feedbackComment.setPlaceholder("Explain why performance changed, what films need more screenings, or what customer demand suggests.");
         feedbackComment.setWidthFull();
-        feedbackComment.setMinHeight("150px");
-        styleInput(feedbackTitle);
-        styleInput(feedbackComment);
+        feedbackComment.setMinHeight("155px");
+        feedbackComment.addClassName("mdp-field");
     }
 
-    private Div buildHeader() {
-        Div header = new Div();
-        header.getStyle()
-                .set("display", "flex")
-                .set("justify-content", "space-between")
-                .set("align-items", "end")
-                .set("gap", "24px")
-                .set("margin-bottom", "26px");
+    private Div buildTopBar() {
+        Div top = div("mdp-topbar");
 
-        Div text = new Div();
-        H1 title = new H1("MANAGER INSIGHTS");
-        title.getStyle()
-                .set("margin", "0")
-                .set("font-size", "40px")
-                .set("font-weight", "950")
-                .set("letter-spacing", "0.08em");
+        Div titleBlock = div("mdp-title-block");
+        H1 title = new H1("Dashboard");
+        title.addClassName("mdp-page-title");
+        Span subtitle = span("Manager command center · revenue, operations and feedback", "mdp-page-subtitle");
+        titleBlock.add(title, subtitle);
 
-        Paragraph subtitle = new Paragraph("Visualise ticket sales, food revenue, cinema performance and manager feedback in one place.");
-        subtitle.getStyle()
-                .set("margin", "10px 0 0")
-                .set("color", "#a8b3c7")
-                .set("font-size", "16px");
+        Div search = div("mdp-search");
+        search.add(span("⌕", "mdp-search-icon"), span("Search film, cinema, booking insight...", "mdp-search-text"), span("alt+f", "mdp-search-key"));
 
-        text.add(title, subtitle);
-        header.add(text, exportHolder);
-        return header;
+        Div profile = div("mdp-profile");
+        Span avatar = span(initials(safeCurrentManagerName()), "mdp-avatar");
+        Div profileText = div("mdp-profile-text");
+        profileText.add(span(safeCurrentManagerName(), "mdp-profile-name"), span("Manager account", "mdp-profile-email"));
+        profile.add(avatar, profileText);
+
+        top.add(titleBlock, search, exportHolder, profile);
+        return top;
+    }
+
+    private Div buildHero() {
+        Div hero = div("mdp-hero-grid");
+
+        Div greeting = div("mdp-greeting-card mdp-glow-card");
+        greeting.add(
+                span("Good morning,", "mdp-muted"),
+                span(safeCurrentManagerName(), "mdp-greeting-name"),
+                span("A business-style view of cinema performance, customer demand and operational feedback.", "mdp-greeting-copy"),
+                buildControls()
+        );
+
+        briefCard.add(buildLoadingCard("Management brief", "The executive summary will update after dashboard data loads."));
+        decisionCard.add(buildLoadingCard("Decision centre", "Recommended actions will update from ticket, food and cancellation results."));
+
+        hero.add(greeting, briefCard, decisionCard);
+        return hero;
+    }
+
+    private Div buildLoadingCard(String title, String copy) {
+        Div body = div("mdp-mini-loading");
+        body.add(span(title, "mdp-card-eyebrow"), span(copy, "mdp-small-copy"));
+        return body;
     }
 
     private Div buildControls() {
-        Div controls = new Div();
-        controls.getStyle()
-                .set("display", "grid")
-                .set("grid-template-columns", "180px 180px auto auto")
-                .set("gap", "14px")
-                .set("align-items", "end")
-                .set("background", PANEL)
-                .set("border", "1px solid " + BORDER)
-                .set("border-radius", "22px")
-                .set("padding", "18px")
-                .set("margin-bottom", "24px");
+        Div controls = div("mdp-controls");
 
         Button apply = new Button("Apply", event -> refreshDashboard());
         apply.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        stylePrimary(apply);
+        apply.addClassName("mdp-primary-btn");
 
-        Button month = new Button("Last 30 days", event -> {
-            startDate.setValue(LocalDate.now().minusDays(30));
-            endDate.setValue(LocalDate.now());
-            refreshDashboard();
-        });
-        styleSecondary(month);
+        Button week = new Button("7D", event -> applyPreset(7));
+        Button month = new Button("30D", event -> applyPreset(30));
+        Button quarter = new Button("90D", event -> applyPreset(90));
+        week.addClassName("mdp-chip-btn");
+        month.addClassName("mdp-chip-btn");
+        quarter.addClassName("mdp-chip-btn");
 
-        controls.add(startDate, endDate, apply, month);
+        controls.add(startDate, endDate, apply, week, month, quarter);
         return controls;
+    }
+
+    private void applyPreset(int days) {
+        startDate.setValue(LocalDate.now().minusDays(days));
+        endDate.setValue(LocalDate.now());
+        refreshDashboard();
     }
 
     private void refreshDashboard() {
@@ -165,115 +181,214 @@ public class ManagerDashboardView extends Div implements BeforeEnterObserver {
         }
 
         dashboardData = dashboardService.buildDashboard(startDate.getValue(), endDate.getValue());
+        updateHeroInsightCards();
         content.removeAll();
         content.add(
-                buildSummaryCards(dashboardData.summary()),
-                buildChartsGrid(),
+                buildExecutiveSummary(dashboardData.summary()),
+                buildWorkspaceGrid(),
+                buildOperationsGrid(),
                 buildFeedbackPanel()
         );
         updateExportLink();
     }
 
-    private Div buildSummaryCards(ManagerDashboardService.Summary summary) {
-        Div cards = new Div();
-        cards.getStyle()
-                .set("display", "grid")
-                .set("grid-template-columns", "repeat(6, minmax(150px, 1fr))")
-                .set("gap", "16px")
-                .set("margin-bottom", "24px");
+    private void updateHeroInsightCards() {
+        briefCard.removeAll();
+        decisionCard.removeAll();
 
-        cards.add(
-                statCard("Bookings", String.valueOf(summary.confirmedBookings()), "Confirmed bookings", CYAN),
-                statCard("Tickets", String.valueOf(summary.ticketsSold()), "Seats sold", BLUE),
-                statCard("Cancelled", String.valueOf(summary.cancelledBookings()), "Cancelled bookings", RED),
-                statCard("Ticket revenue", money(summary.ticketRevenue()), "Confirmed ticket sales", GREEN),
-                statCard("Food revenue", money(summary.foodRevenue()), "Concessions", ORANGE),
-                statCard("Grand total", money(summary.grandRevenue()), "Tickets + food", "#8b5cf6")
+        Div briefHead = div("mdp-brief-head");
+        briefHead.add(
+                span("Management brief", "mdp-card-eyebrow"),
+                span(startDate.getValue().format(SHORT_DATE) + " — " + endDate.getValue().format(SHORT_DATE), "mdp-period-value")
         );
 
-        return cards;
+        Div briefRows = div("mdp-brief-list");
+        for (ManagerDashboardService.ExecutiveBriefRow row : dashboardData.executiveBrief()) {
+            briefRows.add(briefRow(row));
+        }
+        briefCard.add(briefHead, briefRows);
+
+        decisionCard.add(span("Decision centre", "mdp-card-eyebrow"), span("Recommended next moves", "mdp-action-title"));
+        Div actionList = div("mdp-decision-list");
+        for (ManagerDashboardService.DecisionActionRow action : dashboardData.decisionActions()) {
+            actionList.add(decisionRow(action));
+        }
+        decisionCard.add(actionList);
     }
 
-    private Div statCard(String label, String value, String hint, String accent) {
-        Div card = new Div();
-        card.getStyle()
-                .set("background", PANEL)
-                .set("border", "1px solid " + BORDER)
-                .set("border-left", "4px solid " + accent)
-                .set("border-radius", "20px")
-                .set("padding", "18px")
-                .set("box-shadow", "0 18px 45px rgba(0,0,0,0.20)");
+    private Div briefRow(ManagerDashboardService.ExecutiveBriefRow row) {
+        Div item = div("mdp-brief-row mdp-tone-" + safeTone(row.tone()));
+        item.add(span(row.label(), "mdp-brief-label"), span(row.value(), "mdp-brief-value"));
+        return item;
+    }
 
-        Span labelSpan = new Span(label);
-        labelSpan.getStyle()
-                .set("display", "block")
-                .set("color", "#a8b3c7")
-                .set("font-size", "13px")
-                .set("font-weight", "900")
-                .set("letter-spacing", "0.08em")
-                .set("text-transform", "uppercase");
+    private Div decisionRow(ManagerDashboardService.DecisionActionRow action) {
+        Div item = div("mdp-decision-row mdp-tone-" + safeTone(action.tone()));
+        Div top = div("mdp-decision-top");
+        top.add(span(action.priority(), "mdp-decision-priority"), span(action.title(), "mdp-decision-title"));
+        item.add(top, span(action.description(), "mdp-decision-copy"));
+        return item;
+    }
 
-        Span valueSpan = new Span(value);
-        valueSpan.getStyle()
-                .set("display", "block")
-                .set("font-size", "28px")
-                .set("font-weight", "950")
-                .set("margin", "10px 0 6px")
-                .set("color", "white");
+    private Div buildExecutiveSummary(ManagerDashboardService.Summary summary) {
+        Div wrap = div("mdp-summary-grid");
 
-        Span hintSpan = new Span(hint);
-        hintSpan.getStyle()
-                .set("display", "block")
-                .set("color", "#64748b")
-                .set("font-size", "13px")
-                .set("font-weight", "750");
+        BigDecimal averageOrder = summary.confirmedBookings() == 0
+                ? BigDecimal.ZERO
+                : summary.grandRevenue().divide(BigDecimal.valueOf(summary.confirmedBookings()), 2, RoundingMode.HALF_UP);
 
-        card.add(labelSpan, valueSpan, hintSpan);
+        wrap.add(
+                metricCard("Grand revenue", money(summary.grandRevenue()), "Tickets + concessions", GOLD, "+"),
+                metricCard("Tickets sold", String.valueOf(summary.ticketsSold()), "Confirmed seat sales", BLUE, "▦"),
+                metricCard("Ticket revenue", money(summary.ticketRevenue()), "Box office only", GREEN, "£"),
+                metricCard("Food revenue", money(summary.foodRevenue()), "Concessions income", GOLD_SOFT, "◐"),
+                metricCard("Cancel rate", summary.cancelRate() + "%", "Cancelled / total", RED, "!"),
+                metricCard("Avg order", money(averageOrder), "Revenue per booking", PURPLE, "∑")
+        );
+        return wrap;
+    }
+
+    private Div metricCard(String label, String value, String hint, String accent, String icon) {
+        Div card = div("mdp-metric-card");
+        card.getStyle().set("--accent", accent);
+        card.add(
+                span(icon, "mdp-metric-icon"),
+                span(label, "mdp-metric-label"),
+                span(value, "mdp-metric-value"),
+                span(hint, "mdp-metric-hint")
+        );
         return card;
     }
 
-    private Div buildChartsGrid() {
-        Div grid = new Div();
-        grid.getStyle()
-                .set("display", "grid")
-                .set("grid-template-columns", "1.25fr 0.75fr")
-                .set("gap", "22px")
-                .set("margin-bottom", "24px");
+    private Div buildWorkspaceGrid() {
+        Div grid = div("mdp-workspace-grid");
 
-        grid.add(
-                panel("Revenue trend", buildLineChart(dashboardData.dailyRevenue())),
-                panel("Film revenue share", buildPieChart(dashboardData.filmSales())),
-                panel("Cinema performance", buildCinemaBars(dashboardData.cinemaRevenue())),
-                panel("Booking status", buildStatusBars(dashboardData.bookingStatus()))
+        Div revenuePanel = panel(
+                "Revenue trend",
+                "Daily revenue with peak-day and average performance",
+                buildRevenueTrendCard(dashboardData.dailyRevenue()),
+                "mdp-panel-span-2 mdp-revenue-panel"
         );
+        Div mixPanel = panel("Revenue mix", "Ticket versus food contribution", buildRevenueMixCard(), "mdp-panel-compact");
+        Div heatmapPanel = panel(
+                "Showtime heatmap",
+                "Compact demand map by weekday and time slot",
+                buildShowtimeHeatmap(),
+                "mdp-panel-span-2 mdp-heatmap-panel"
+        );
+        Div filmPanel = panel("Film share", "Top films by revenue", buildDonutChart(dashboardData.filmSales()), "mdp-panel-compact");
+        Div topFilmPanel = panel("Top film board", "Fast read of customer demand", buildFilmLeaderboard(dashboardData.filmSales()), "mdp-panel-compact");
 
+        grid.add(revenuePanel, mixPanel, heatmapPanel, filmPanel, topFilmPanel);
         return grid;
     }
 
-    private Div panel(String title, Component body) {
-        Div panel = new Div();
-        panel.getStyle()
-                .set("background", PANEL)
-                .set("border", "1px solid " + BORDER)
-                .set("border-radius", "22px")
-                .set("padding", "22px")
-                .set("box-shadow", "0 22px 60px rgba(0,0,0,0.22)")
-                .set("box-sizing", "border-box");
+    private Div buildOperationsGrid() {
+        Div grid = div("mdp-ops-grid");
+        grid.add(
+                panel("Cinema performance", "Revenue and ticket volume by cinema", buildCinemaBars(dashboardData.cinemaRevenue()), "mdp-panel-wide"),
+                panel("Booking status", "Operational health and cancellations", buildStatusBoard(dashboardData.bookingStatus()), ""),
+                panel("Management focus", "Automatic interpretation from current dashboard", buildInsightCards(), "")
+        );
+        return grid;
+    }
 
-        H2 heading = new H2(title);
-        heading.getStyle()
-                .set("margin", "0 0 18px")
-                .set("font-size", "22px")
-                .set("font-weight", "950")
-                .set("letter-spacing", "0.03em");
+    private Div panel(String title, String subtitle, Component body, String extraClass) {
+        Div panel = div("mdp-panel");
+        if (extraClass != null && !extraClass.isBlank()) {
+            for (String cls : extraClass.split(" ")) {
+                if (!cls.isBlank()) {
+                    panel.addClassName(cls.trim());
+                }
+            }
+        }
 
-        panel.add(heading, body);
+        Div head = div("mdp-panel-head");
+        Div text = div("mdp-panel-title-wrap");
+        text.add(span(title, "mdp-panel-title"), span(subtitle, "mdp-panel-subtitle"));
+        head.add(text, span("●", "mdp-panel-dot"));
+
+        panel.add(head, body);
         return panel;
     }
 
+    private Component buildRevenueTrendCard(List<ManagerDashboardService.DailyRevenueRow> rows) {
+        Div box = div("mdp-revenue-trend-box");
+        box.add(buildLineChart(rows));
+
+        Div stats = div("mdp-trend-stat-grid");
+        BigDecimal periodTotal = rows == null
+                ? BigDecimal.ZERO
+                : rows.stream()
+                .map(ManagerDashboardService.DailyRevenueRow::totalRevenue)
+                .filter(value -> value != null)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        ManagerDashboardService.DailyRevenueRow peak = rows == null
+                ? null
+                : rows.stream()
+                .max(Comparator.comparing(row -> row.totalRevenue() == null ? BigDecimal.ZERO : row.totalRevenue()))
+                .orElse(null);
+
+        long activeDays = rows == null ? 0 : rows.stream()
+                .filter(row -> row.totalRevenue() != null && row.totalRevenue().compareTo(BigDecimal.ZERO) > 0)
+                .count();
+
+        BigDecimal average = rows == null || rows.isEmpty()
+                ? BigDecimal.ZERO
+                : periodTotal.divide(BigDecimal.valueOf(rows.size()), 2, RoundingMode.HALF_UP);
+
+        BigDecimal ticketTotal = rows == null
+                ? BigDecimal.ZERO
+                : rows.stream()
+                .map(ManagerDashboardService.DailyRevenueRow::ticketRevenue)
+                .filter(value -> value != null)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal foodTotal = rows == null
+                ? BigDecimal.ZERO
+                : rows.stream()
+                .map(ManagerDashboardService.DailyRevenueRow::foodRevenue)
+                .filter(value -> value != null)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        double foodShare = periodTotal.compareTo(BigDecimal.ZERO) == 0
+                ? 0
+                : foodTotal.multiply(BigDecimal.valueOf(100)).divide(periodTotal, 1, RoundingMode.HALF_UP).doubleValue();
+
+        stats.add(
+                trendStat("Period total", money(periodTotal), "Tickets + concessions", GOLD),
+                trendStat("Peak day", peak == null ? "No data" : peak.date().format(SHORT_DATE), peak == null ? "-" : money(peak.totalRevenue()), BLUE),
+                trendStat("Average / day", money(average), activeDays + " active sales days", GREEN),
+                trendStat("Food share", String.format(Locale.UK, "%.1f%%", foodShare), money(foodTotal) + " concessions", CYAN)
+        );
+
+        Div legend = div("mdp-chart-legend");
+        legend.add(
+                legendPill(GOLD, "Total revenue", money(periodTotal)),
+                legendPill(BLUE, "Ticket revenue", money(ticketTotal)),
+                legendPill(CYAN, "Food revenue", money(foodTotal))
+        );
+
+        box.add(stats, legend);
+        return box;
+    }
+
+    private Div trendStat(String label, String value, String hint, String color) {
+        Div stat = div("mdp-trend-stat");
+        stat.getStyle().set("--accent", color);
+        stat.add(span(label, "mdp-trend-stat-label"), span(value, "mdp-trend-stat-value"), span(hint, "mdp-trend-stat-hint"));
+        return stat;
+    }
+
+    private Div legendPill(String color, String label, String value) {
+        Div pill = div("mdp-legend-pill");
+        pill.getStyle().set("--accent", color);
+        pill.add(span("", "mdp-legend-dot-small"), span(label, "mdp-legend-pill-label"), span(value, "mdp-legend-pill-value"));
+        return pill;
+    }
+
     private Component buildLineChart(List<ManagerDashboardService.DailyRevenueRow> rows) {
-        Div wrapper = new Div();
-        wrapper.getStyle().set("width", "100%");
+        Div wrapper = div("mdp-line-chart");
 
         if (rows == null || rows.isEmpty()) {
             wrapper.add(emptyText("No revenue data for this period."));
@@ -282,70 +397,95 @@ public class ManagerDashboardView extends Div implements BeforeEnterObserver {
 
         double max = rows.stream()
                 .map(ManagerDashboardService.DailyRevenueRow::totalRevenue)
-                .mapToDouble(BigDecimal::doubleValue)
+                .mapToDouble(value -> value == null ? 0 : value.doubleValue())
                 .max()
                 .orElse(0);
 
-        int width = 760;
-        int height = 260;
-        int left = 48;
-        int right = 28;
-        int top = 22;
-        int bottom = 52;
+        int width = 980;
+        int height = 310;
+        int left = 58;
+        int right = 34;
+        int top = 28;
+        int bottom = 60;
         int plotWidth = width - left - right;
         int plotHeight = height - top - bottom;
 
-        StringBuilder points = new StringBuilder();
+        StringBuilder totalPoints = new StringBuilder();
+        StringBuilder ticketPoints = new StringBuilder();
+        StringBuilder areaPoints = new StringBuilder();
         StringBuilder dots = new StringBuilder();
         StringBuilder labels = new StringBuilder();
+        StringBuilder gridLines = new StringBuilder();
+
+        for (int g = 0; g <= 4; g++) {
+            double y = top + (plotHeight * g / 4.0);
+            gridLines.append(String.format(Locale.UK,
+                    "<line x1='%d' y1='%.1f' x2='%d' y2='%.1f' stroke='rgba(255,255,255,0.08)'/>%n",
+                    left, y, left + plotWidth, y));
+        }
 
         for (int i = 0; i < rows.size(); i++) {
             ManagerDashboardService.DailyRevenueRow row = rows.get(i);
             double x = rows.size() == 1
                     ? left + (plotWidth / 2.0)
                     : left + ((double) i / (rows.size() - 1)) * plotWidth;
-            double y = max <= 0
+            double totalY = max <= 0
                     ? top + plotHeight
-                    : top + plotHeight - (row.totalRevenue().doubleValue() / max) * plotHeight;
+                    : top + plotHeight - (safeDouble(row.totalRevenue()) / max) * plotHeight;
+            double ticketY = max <= 0
+                    ? top + plotHeight
+                    : top + plotHeight - (safeDouble(row.ticketRevenue()) / max) * plotHeight;
 
-            points.append(String.format(Locale.UK, "%.1f,%.1f ", x, y));
+            totalPoints.append(String.format(Locale.UK, "%.1f,%.1f ", x, totalY));
+            ticketPoints.append(String.format(Locale.UK, "%.1f,%.1f ", x, ticketY));
+            areaPoints.append(String.format(Locale.UK, "%.1f,%.1f ", x, totalY));
+
             dots.append(String.format(Locale.UK,
-                    "<circle cx='%.1f' cy='%.1f' r='4' fill='%s'><title>%s: %s</title></circle>",
-                    x,
-                    y,
-                    CYAN,
-                    row.date(),
-                    money(row.totalRevenue())
-            ));
+                    "<circle cx='%.1f' cy='%.1f' r='5' fill='#d6aa42' stroke='#0b1020' stroke-width='3'><title>%s · %s</title></circle>%n",
+                    x, totalY, escapeXml(row.date()), escapeXml(money(row.totalRevenue()))));
 
             if (i == 0 || i == rows.size() - 1 || i % Math.max(1, rows.size() / 6) == 0) {
                 labels.append(String.format(Locale.UK,
-                        "<text x='%.1f' y='%d' text-anchor='middle' fill='#94a3b8' font-size='11'>%s</text>",
-                        x,
-                        height - 16,
-                        row.date().format(DateTimeFormatter.ofPattern("dd MMM"))
-                ));
+                        "<text x='%.1f' y='%d' text-anchor='middle' fill='rgba(231,236,247,0.60)' font-size='12'>%s</text>%n",
+                        x, height - 22, escapeXml(row.date().format(SHORT_DATE))));
             }
         }
 
+        String area = areaPoints + String.format(Locale.UK, "%.1f,%.1f %.1f,%.1f",
+                (double) (left + plotWidth), (double) (top + plotHeight), (double) left, (double) (top + plotHeight));
+
         String svg = """
-                <svg viewBox='0 0 %d %d' width='100%%' height='280' role='img' aria-label='Revenue trend line chart'>
-                    <rect x='0' y='0' width='%d' height='%d' rx='18' fill='%s'/>
-                    <line x1='%d' y1='%d' x2='%d' y2='%d' stroke='rgba(255,255,255,0.18)'/>
-                    <line x1='%d' y1='%d' x2='%d' y2='%d' stroke='rgba(255,255,255,0.18)'/>
-                    <text x='%d' y='%d' fill='#94a3b8' font-size='12'>%s</text>
-                    <polyline points='%s' fill='none' stroke='%s' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'/>
+                <svg viewBox='0 0 %d %d' width='100%%' height='330' role='img' aria-label='Revenue trend chart'>
+                    <defs>
+                        <linearGradient id='goldLine' x1='0' x2='1' y1='0' y2='0'>
+                            <stop offset='0%%' stop-color='#d6aa42'/>
+                            <stop offset='55%%' stop-color='#f4d47b'/>
+                            <stop offset='100%%' stop-color='#7c8cff'/>
+                        </linearGradient>
+                        <linearGradient id='goldArea' x1='0' x2='0' y1='0' y2='1'>
+                            <stop offset='0%%' stop-color='rgba(214,170,66,0.34)'/>
+                            <stop offset='100%%' stop-color='rgba(214,170,66,0)'/>
+                        </linearGradient>
+                    </defs>
+                    <rect x='0' y='0' width='%d' height='%d' rx='28' fill='rgba(255,255,255,0.025)'/>
+                    %s
+                    <line x1='%d' y1='%d' x2='%d' y2='%d' stroke='rgba(255,255,255,0.16)'/>
+                    <text x='%d' y='%d' fill='rgba(231,236,247,0.62)' font-size='12'>%s</text>
+                    <polygon points='%s' fill='url(#goldArea)'/>
+                    <polyline points='%s' fill='none' stroke='rgba(124,140,255,0.55)' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/>
+                    <polyline points='%s' fill='none' stroke='url(#goldLine)' stroke-width='5' stroke-linecap='round' stroke-linejoin='round'/>
                     %s
                     %s
                 </svg>
                 """.formatted(
                 width, height,
-                width, height, PANEL_SOFT,
-                left, top, left, top + plotHeight,
+                width, height,
+                gridLines,
                 left, top + plotHeight, left + plotWidth, top + plotHeight,
-                left + 4, top + 12, max <= 0 ? "£0" : money(BigDecimal.valueOf(max)),
-                points,
-                CYAN,
+                left + 4, top + 14, max <= 0 ? "£0" : escapeXml(money(BigDecimal.valueOf(max))),
+                area,
+                ticketPoints,
+                totalPoints,
                 dots,
                 labels
         );
@@ -354,13 +494,40 @@ public class ManagerDashboardView extends Div implements BeforeEnterObserver {
         return wrapper;
     }
 
-    private Component buildPieChart(List<ManagerDashboardService.FilmSalesRow> rows) {
-        Div wrapper = new Div();
-        wrapper.getStyle()
-                .set("display", "grid")
-                .set("grid-template-columns", "180px 1fr")
-                .set("gap", "18px")
-                .set("align-items", "center");
+    private Component buildRevenueMixCard() {
+        ManagerDashboardService.Summary s = dashboardData.summary();
+        BigDecimal total = s.grandRevenue() == null ? BigDecimal.ZERO : s.grandRevenue();
+        double ticketPct = total.compareTo(BigDecimal.ZERO) == 0 ? 0 : safeDouble(s.ticketRevenue()) / safeDouble(total) * 100.0;
+        double foodPct = total.compareTo(BigDecimal.ZERO) == 0 ? 0 : safeDouble(s.foodRevenue()) / safeDouble(total) * 100.0;
+
+        Div box = div("mdp-mix-box");
+        box.add(
+                radialProgress(String.format(Locale.UK, "%.0f", ticketPct), "Ticket share"),
+                mixRow("Ticket revenue", money(s.ticketRevenue()), ticketPct, GOLD),
+                mixRow("Food revenue", money(s.foodRevenue()), foodPct, CYAN),
+                mixRow("Grand total", money(s.grandRevenue()), 100, PURPLE)
+        );
+        return box;
+    }
+
+    private Div radialProgress(String pct, String label) {
+        Div radial = div("mdp-radial");
+        radial.getStyle().set("--pct", pct + "%");
+        radial.add(span(pct + "%", "mdp-radial-value"), span(label, "mdp-radial-label"));
+        return radial;
+    }
+
+    private Div mixRow(String title, String value, double pct, String color) {
+        Div row = div("mdp-mix-row");
+        row.getStyle().set("--bar", color).set("--pct", String.format(Locale.UK, "%.1f%%", Math.max(3, pct)));
+        Div top = div("mdp-mix-top");
+        top.add(span(title, "mdp-mix-title"), span(value, "mdp-mix-value"));
+        row.add(top, div("mdp-mix-track"));
+        return row;
+    }
+
+    private Component buildDonutChart(List<ManagerDashboardService.FilmSalesRow> rows) {
+        Div wrapper = div("mdp-donut-wrap");
 
         if (rows == null || rows.isEmpty()) {
             wrapper.add(emptyText("No film sales yet."));
@@ -370,14 +537,14 @@ public class ManagerDashboardView extends Div implements BeforeEnterObserver {
         List<ManagerDashboardService.FilmSalesRow> topRows = rows.stream().limit(5).toList();
         double total = topRows.stream()
                 .map(ManagerDashboardService.FilmSalesRow::revenue)
-                .mapToDouble(BigDecimal::doubleValue)
+                .mapToDouble(this::safeDouble)
                 .sum();
 
-        String[] colors = {CYAN, BLUE, ORANGE, GREEN, "#8b5cf6"};
+        String[] colors = {GOLD, CYAN, PURPLE, GREEN, RED};
         double cursor = 0;
         StringBuilder gradient = new StringBuilder("conic-gradient(");
         for (int i = 0; i < topRows.size(); i++) {
-            double share = total <= 0 ? 100.0 / topRows.size() : (topRows.get(i).revenue().doubleValue() / total) * 100.0;
+            double share = total <= 0 ? 100.0 / topRows.size() : safeDouble(topRows.get(i).revenue()) / total * 100.0;
             double end = cursor + share;
             if (i > 0) {
                 gradient.append(", ");
@@ -388,29 +555,132 @@ public class ManagerDashboardView extends Div implements BeforeEnterObserver {
         }
         gradient.append(')');
 
-        Div pie = new Div();
-        pie.getStyle()
-                .set("width", "170px")
-                .set("height", "170px")
-                .set("border-radius", "50%")
-                .set("background", gradient.toString())
-                .set("box-shadow", "0 16px 40px rgba(0,0,0,0.35)")
-                .set("border", "1px solid " + BORDER);
+        Div donut = div("mdp-donut");
+        donut.getStyle().set("background", gradient.toString());
+        Div donutCenter = div("mdp-donut-center");
+        donutCenter.add(span(String.valueOf(topRows.size()), "mdp-donut-number"), span("films", "mdp-donut-label"));
+        donut.add(donutCenter);
 
-        Div legend = new Div();
-        legend.getStyle().set("display", "grid").set("gap", "10px");
+        Div legend = div("mdp-donut-legend");
         for (int i = 0; i < topRows.size(); i++) {
             ManagerDashboardService.FilmSalesRow row = topRows.get(i);
             legend.add(legendRow(colors[i % colors.length], row.filmTitle(), row.ticketsSold() + " tickets · " + money(row.revenue())));
         }
 
-        wrapper.add(pie, legend);
+        wrapper.add(donut, legend);
         return wrapper;
     }
 
+    private Component buildFilmLeaderboard(List<ManagerDashboardService.FilmSalesRow> rows) {
+        Div list = div("mdp-leaderboard");
+        if (rows == null || rows.isEmpty()) {
+            list.add(emptyText("No film sales yet."));
+            return list;
+        }
+
+        int index = 1;
+        for (ManagerDashboardService.FilmSalesRow row : rows.stream().limit(5).toList()) {
+            Div item = div("mdp-rank-row");
+            item.add(
+                    span(String.format(Locale.UK, "%02d", index++), "mdp-rank-number"),
+                    div("mdp-rank-main", span(row.filmTitle(), "mdp-rank-title"), span(row.ticketsSold() + " tickets", "mdp-rank-sub")),
+                    span(money(row.revenue()), "mdp-rank-value")
+            );
+            list.add(item);
+        }
+        return list;
+    }
+
+    private Component buildShowtimeHeatmap() {
+        Div wrapper = div("mdp-heatmap-wrap");
+        List<ManagerDashboardService.ShowtimeHeatmapRow> rows = dashboardData.showtimeHeatmap();
+        if (rows == null || rows.isEmpty()) {
+            wrapper.add(emptyText("No showtime demand data yet."));
+            return wrapper;
+        }
+
+        long maxTickets = rows.stream()
+                .flatMap(row -> row.cells().stream())
+                .mapToLong(ManagerDashboardService.ShowtimeHeatmapCell::ticketsSold)
+                .max()
+                .orElse(0);
+
+        Div heatmap = div("mdp-heatmap-compact");
+        heatmap.add(span("Slot", "mdp-heat-head mdp-heat-slot-head"));
+        for (ManagerDashboardService.ShowtimeHeatmapRow row : rows) {
+            heatmap.add(span(row.day(), "mdp-heat-head mdp-heat-day-head"));
+        }
+
+        int slotCount = rows.stream().mapToInt(row -> row.cells().size()).max().orElse(0);
+        for (int slotIndex = 0; slotIndex < slotCount; slotIndex++) {
+            String slotLabel = rows.get(0).cells().size() > slotIndex
+                    ? rows.get(0).cells().get(slotIndex).slot()
+                    : "Slot";
+            heatmap.add(span(slotLabel, "mdp-heat-slot-label"));
+
+            for (ManagerDashboardService.ShowtimeHeatmapRow row : rows) {
+                ManagerDashboardService.ShowtimeHeatmapCell cell = row.cells().size() > slotIndex
+                        ? row.cells().get(slotIndex)
+                        : new ManagerDashboardService.ShowtimeHeatmapCell(slotLabel, 0, BigDecimal.ZERO);
+                Div block = div("mdp-heat-cell-compact " + heatClass(cell.ticketsSold(), maxTickets));
+                block.getElement().setProperty(
+                        "title",
+                        row.day() + " · " + cell.slot() + " · " + cell.ticketsSold() + " tickets · " + money(cell.revenue())
+                );
+                block.add(
+                        span(String.valueOf(cell.ticketsSold()), "mdp-heat-number"),
+                        span(shortMoney(cell.revenue()), "mdp-heat-revenue")
+                );
+                heatmap.add(block);
+            }
+        }
+
+        Div peakStrip = div("mdp-heat-peak-strip");
+        rows.stream()
+                .flatMap(row -> row.cells().stream().map(cell -> new HeatPeak(row.day(), cell.slot(), cell.ticketsSold(), cell.revenue())))
+                .sorted(Comparator.comparingLong(HeatPeak::tickets).reversed())
+                .limit(3)
+                .forEach(peak -> peakStrip.add(heatPeakChip(peak)));
+
+        wrapper.add(heatmap, peakStrip);
+        return wrapper;
+    }
+
+    private Div heatPeakChip(HeatPeak peak) {
+        Div chip = div("mdp-heat-peak-chip");
+        chip.add(
+                span(peak.day() + " · " + peak.slot(), "mdp-heat-peak-title"),
+                span(peak.tickets() + " tickets · " + money(peak.revenue()), "mdp-heat-peak-value")
+        );
+        return chip;
+    }
+
+    private String shortMoney(BigDecimal amount) {
+        BigDecimal safeAmount = amount == null ? BigDecimal.ZERO : amount;
+        if (safeAmount.abs().compareTo(BigDecimal.valueOf(1000)) >= 0) {
+            return "£" + safeAmount.divide(BigDecimal.valueOf(1000), 1, RoundingMode.HALF_UP) + "k";
+        }
+        return MONEY.format(safeAmount);
+    }
+
+    private record HeatPeak(String day, String slot, long tickets, BigDecimal revenue) {}
+
+    private String heatClass(long tickets, long maxTickets) {
+        if (tickets <= 0 || maxTickets <= 0) {
+            return "mdp-heat-empty";
+        }
+        double ratio = tickets / (double) maxTickets;
+        if (ratio >= 0.75) {
+            return "mdp-heat-hot";
+        }
+        if (ratio >= 0.4) {
+            return "mdp-heat-mid";
+        }
+        return "mdp-heat-low";
+    }
+
     private Component buildCinemaBars(List<ManagerDashboardService.CinemaRevenueRow> rows) {
-        Div wrapper = new Div();
-        wrapper.getStyle().set("display", "grid").set("gap", "14px");
+        Div wrapper = div("mdp-bar-list");
 
         if (rows == null || rows.isEmpty()) {
             wrapper.add(emptyText("No cinema revenue yet."));
@@ -419,20 +689,19 @@ public class ManagerDashboardView extends Div implements BeforeEnterObserver {
 
         double max = rows.stream()
                 .map(ManagerDashboardService.CinemaRevenueRow::revenue)
-                .mapToDouble(BigDecimal::doubleValue)
+                .mapToDouble(this::safeDouble)
                 .max()
                 .orElse(1);
 
         for (ManagerDashboardService.CinemaRevenueRow row : rows.stream().limit(8).toList()) {
-            wrapper.add(barRow(row.cinemaName(), row.ticketsSold() + " tickets · " + money(row.revenue()), row.revenue().doubleValue(), max, BLUE));
+            wrapper.add(barRow(row.cinemaName(), row.ticketsSold() + " tickets · " + money(row.revenue()), safeDouble(row.revenue()), max, GOLD));
         }
 
         return wrapper;
     }
 
-    private Component buildStatusBars(List<ManagerDashboardService.StatusRow> rows) {
-        Div wrapper = new Div();
-        wrapper.getStyle().set("display", "grid").set("gap", "14px");
+    private Component buildStatusBoard(List<ManagerDashboardService.StatusRow> rows) {
+        Div wrapper = div("mdp-status-board");
 
         if (rows == null || rows.isEmpty()) {
             wrapper.add(emptyText("No booking status data."));
@@ -441,121 +710,83 @@ public class ManagerDashboardView extends Div implements BeforeEnterObserver {
 
         double max = rows.stream().mapToDouble(ManagerDashboardService.StatusRow::count).max().orElse(1);
         for (ManagerDashboardService.StatusRow row : rows) {
-            String color = "CANCELLED".equals(row.status()) ? RED : GREEN;
-            wrapper.add(barRow(row.status(), row.count() + " bookings", row.count(), max, color));
+            String status = row.status() == null ? "UNKNOWN" : row.status();
+            String color = status.contains("CANCEL") ? RED : status.contains("REFUND") ? PURPLE : GREEN;
+            wrapper.add(barRow(status, row.count() + " bookings", row.count(), max, color));
         }
         return wrapper;
     }
 
+    private Component buildInsightCards() {
+        Div insights = div("mdp-insight-list");
+        for (ManagerDashboardService.DecisionActionRow action : dashboardData.decisionActions()) {
+            insights.add(insightCard(action.priority() + " · " + action.title(), action.description(), toneColor(action.tone())));
+        }
+        return insights;
+    }
+
+    private Div insightCard(String title, String text, String color) {
+        Div card = div("mdp-insight-card");
+        card.getStyle().set("--accent", color);
+        card.add(span(title, "mdp-insight-title"), span(text, "mdp-insight-text"));
+        return card;
+    }
+
     private Div barRow(String title, String subtitle, double value, double max, String color) {
-        Div row = new Div();
-        row.getStyle().set("display", "grid").set("gap", "7px");
+        Div row = div("mdp-bar-row");
+        row.getStyle().set("--bar", color).set("--pct", String.format(Locale.UK, "%.1f%%", max <= 0 ? 0 : Math.max(4, value / max * 100)));
 
-        Div top = new Div();
-        top.getStyle().set("display", "flex").set("justify-content", "space-between").set("gap", "12px");
-
-        Span titleSpan = new Span(title);
-        titleSpan.getStyle().set("font-weight", "900").set("color", "white");
-        Span subtitleSpan = new Span(subtitle);
-        subtitleSpan.getStyle().set("font-weight", "800").set("color", "#a8b3c7").set("font-size", "13px");
-        top.add(titleSpan, subtitleSpan);
-
-        Div track = new Div();
-        track.getStyle()
-                .set("height", "12px")
-                .set("border-radius", "999px")
-                .set("background", "rgba(255,255,255,0.08)")
-                .set("overflow", "hidden");
-
-        Div fill = new Div();
-        double pct = max <= 0 ? 0 : Math.max(4, (value / max) * 100);
-        fill.getStyle()
-                .set("height", "100%")
-                .set("width", String.format(Locale.UK, "%.1f%%", pct))
-                .set("background", color)
-                .set("border-radius", "999px");
-        track.add(fill);
-
-        row.add(top, track);
+        Div top = div("mdp-bar-top");
+        top.add(span(title, "mdp-bar-title"), span(subtitle, "mdp-bar-subtitle"));
+        row.add(top, div("mdp-bar-track"));
         return row;
     }
 
     private Div legendRow(String color, String title, String value) {
-        Div row = new Div();
-        row.getStyle()
-                .set("display", "grid")
-                .set("grid-template-columns", "14px 1fr")
-                .set("gap", "10px")
-                .set("align-items", "start");
+        Div row = div("mdp-legend-row");
+        Span dot = span("", "mdp-legend-dot");
+        dot.getStyle().set("background", color);
 
-        Span dot = new Span();
-        dot.getStyle()
-                .set("width", "12px")
-                .set("height", "12px")
-                .set("border-radius", "50%")
-                .set("background", color)
-                .set("margin-top", "4px");
-
-        Div text = new Div();
-        Span name = new Span(title);
-        name.getStyle().set("display", "block").set("font-weight", "900").set("color", "white");
-        Span amount = new Span(value);
-        amount.getStyle().set("display", "block").set("font-size", "13px").set("color", "#a8b3c7").set("margin-top", "3px");
-        text.add(name, amount);
-
+        Div text = div("mdp-legend-text");
+        text.add(span(title, "mdp-legend-title"), span(value, "mdp-legend-value"));
         row.add(dot, text);
         return row;
     }
 
     private Div buildFeedbackPanel() {
-        Div wrapper = new Div();
-        wrapper.getStyle()
-                .set("display", "grid")
-                .set("grid-template-columns", "1fr 1fr")
-                .set("gap", "22px");
+        Div wrapper = div("mdp-feedback-grid");
 
-        Div form = panel("Exportable manager feedback", new Div());
-        form.removeAll();
-        H2 heading = new H2("Exportable manager feedback");
-        heading.getStyle().set("margin", "0 0 16px").set("font-size", "22px").set("font-weight", "950");
-
+        Div form = panel("Exportable manager feedback", "Saved notes appear in CSV export", new Div(), "");
+        form.addClassName("mdp-feedback-form");
         Button save = new Button("Save feedback", event -> saveFeedback());
         save.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        stylePrimary(save);
+        save.addClassName("mdp-primary-btn");
+        form.add(feedbackTitle, feedbackComment, buttonRow(save));
 
-        form.add(heading, feedbackTitle, feedbackComment, buttonRow(save));
-
-        Div recent = panel("Recent feedback", buildFeedbackList(dashboardData.recentFeedback()));
+        Div recent = panel("Recent feedback", "Manager notes and decisions", buildFeedbackList(dashboardData.recentFeedback()), "");
         wrapper.add(form, recent);
         return wrapper;
     }
 
     private Component buildFeedbackList(List<ManagerFeedback> feedbackList) {
-        Div list = new Div();
-        list.getStyle().set("display", "grid").set("gap", "12px");
+        Div list = div("mdp-feedback-list");
 
         if (feedbackList == null || feedbackList.isEmpty()) {
             list.add(emptyText("No manager feedback has been saved yet."));
             return list;
         }
 
-        for (ManagerFeedback feedback : feedbackList) {
-            Div card = new Div();
-            card.getStyle()
-                    .set("background", PANEL_SOFT)
-                    .set("border", "1px solid " + BORDER)
-                    .set("border-radius", "16px")
-                    .set("padding", "14px");
+        for (ManagerFeedback feedback : feedbackList.stream().limit(6).toList()) {
+            Div card = div("mdp-feedback-card");
+            String title = feedback.getTitle() == null || feedback.getTitle().isBlank() ? "Manager note" : feedback.getTitle();
+            String manager = feedback.getManagerName() == null || feedback.getManagerName().isBlank() ? "Manager" : feedback.getManagerName();
+            String createdAt = feedback.getCreatedAt() == null ? "Unknown time" : feedback.getCreatedAt().format(FEEDBACK_DATE);
 
-            Span title = new Span(feedback.getTitle());
-            title.getStyle().set("display", "block").set("font-weight", "950").set("color", "white");
-            Span meta = new Span((feedback.getManagerName() == null ? "Manager" : feedback.getManagerName())
-                    + " · " + feedback.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")));
-            meta.getStyle().set("display", "block").set("color", "#94a3b8").set("font-size", "13px").set("margin", "6px 0");
-            Paragraph comment = new Paragraph(feedback.getComment());
-            comment.getStyle().set("margin", "0").set("color", "#dbeafe").set("line-height", "1.55");
-
-            card.add(title, meta, comment);
+            card.add(
+                    span(title, "mdp-feedback-title"),
+                    span(manager + " · " + createdAt, "mdp-feedback-meta"),
+                    paragraph(feedback.getComment(), "mdp-feedback-comment")
+            );
             list.add(card);
         }
 
@@ -575,14 +806,14 @@ public class ManagerDashboardView extends Div implements BeforeEnterObserver {
     }
 
     private Div buttonRow(Button button) {
-        Div row = new Div(button);
-        row.getStyle().set("display", "flex").set("justify-content", "flex-end").set("margin-top", "16px");
+        Div row = div("mdp-button-row");
+        row.add(button);
         return row;
     }
 
     private Paragraph emptyText(String message) {
         Paragraph empty = new Paragraph(message);
-        empty.getStyle().set("margin", "0").set("color", "#94a3b8").set("font-weight", "750");
+        empty.addClassName("mdp-empty");
         return empty;
     }
 
@@ -597,53 +828,106 @@ public class ManagerDashboardView extends Div implements BeforeEnterObserver {
         );
         resource.setContentType("text/csv");
 
-        Anchor export = new Anchor(resource, "Export report CSV");
+        Anchor export = new Anchor(resource, "Export CSV");
         export.getElement().setAttribute("download", true);
-        export.getStyle()
-                .set("height", "46px")
-                .set("display", "inline-flex")
-                .set("align-items", "center")
-                .set("padding", "0 22px")
-                .set("border-radius", "999px")
-                .set("background", BLUE)
-                .set("color", "white")
-                .set("font-weight", "900")
-                .set("text-decoration", "none")
-                .set("box-shadow", "0 12px 30px rgba(0,114,206,0.24)");
+        export.addClassName("mdp-export-link");
         exportHolder.add(export);
+    }
+
+    private String safeCurrentManagerName() {
+        try {
+            if (loginService.getCurrentUser() != null && loginService.getCurrentUser().getFullName() != null) {
+                return loginService.getCurrentUser().getFullName();
+            }
+            if (loginService.getCurrentUser() != null && loginService.getCurrentUser().getUsername() != null) {
+                return loginService.getCurrentUser().getUsername();
+            }
+        } catch (RuntimeException ignored) {
+        }
+        return "Manager";
+    }
+
+    private String initials(String name) {
+        if (name == null || name.isBlank()) {
+            return "M";
+        }
+        String[] parts = name.trim().split("\\s+");
+        if (parts.length == 1) {
+            return parts[0].substring(0, 1).toUpperCase(Locale.UK);
+        }
+        return (parts[0].substring(0, 1) + parts[parts.length - 1].substring(0, 1)).toUpperCase(Locale.UK);
     }
 
     private String money(BigDecimal value) {
         return MONEY.format(value == null ? BigDecimal.ZERO : value);
     }
 
-    private void styleInput(Component component) {
-        component.getElement().getStyle()
-                .set("--vaadin-input-field-background", "rgba(255,255,255,0.07)")
-                .set("--vaadin-input-field-value-color", "white")
-                .set("--vaadin-input-field-label-color", "#a8b3c7")
-                .set("--vaadin-input-field-placeholder-color", "#64748b")
-                .set("--vaadin-input-field-border-color", BORDER);
+    private double safeDouble(BigDecimal value) {
+        return value == null ? 0 : value.doubleValue();
     }
 
-    private void stylePrimary(Button button) {
-        button.getStyle()
-                .set("height", "44px")
-                .set("background", BLUE)
-                .set("color", "white")
-                .set("font-weight", "900")
-                .set("border-radius", "999px")
-                .set("padding", "0 22px");
+    private String safeTone(String tone) {
+        if (tone == null || tone.isBlank()) {
+            return "neutral";
+        }
+        return tone.toLowerCase(Locale.UK).replaceAll("[^a-z]", "");
     }
 
-    private void styleSecondary(Button button) {
-        button.getStyle()
-                .set("height", "44px")
-                .set("background", "rgba(255,255,255,0.05)")
-                .set("color", "white")
-                .set("font-weight", "850")
-                .set("border", "1px solid " + BORDER)
-                .set("border-radius", "999px")
-                .set("padding", "0 20px");
+    private String toneColor(String tone) {
+        return switch (safeTone(tone)) {
+            case "positive" -> GREEN;
+            case "warning" -> RED;
+            default -> GOLD;
+        };
+    }
+
+    private String escapeXml(Object value) {
+        if (value == null) {
+            return "";
+        }
+        return String.valueOf(value)
+                .replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;")
+                .replace("'", "&apos;");
+    }
+
+    private Div div(String className, Component... children) {
+        Div div = new Div();
+        if (className != null && !className.isBlank()) {
+            for (String cls : className.split(" ")) {
+                if (!cls.isBlank()) {
+                    div.addClassName(cls.trim());
+                }
+            }
+        }
+        if (children != null) {
+            div.add(children);
+        }
+        return div;
+    }
+
+    private Span span(String text, String className) {
+        Span span = new Span(text == null ? "" : text);
+        addClasses(span, className);
+        return span;
+    }
+
+    private Paragraph paragraph(String text, String className) {
+        Paragraph p = new Paragraph(text == null ? "" : text);
+        addClasses(p, className);
+        return p;
+    }
+
+    private void addClasses(Component component, String className) {
+        if (component == null || className == null || className.isBlank()) {
+            return;
+        }
+        for (String cls : className.split("\\s+")) {
+            if (!cls.isBlank()) {
+                component.getElement().getClassList().add(cls.trim());
+            }
+        }
     }
 }
