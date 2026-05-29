@@ -1,6 +1,7 @@
 package com.eduaccess.ui;
 
 import com.eduaccess.domain.UserAccount;
+import com.eduaccess.domain.UserRole;
 import com.eduaccess.repository.CinemaRepository;
 import com.eduaccess.service.LoginService;
 import com.vaadin.flow.component.Component;
@@ -30,6 +31,8 @@ public class MainLayout extends AppLayout {
     private final CinemaRepository cinemaRepository;
     private final LoginService loginService;
     private Div authSection;
+    private Div navSection;
+    private Div header;
 
     public MainLayout(CinemaRepository cinemaRepository, LoginService loginService) {
         this.cinemaRepository = cinemaRepository;
@@ -38,7 +41,7 @@ public class MainLayout extends AppLayout {
     }
 
     private void createHeader() {
-        Div header = new Div();
+        header = new Div();
         header.setWidthFull();
         header.getStyle()
                 .set("height", "78px")
@@ -82,8 +85,8 @@ public class MainLayout extends AppLayout {
                 .set("text-decoration", "none")
                 .set("white-space", "nowrap");
 
-        Div nav = createNav();
-        left.add(logo, nav);
+        navSection = createNav();
+        left.add(logo, navSection);
 
         Div right = new Div();
         right.getStyle()
@@ -113,6 +116,11 @@ public class MainLayout extends AppLayout {
         addToNavbar(header);
     }
 
+    private void recreateHeader() {
+        getElement().removeAllChildren();
+        createHeader();
+    }
+
     private Div createNav() {
         Div nav = new Div();
         nav.getStyle()
@@ -127,22 +135,34 @@ public class MainLayout extends AppLayout {
 
         UserAccount currentUser = loginService.getCurrentUser();
         if (currentUser != null) {
+            // 第4个：Food Orders - 所有登录用户可见
             nav.add(iconNavLink("cutlery", "Food Orders", FoodOrdersView.class));
 
-            // Refund History (TASK 8) — only staff that can see Cancellation.
-            if (loginService.canAccessCancellation()) {
+            UserRole role = currentUser.getRole();
+            
+            // BOOKING_STAFF, ADMIN, MANAGER 都能看到 Refund History 和 Email Management
+            if (role == UserRole.BOOKING_STAFF || role == UserRole.ADMIN || role == UserRole.MANAGER) {
+                // 第5个：Refund History
                 nav.add(iconNavLink("archive", "Refund History", CancellationHistoryView.class));
+                // 第6个：Email Management
                 nav.add(iconNavLink("envelope-o", "Email Management", EmailManagementView.class));
             }
 
-            if (loginService.canAccessAdmin()) {
+            // ADMIN 和 MANAGER 能看到 Admin Schedule 和 Audit Log
+            if (role == UserRole.ADMIN || role == UserRole.MANAGER) {
+                // 第7个：Admin Schedule
                 nav.add(iconNavLink("calendar-clock", "Admin Schedule", AdminScheduleView.class));
+                // 第8个：Audit Log
                 nav.add(iconNavLink("clipboard-check", "Audit Log", AuditLogView.class));
             }
 
-            if (loginService.canAccessManager()) {
+            // MANAGER 能看到 Manager Dashboard, Manager Cinemas 和 Films Mgmt
+            if (role == UserRole.MANAGER) {
+                // 第9个：Manager Dashboard
                 nav.add(iconNavLink("bar-chart", "Manager Dashboard", ManagerDashboardView.class));
+                // 第10个：Manager Cinemas
                 nav.add(iconNavLink("building", "Manager Cinemas", ManagerCinemaView.class));
+                // 第11个：Films Mgmt
                 nav.add(iconNavLink("records", "Films Mgmt", ManagerListingsView.class));
             }
         }
@@ -229,8 +249,8 @@ public class MainLayout extends AppLayout {
 
             logoutButton.addClickListener(event -> {
                 loginService.logout();
-                updateAuthSection();
-                UI.getCurrent().getPage().reload();
+                recreateHeader();
+                UI.getCurrent().navigate("");
             });
 
             authSection.add(userInfo, logoutButton);
@@ -260,7 +280,7 @@ public class MainLayout extends AppLayout {
                     .set("border", "1px solid rgba(255,255,255,0.10)")
                     .set("font-size", "15px");
 
-            registerButton.addClickListener(event -> UI.getCurrent().navigate("register"));
+            registerButton.addClickListener(event -> UI.getCurrent().navigate("login/register"));
 
             authSection.add(loginLink, registerButton);
         }

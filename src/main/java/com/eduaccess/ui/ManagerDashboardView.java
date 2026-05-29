@@ -35,7 +35,7 @@ import java.util.Locale;
 
 @Route(value = "manager/dashboard", layout = MainLayout.class)
 @PageTitle("HCBS — Manager Dashboard")
-@CssImport("./styles/manager-dashboard-pro.css")
+@CssImport("./styles/manager-dashboard-pro-enhanced.css")
 public class ManagerDashboardView extends Div implements BeforeEnterObserver {
 
     private static final NumberFormat MONEY = NumberFormat.getCurrencyInstance(Locale.UK);

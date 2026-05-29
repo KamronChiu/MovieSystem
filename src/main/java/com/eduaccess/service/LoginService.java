@@ -74,7 +74,13 @@ public class LoginService {
         if (user == null) {
             return false;
         }
-        UserRole userRole = user.getRole();
+        return hasRole(user.getRole(), requiredRole);
+    }
+
+    public boolean hasRole(UserRole userRole, UserRole requiredRole) {
+        if (userRole == null) {
+            return false;
+        }
         
         if (userRole == UserRole.MANAGER) {
             return true;
