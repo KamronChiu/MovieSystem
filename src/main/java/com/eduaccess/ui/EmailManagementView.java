@@ -4,6 +4,7 @@ import com.eduaccess.service.LoginService;
 import com.eduaccess.service.email.EmailLogEntry;
 import com.eduaccess.service.email.EmailLogService;
 import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.dependency.CssImport;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.grid.Grid;
@@ -45,6 +46,7 @@ import java.util.Locale;
  * same {@link EmailLogService}, so this screen always reflects the
  * latest activity from both pipelines.
  */
+@CssImport("./styles/backoffice-pro.css")
 @Route(value = "email-management", layout = MainLayout.class)
 @PageTitle("HCBS — Email Management")
 public class EmailManagementView extends Div implements BeforeEnterObserver {
@@ -100,6 +102,7 @@ public class EmailManagementView extends Div implements BeforeEnterObserver {
         this.loginService = loginService;
 
         setWidthFull();
+        addClassName("email-management-pro-page");
         getStyle()
                 .set("background", DARK_BG)
                 .set("min-height", "100vh")
@@ -142,8 +145,8 @@ public class EmailManagementView extends Div implements BeforeEnterObserver {
         title.getStyle().set("margin", "0").set("font-weight", "950");
         Paragraph subtitle = new Paragraph(
                 "Central inbox for every cancellation email and refund receipt — "
-                + "both single transactions and emergency batch operations. Preview "
-                + "messages, manage templates, and track delivery status from one place.");
+                        + "both single transactions and emergency batch operations. Preview "
+                        + "messages, manage templates, and track delivery status from one place.");
         subtitle.getStyle()
                 .set("margin", "8px 0 0 0").set("color", "rgba(255,255,255,0.65)")
                 .set("font-size", "13px").set("max-width", "780px");
@@ -521,7 +524,7 @@ public class EmailManagementView extends Div implements BeforeEnterObserver {
         Div card = whiteCard();
         card.add(sectionHeading("EMAIL TEMPLATES",
                 "Pre-defined message templates that drive the email body for each "
-                + "cancellation scenario. Edit-in-place will be enabled in a future release."));
+                        + "cancellation scenario. Edit-in-place will be enabled in a future release."));
 
         Div grid = new Div();
         grid.getStyle()
@@ -532,20 +535,20 @@ public class EmailManagementView extends Div implements BeforeEnterObserver {
         grid.add(templateCard("Standard Refund",
                 EmailLogService.TEMPLATE_SINGLE_STANDARD, BLUE,
                 "Sent automatically for self-service cancellations under the "
-                + "Standard Policy. Neutral, business-formal tone with a full "
-                + "refund breakdown and a 14-day correction window."));
+                        + "Standard Policy. Neutral, business-formal tone with a full "
+                        + "refund breakdown and a 14-day correction window."));
         grid.add(templateCard("VIP Cancellation",
                 EmailLogService.TEMPLATE_SINGLE_VIP, VIP_PURPLE,
                 "Reserved for HCBS Premium members. Highlights expedited handling, "
-                + "complimentary rewards and concierge follow-up."));
+                        + "complimentary rewards and concierge follow-up."));
         grid.add(templateCard("Emergency (Single)",
                 EmailLogService.TEMPLATE_SINGLE_EMERGENCY, DANGER,
                 "Used when a single booking has to be cancelled by staff under "
-                + "the Emergency Policy. Apologetic tone with goodwill vouchers."));
+                        + "the Emergency Policy. Apologetic tone with goodwill vouchers."));
         grid.add(templateCard("Emergency (Batch)",
                 EmailLogService.TEMPLATE_BATCH_EMERGENCY, AMBER,
                 "Mass-cancellation template used by the Batch Cancellation Dashboard "
-                + "for cinema-wide incidents. Uniform tone, identical to every recipient."));
+                        + "for cinema-wide incidents. Uniform tone, identical to every recipient."));
         card.add(grid);
         wrap.add(card);
         return wrap;

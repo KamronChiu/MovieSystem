@@ -1159,3 +1159,73 @@
         margin-top: 10px;
     }
 }
+
+
+/* === Responsive control panel fix: prevent the date/preset buttons from being clipped === */
+.mdp-greeting-card {
+    min-width: 0;
+    overflow: hidden;
+}
+
+.mdp-hero-grid > * {
+    min-width: 0;
+}
+
+.mdp-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 12px;
+    width: 100%;
+    max-width: 100%;
+    overflow: visible;
+}
+
+.mdp-controls vaadin-date-picker {
+    flex: 1 1 170px;
+    min-width: 160px;
+    max-width: 220px;
+}
+
+.mdp-controls .mdp-primary-btn {
+    flex: 0 0 112px;
+    min-width: 112px;
+}
+
+.mdp-controls .mdp-chip-btn {
+    flex: 0 0 78px;
+    min-width: 72px;
+}
+
+.mdp-controls vaadin-button {
+    white-space: nowrap;
+}
+
+@media (max-width: 1380px) {
+    .mdp-hero-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .mdp-greeting-card,
+    .mdp-brief-card,
+    .mdp-decision-card {
+        min-height: auto;
+    }
+}
+
+@media (max-width: 900px) {
+    .mdp-controls vaadin-date-picker,
+    .mdp-controls .mdp-primary-btn,
+    .mdp-controls .mdp-chip-btn {
+        flex: 1 1 calc(50% - 8px);
+        max-width: none;
+    }
+}
+
+@media (max-width: 560px) {
+    .mdp-controls vaadin-date-picker,
+    .mdp-controls .mdp-primary-btn,
+    .mdp-controls .mdp-chip-btn {
+        flex: 1 1 100%;
+    }
+}

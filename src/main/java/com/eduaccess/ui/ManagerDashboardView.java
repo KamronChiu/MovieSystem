@@ -110,7 +110,7 @@ public class ManagerDashboardView extends Div implements BeforeEnterObserver {
         Div titleBlock = div("mdp-title-block");
         H1 title = new H1("Dashboard");
         title.addClassName("mdp-page-title");
-        Span subtitle = span("Manager command center · revenue, operations and feedback", "mdp-page-subtitle");
+        Span subtitle = span("Manager command center ", "mdp-page-subtitle");
         titleBlock.add(title, subtitle);
 
         Div search = div("mdp-search");
@@ -133,7 +133,7 @@ public class ManagerDashboardView extends Div implements BeforeEnterObserver {
         greeting.add(
                 span("Good morning,", "mdp-muted"),
                 span(safeCurrentManagerName(), "mdp-greeting-name"),
-                span("A business-style view of cinema performance, customer demand and operational feedback.", "mdp-greeting-copy"),
+                span("Per Aspera Ad Astra", "mdp-greeting-copy"),
                 buildControls()
         );
 

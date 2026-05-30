@@ -11,6 +11,7 @@ import com.eduaccess.service.email.EmailReceiptService;
 import com.eduaccess.service.policy.PolicyType;
 import com.eduaccess.service.policy.RefundScope;
 import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.dependency.CssImport;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.checkbox.Checkbox;
 import com.vaadin.flow.component.dialog.Dialog;
@@ -63,6 +64,7 @@ import java.util.stream.Collectors;
  * (CancellationRecord), Audit Log and Email Management all update
  * automatically.
  */
+@CssImport("./styles/backoffice-pro.css")
 @Route(value = "cancellation-batch", layout = MainLayout.class)
 @PageTitle("HCBS — Batch Cancellation")
 public class BatchCancellationDashboardView extends Div implements BeforeEnterObserver {
@@ -127,6 +129,7 @@ public class BatchCancellationDashboardView extends Div implements BeforeEnterOb
         this.dataProvider = new ListDataProvider<>(allBookings);
 
         setWidthFull();
+        addClassName("batch-cancellation-pro-page");
         getStyle()
                 .set("background", DARK_BG)
                 .set("min-height", "100vh")
@@ -176,7 +179,7 @@ public class BatchCancellationDashboardView extends Div implements BeforeEnterOb
         title.getStyle().set("margin", "0").set("font-weight", "950");
         Paragraph subtitle = new Paragraph(
                 "Emergency batch refunds — applied uniformly to every selected booking, "
-                + "regardless of the customer's VIP tier.");
+                        + "regardless of the customer's VIP tier.");
         subtitle.getStyle()
                 .set("margin", "8px 0 0 0")
                 .set("color", "rgba(255,255,255,0.65)")
@@ -375,8 +378,8 @@ public class BatchCancellationDashboardView extends Div implements BeforeEnterOb
         Div card = whiteCard();
         card.add(sectionHeading("ACTIONS",
                 "Preview the customer email or execute the batch refund. "
-                + "After execution, each generated email and receipt is available "
-                + "in the Email Management screen for archival and follow-up."));
+                        + "After execution, each generated email and receipt is available "
+                        + "in the Email Management screen for archival and follow-up."));
 
         previewEmailButton.getStyle()
                 .set("width", "100%").set("height", "44px")
@@ -420,7 +423,7 @@ public class BatchCancellationDashboardView extends Div implements BeforeEnterOb
         title.getStyle().set("margin", "0").set("color", DANGER_RED).set("font-weight", "950");
         Paragraph subtitle = new Paragraph(
                 "The following message will be delivered to every impacted customer. "
-                + "Refunds have been processed and compensation has been issued.");
+                        + "Refunds have been processed and compensation has been issued.");
         subtitle.getStyle().set("color", LIGHT_MUTED).set("font-size", "13px")
                 .set("margin", "6px 0 18px 0").set("font-style", "italic");
         card.add(title, subtitle);
@@ -455,13 +458,13 @@ public class BatchCancellationDashboardView extends Div implements BeforeEnterOb
                 .set("margin-bottom", "6px");
         Paragraph body = new Paragraph(
                 "Due to an emergency situation at our cinema, your booking "
-                + row.getBookingReference()
-                + " has been cancelled by our staff. We have already processed a "
-                + (rec.getScope() == RefundScope.FULL ? "full" : "partial")
-                + " refund of " + formatMoney(row.getRefundAmount())
-                + " back to your original payment method (5 business days), "
-                + "and the compensation listed below has been deposited into your "
-                + "HCBS account immediately. We sincerely apologise for the inconvenience.");
+                        + row.getBookingReference()
+                        + " has been cancelled by our staff. We have already processed a "
+                        + (rec.getScope() == RefundScope.FULL ? "full" : "partial")
+                        + " refund of " + formatMoney(row.getRefundAmount())
+                        + " back to your original payment method (5 business days), "
+                        + "and the compensation listed below has been deposited into your "
+                        + "HCBS account immediately. We sincerely apologise for the inconvenience.");
         body.getStyle().set("margin", "0 0 8px 0").set("font-size", "13.5px")
                 .set("line-height", "1.7");
 
@@ -471,9 +474,9 @@ public class BatchCancellationDashboardView extends Div implements BeforeEnterOb
                 .set("color", LIGHT_MUTED).set("margin-bottom", "4px");
         compInfo.add(chip("Refund: " + formatMoney(row.getRefundAmount()), SUCCESS_GREEN));
         compInfo.add(chip("Compensation: "
-                + (row.getCompensationItems().isEmpty() ? "None"
-                : formatMoney(row.getCompensationValue())
-                  + " (" + row.getCompensationItems().size() + " item)"),
+                        + (row.getCompensationItems().isEmpty() ? "None"
+                        : formatMoney(row.getCompensationValue())
+                        + " (" + row.getCompensationItems().size() + " item)"),
                 "#7c3aed"));
         compInfo.add(chip("Booking: " + row.getBookingReference(), BLUE));
 

@@ -24,6 +24,7 @@ import com.vaadin.flow.component.ComponentEventListener;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.combobox.ComboBox;
+import com.vaadin.flow.component.dependency.CssImport;
 import com.vaadin.flow.component.datepicker.DatePicker;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.html.Div;
@@ -62,6 +63,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+@CssImport("./styles/booking-pro.css")
 @Route(value = "booking", layout = MainLayout.class)
 @PageTitle("HCBS — Booking")
 public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnterObserver {
@@ -176,6 +178,11 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
         this.availableFoodItems = foodOrderService.findActiveFoodItems();
 
         setWidthFull();
+        addClassName("booking-pro-view");
+        hero.addClassName("bp-hero");
+        cinemaCarousel.addClassName("bp-cinema-carousel");
+        showtimeArea.addClassName("bp-showtime-area");
+        seatDialog.addClassName("bp-seat-dialog");
         getStyle()
                 .set("background", DARK_BG)
                 .set("min-height", "100vh")
@@ -185,6 +192,7 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
         configureDialogFields();
 
         Div page = new Div();
+        page.addClassName("bp-page");
         page.getStyle()
                 .set("max-width", "1320px")
                 .set("margin", "0 auto")
@@ -274,6 +282,12 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
         formatBox.addValueChangeListener(event -> {
             renderShowtimes();
         });
+
+        filmBox.addClassName("bp-input");
+        cinemaBox.addClassName("bp-input");
+        hallTypeBox.addClassName("bp-input");
+        formatBox.addClassName("bp-input");
+        datePicker.addClassName("bp-input");
     }
 
     private void configureDialogFields() {
@@ -285,9 +299,11 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
         seatDialog.getElement().setAttribute("theme", "no-padding");
 
         customerNameField.setWidthFull();
+        customerNameField.addClassName("bp-dialog-field");
         customerNameField.setPlaceholder("e.g. John Smith");
 
         customerEmailField.setWidthFull();
+        customerEmailField.addClassName("bp-dialog-field");
         customerEmailField.setPlaceholder("e.g. john@example.com");
         customerEmailField.setErrorMessage("Please enter a valid email address.");
 
@@ -302,6 +318,7 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
 
     private Div buildSearchBar() {
         Div wrapper = new Div();
+        wrapper.addClassName("bp-search-panel");
         wrapper.getStyle()
                 .set("background", "white")
                 .set("color", "#111827")
@@ -314,6 +331,7 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
                 .set("overflow", "hidden");
 
         Div grid = new Div();
+        grid.addClassName("bp-search-grid");
         grid.getStyle()
                 .set("display", "grid")
                 .set("grid-template-columns", "repeat(auto-fit, minmax(160px, 1fr))")
@@ -340,6 +358,7 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
         datePicker.getStyle().set("min-width", "0");
 
         Button searchButton = new Button("Search", event -> reloadScreenings());
+        searchButton.addClassName("bp-primary-action");
         searchButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
         searchButton.setWidthFull();
         searchButton.getStyle()
@@ -530,6 +549,7 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
         Film film = firstScreening.getFilm();
 
         Div heroGrid = new Div();
+        heroGrid.addClassName("bp-hero-grid");
         heroGrid.getStyle()
                 .set("display", "grid")
                 .set("grid-template-columns", "240px 1fr 260px")
@@ -537,6 +557,7 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
                 .set("align-items", "start");
 
         Div posterBlock = new Div();
+        posterBlock.addClassName("bp-poster-block");
         posterBlock.getStyle()
                 .set("display", "flex")
                 .set("flex-direction", "column")
@@ -545,6 +566,7 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
         Div poster = buildPoster(film);
 
         Button bookButton = new Button("Book Tickets", event -> scrollToShowtimes());
+        bookButton.addClassName("bp-primary-action");
         bookButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
         bookButton.getStyle()
                 .set("height", "48px")
@@ -554,6 +576,7 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
                 .set("clip-path", "polygon(0 0, 100% 0, 92% 100%, 0 100%)");
 
         Button trailerButton = new Button("Play trailer");
+        trailerButton.addClassName("bp-secondary-action");
         trailerButton.getStyle()
                 .set("height", "48px")
                 .set("background", "transparent")
@@ -565,8 +588,10 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
         posterBlock.add(poster, bookButton, trailerButton);
 
         Div info = new Div();
+        info.addClassName("bp-film-info");
 
         H1 title = new H1(film.getTitle().toUpperCase());
+        title.addClassName("bp-film-title");
         title.getStyle()
                 .set("font-size", "44px")
                 .set("font-weight", "900")
@@ -596,6 +621,7 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
         );
 
         Div side = new Div();
+        side.addClassName("bp-film-side");
         side.getStyle()
                 .set("padding-top", "82px")
                 .set("display", "flex")
@@ -733,6 +759,7 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
 
     private Div buildPoster(Film film) {
         Div poster = new Div();
+        poster.addClassName("bp-poster");
         poster.getStyle()
                 .set("width", "240px")
                 .set("height", "360px")
@@ -761,6 +788,7 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
 
     private Div infoBlock(String label, String value) {
         Div block = new Div();
+        block.addClassName("bp-info-block");
         block.getStyle().set("margin-bottom", "22px");
 
         Span heading = new Span(label);
@@ -807,6 +835,7 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
                 .toList();
 
         Div titleRow = new Div();
+        titleRow.addClassName("bp-section-title-row");
         titleRow.getStyle()
                 .set("display", "flex")
                 .set("justify-content", "space-between")
@@ -830,6 +859,7 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
         titleRow.add(title, hint);
 
         Div row = new Div();
+        row.addClassName("bp-cinema-row");
         row.getStyle()
                 .set("display", "flex")
                 .set("gap", "16px")
@@ -852,6 +882,8 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
         boolean active = cinemaBox.getValue() == null;
 
         Div card = new Div();
+        card.addClassName("bp-cinema-card");
+        card.addClassName(active ? "is-active" : "is-idle");
         card.getStyle()
                 .set("min-width", "210px")
                 .set("height", "138px")
@@ -895,6 +927,8 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
         boolean active = cinemaBox.getValue() != null && Objects.equals(cinemaBox.getValue().getId(), cinema.getId());
 
         Div card = new Div();
+        card.addClassName("bp-cinema-card");
+        card.addClassName(active ? "is-active" : "is-idle");
         card.getStyle()
                 .set("min-width", "250px")
                 .set("height", "158px")
@@ -950,6 +984,7 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
 
     private Component buildShowtimeToolbar() {
         Div toolbar = new Div();
+        toolbar.addClassName("bp-showtime-toolbar");
         toolbar.getStyle()
                 .set("display", "flex")
                 .set("justify-content", "space-between")
@@ -986,6 +1021,7 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
 
     private Component buildViewModeToggle() {
         Div toggle = new Div();
+        toggle.addClassName("bp-view-toggle");
         toggle.getStyle()
                 .set("display", "grid")
                 .set("grid-template-columns", "1fr 1fr")
@@ -1005,6 +1041,8 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
         boolean active = currentViewMode == mode;
 
         Button button = new Button(iconType.create());
+        button.addClassName("bp-toggle-button");
+        button.addClassName(active ? "is-active" : "is-idle");
         button.getElement().setAttribute("title", tooltip);
         button.getStyle()
                 .set("height", "58px")
@@ -1105,6 +1143,7 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
 
     private Component buildCalendarShowtimes(List<Screening> screenings) {
         Div calendar = new Div();
+        calendar.addClassName("bp-calendar");
         calendar.getStyle()
                 .set("border", "1px solid rgba(255,255,255,0.22)")
                 .set("border-radius", "26px")
@@ -1215,6 +1254,7 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
 
     private Component buildCalendarShowtimeCard(Screening screening) {
         Div card = new Div();
+        card.addClassName("bp-calendar-showtime-card");
         card.getStyle()
                 .set("background", "linear-gradient(145deg, rgba(0,114,206,0.28), rgba(15,23,42,0.96))")
                 .set("border", "1px solid rgba(56,189,248,0.32)")
@@ -1258,6 +1298,7 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
         screenings = sortAndRemoveDuplicateShowtimes(screenings);
 
         Div section = new Div();
+        section.addClassName("bp-showtime-section");
         section.getStyle().set("margin-bottom", "54px");
 
         H2 cinemaTitle = new H2(cinemaName.toUpperCase());
@@ -1297,6 +1338,7 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
 
     private Div buildShowtimeCard(Screening screening) {
         Div card = new Div();
+        card.addClassName("bp-showtime-card");
         card.getStyle()
                 .set("border", "1px solid rgba(255,255,255,0.35)")
                 .set("min-height", "116px")
@@ -1380,6 +1422,7 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
         seatDialog.removeAll();
 
         Div content = new Div();
+        content.addClassName("bp-dialog-content");
         content.getStyle()
                 .set("width", "100vw")
                 .set("height", "100vh")
@@ -1398,6 +1441,7 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
 
     private Div buildDialogHeader(Screening screening) {
         Div top = new Div();
+        top.addClassName("bp-dialog-header");
         top.getStyle()
                 .set("display", "grid")
                 .set("grid-template-columns", "1.1fr 1fr")
@@ -1489,6 +1533,7 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
 
     private Div buildSteps() {
         Div steps = new Div();
+        steps.addClassName("bp-stepper");
         steps.getStyle()
                 .set("display", "grid")
                 .set("grid-template-columns", "repeat(5, 1fr)")
@@ -1512,6 +1557,8 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
         boolean completed = step.ordinal() < currentStep.ordinal();
 
         Div item = new Div();
+        item.addClassName("bp-step-item");
+        item.addClassName(active ? "is-active" : completed ? "is-complete" : "is-idle");
         item.getStyle()
                 .set("text-align", "center")
                 .set("padding", "12px 10px")
@@ -1706,6 +1753,8 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
         int quantity = selectedFoodQuantities.getOrDefault(item.getId(), 0);
 
         Div card = new Div();
+        card.addClassName("bp-food-card");
+        card.addClassName(quantity > 0 ? "is-selected" : "is-idle");
         card.getStyle()
                 .set("background", quantity > 0 ? "#dbeafe" : LIGHT_PANEL_SOFT)
                 .set("border", "1px solid " + (quantity > 0 ? BLUE : LIGHT_BORDER))
@@ -1714,6 +1763,7 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
                 .set("box-sizing", "border-box");
 
         Span category = new Span(item.getCategory() == null ? "Food" : item.getCategory().getLabel());
+        category.addClassName("bp-food-category");
         category.getStyle()
                 .set("display", "block")
                 .set("font-size", "12px")
@@ -1723,6 +1773,7 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
                 .set("margin-bottom", "8px");
 
         Span name = new Span(item.getName());
+        name.addClassName("bp-food-name");
         name.getStyle()
                 .set("display", "block")
                 .set("font-size", "18px")
@@ -1731,6 +1782,7 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
                 .set("margin-bottom", "8px");
 
         Span price = new Span(formatMoney(item.getPrice()));
+        price.addClassName("bp-food-price");
         price.getStyle()
                 .set("display", "block")
                 .set("font-size", "16px")
@@ -1892,6 +1944,7 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
 
     private Div cardPanel() {
         Div panel = new Div();
+        panel.addClassName("bp-dialog-panel");
         panel.getStyle()
                 .set("max-width", "820px")
                 .set("margin", "0 auto")
@@ -1905,6 +1958,7 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
 
     private Button primaryButton(String text, ComponentEventListener<ClickEvent<Button>> listener) {
         Button button = new Button(text, listener);
+        button.addClassName("bp-primary-action");
         button.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
         button.getStyle()
                 .set("height", "48px")
@@ -1919,6 +1973,7 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
 
     private Button secondaryButton(String text, ComponentEventListener<ClickEvent<Button>> listener) {
         Button button = new Button(text, listener);
+        button.addClassName("bp-secondary-action");
         button.getStyle()
                 .set("height", "48px")
                 .set("background", "white")
@@ -1951,6 +2006,7 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
 
     private Div buildDialogPriceBox() {
         Div priceBox = new Div();
+        priceBox.addClassName("bp-price-box");
         priceBox.getStyle()
                 .set("max-width", "780px")
                 .set("margin", "22px auto")
@@ -2009,6 +2065,7 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
 
     private void renderSeatMap() {
         seatMap.removeAll();
+        seatMap.addClassName("bp-seat-map");
         seatMap.getStyle()
                 .set("max-width", "780px")
                 .set("margin", "0 auto")
@@ -2023,6 +2080,7 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
         int seatsPerRow = getSeatsPerRowForHall(hallType);
 
         Div screen = new Div();
+        screen.addClassName("bp-screen-banner");
         screen.setText("SCREEN - " + hallType.getLabel() + " Hall");
         screen.getStyle()
                 .set("height", "34px")
@@ -2037,6 +2095,7 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
                 .set("max-width", "520px");
 
         Div hallInfo = new Div();
+        hallInfo.addClassName("bp-seat-hall-info");
         hallInfo.getStyle()
                 .set("text-align", "center")
                 .set("margin-bottom", "18px")
@@ -2074,6 +2133,15 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
         SeatType seatType = seat.getSeatType();
 
         Button button = new Button(seat.getSeatNumber());
+        button.addClassName("bp-seat-button");
+        if (!option.available()) {
+            button.addClassName("is-booked");
+        } else if (selected) {
+            button.addClassName("is-selected");
+        } else {
+            button.addClassName("is-available");
+            button.addClassName(seatType.name().toLowerCase(Locale.ROOT));
+        }
         int buttonWidth = hallType == HallType.PREMIUM ? 54 : 44;
         button.setWidth(buttonWidth + "px");
         button.setHeight("38px");
@@ -2173,6 +2241,7 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
 
     private Div legendItem(String color, String text) {
         Div item = new Div();
+        item.addClassName("bp-seat-legend-item");
         item.getStyle()
                 .set("display", "flex")
                 .set("align-items", "center")
@@ -2182,6 +2251,7 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
                 .set("color", LIGHT_TEXT);
 
         Span dot = new Span();
+        dot.addClassName("bp-seat-legend-dot");
         dot.getStyle()
                 .set("width", "16px")
                 .set("height", "16px")
@@ -2190,7 +2260,9 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
                 .set("display", "inline-block")
                 .set("border", "1px solid #d1d5db");
 
-        item.add(dot, new Span(text));
+        Span label = new Span(text);
+        label.addClassName("bp-seat-legend-label");
+        item.add(dot, label);
         return item;
     }
 
@@ -2406,6 +2478,7 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
                 .set("margin-top", "24px");
 
         Div ticket = new Div();
+        ticket.addClassName("bp-ticket-receipt");
         ticket.getStyle()
                 .set("width", "380px")
                 .set("max-width", "100%")

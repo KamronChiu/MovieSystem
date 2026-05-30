@@ -7,6 +7,7 @@ import com.eduaccess.service.LoginService;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.dependency.CssImport;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.Div;
@@ -39,6 +40,7 @@ import java.util.stream.Collectors;
  * navigates to {@link CancellationStatusesView}, where the step-by-step
  * flow drives all status transitions.
  */
+@CssImport("./styles/backoffice-pro.css")
 @Route(value = "cancellation", layout = MainLayout.class)
 @PageTitle("HCBS — Cancellation")
 public class CancellationView extends Div implements BeforeEnterObserver {
@@ -79,6 +81,7 @@ public class CancellationView extends Div implements BeforeEnterObserver {
         this.dataProvider = new ListDataProvider<>(allBookings);
 
         setWidthFull();
+        addClassName("cancellation-pro-page");
         getStyle()
                 .set("background", DARK_BG)
                 .set("min-height", "100vh")
@@ -435,8 +438,8 @@ public class CancellationView extends Div implements BeforeEnterObserver {
             dataProvider.clearFilters();
         } else {
             dataProvider.setFilter(booking ->
-                booking.getBookingReference().toUpperCase().contains(filterText) ||
-                booking.getScreening().getFilm().getTitle().toUpperCase().contains(filterText)
+                    booking.getBookingReference().toUpperCase().contains(filterText) ||
+                            booking.getScreening().getFilm().getTitle().toUpperCase().contains(filterText)
             );
         }
 
@@ -444,7 +447,7 @@ public class CancellationView extends Div implements BeforeEnterObserver {
         if (dataProvider.size(new com.vaadin.flow.data.provider.Query<>()) == 1) {
             allBookings.stream()
                     .filter(b -> b.getBookingReference().toUpperCase().contains(filterText) ||
-                                 b.getScreening().getFilm().getTitle().toUpperCase().contains(filterText))
+                            b.getScreening().getFilm().getTitle().toUpperCase().contains(filterText))
                     .findFirst()
                     .ifPresent(bookingGrid::select);
         }

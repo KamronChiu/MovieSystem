@@ -20,6 +20,7 @@ import com.eduaccess.service.policy.RefundScope;
 import com.vaadin.flow.component.ClickEvent;
 import com.vaadin.flow.component.ComponentEventListener;
 import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.dependency.CssImport;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.checkbox.Checkbox;
 import com.vaadin.flow.component.dialog.Dialog;
@@ -63,6 +64,7 @@ import java.util.stream.Collectors;
  * via {@link CancellationService#calculateRefund(String)}; the UI never does
  * arithmetic directly.
  */
+@CssImport("./styles/backoffice-pro.css")
 @Route(value = "cancellation-statuses", layout = MainLayout.class)
 @PageTitle("HCBS — Cancellation Status")
 public class CancellationStatusesView extends Div
@@ -162,6 +164,7 @@ public class CancellationStatusesView extends Div
         this.emailReceiptService = emailReceiptService;
 
         setWidthFull();
+        addClassName("cancellation-status-pro-page");
         getStyle()
                 .set("background", LIGHT_BG)
                 .set("min-height", "100vh")
@@ -1322,7 +1325,7 @@ public class CancellationStatusesView extends Div
             currentStepIndex = Math.min(currentStepIndex + 1, FLOW.length - 1);
 
             Notification.show("Refund request submitted under "
-                            + currentPolicyType.getDisplayName(),
+                                    + currentPolicyType.getDisplayName(),
                             3000, Notification.Position.MIDDLE)
                     .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
 

@@ -6,6 +6,7 @@ import com.eduaccess.domain.CancellationRecord;
 import com.eduaccess.service.CancellationService;
 import com.eduaccess.service.LoginService;
 import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.dependency.CssImport;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.grid.GridSortOrder;
@@ -47,6 +48,7 @@ import java.util.Locale;
  * background plus a white master card — so it feels native to the
  * existing back-office surface.
  */
+@CssImport("./styles/backoffice-pro.css")
 @Route(value = "cancellation-history", layout = MainLayout.class)
 @PageTitle("HCBS — Refund History")
 public class CancellationHistoryView extends Div implements BeforeEnterObserver {
@@ -83,6 +85,7 @@ public class CancellationHistoryView extends Div implements BeforeEnterObserver 
         this.loginService = loginService;
 
         setWidthFull();
+        addClassName("refund-history-pro-page");
         getStyle()
                 .set("background", DARK_BG)
                 .set("min-height", "100vh")

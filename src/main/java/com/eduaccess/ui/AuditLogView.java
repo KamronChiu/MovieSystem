@@ -5,6 +5,7 @@ import com.eduaccess.domain.BookingStatus;
 import com.eduaccess.service.AuditService;
 import com.eduaccess.service.LoginService;
 import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.dependency.CssImport;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.grid.Grid;
@@ -36,6 +37,7 @@ import java.util.Locale;
  * {@link CancellationView} grid (dark hero + white master card) so the
  * page feels native to the rest of the system.
  */
+@CssImport("./styles/backoffice-pro.css")
 @Route(value = "audit-logs", layout = MainLayout.class)
 @PageTitle("HCBS — Audit Log")
 public class AuditLogView extends Div implements BeforeEnterObserver {
@@ -72,6 +74,7 @@ public class AuditLogView extends Div implements BeforeEnterObserver {
         this.loginService = loginService;
 
         setWidthFull();
+        addClassName("audit-log-pro-page");
         getStyle()
                 .set("background", DARK_BG)
                 .set("min-height", "100vh")
@@ -133,7 +136,7 @@ public class AuditLogView extends Div implements BeforeEnterObserver {
         titleRow.add(titleIcon, title);
 
         Span subtitle = new Span(
-                "Immutable trail of every cancellation action — operator, status change, IP, timestamp.");
+                "Welcome");
         subtitle.getStyle()
                 .set("display", "block")
                 .set("color", "#94a3b8")
@@ -430,7 +433,7 @@ public class AuditLogView extends Div implements BeforeEnterObserver {
             if (selectedAction != null && !selectedAction.isBlank()
                     && !ALL_ACTIONS.equals(selectedAction)
                     && (log.getAction() == null
-                            || !selectedAction.equals(log.getAction().name()))) {
+                    || !selectedAction.equals(log.getAction().name()))) {
                 return false;
             }
             if (!target.isEmpty()) {

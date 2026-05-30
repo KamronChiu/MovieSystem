@@ -6,23 +6,46 @@ import com.eduaccess.repository.CinemaRepository;
 import com.eduaccess.repository.FilmRepository;
 import com.eduaccess.service.ScreeningService;
 import com.vaadin.flow.component.Component;
+import com.vaadin.flow.component.HasStyle;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.datepicker.DatePicker;
-import com.vaadin.flow.component.html.*;
+import com.vaadin.flow.component.dependency.CssImport;
+import com.vaadin.flow.component.html.Div;
+import com.vaadin.flow.component.html.H1;
+import com.vaadin.flow.component.html.H2;
+import com.vaadin.flow.component.html.H3;
+import com.vaadin.flow.component.html.Image;
+import com.vaadin.flow.component.html.Paragraph;
+import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.data.value.ValueChangeMode;
-import com.vaadin.flow.router.*;
+import com.vaadin.flow.router.BeforeEnterEvent;
+import com.vaadin.flow.router.BeforeEnterObserver;
+import com.vaadin.flow.router.PageTitle;
+import com.vaadin.flow.router.Route;
 import com.vaadin.flow.server.VaadinSession;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
-import java.util.*;
+import java.time.format.DateTimeFormatter;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Route(value = "", layout = MainLayout.class)
 @PageTitle("HCBS — Films")
+@CssImport("./styles/film-listing-pro.css")
 public class FilmListingView extends Div implements BeforeEnterObserver {
+
+    private static final DateTimeFormatter DATE_LABEL =
+            DateTimeFormatter.ofPattern("EEE d MMM", Locale.UK);
 
     private final FilmRepository filmRepository;
     private final CinemaRepository cinemaRepository;
@@ -30,6 +53,7 @@ public class FilmListingView extends Div implements BeforeEnterObserver {
 
     private final Div tabsContainer = new Div();
     private final Div filmGrid = new Div();
+    private final Div resultSummary = new Div();
 
     private final TextField searchField = new TextField();
     private final ComboBox<String> cityFilter = new ComboBox<>();
@@ -38,48 +62,18 @@ public class FilmListingView extends Div implements BeforeEnterObserver {
 
     /*
      * UI-only promotional carousel configuration.
-     * The real Film data used for listing and booking still comes from the database.
+     * The real film data for filtering and booking comes from the database.
      */
     private final List<PromoSlide> promoSlides = List.of(
-            new PromoSlide(
-                    "ZOOTOPIA 2",
-                    "Book Tickets",
-                    "/images/banners/promo-1.jpg",
-                    "Zootopia 2"
-            ),
-            new PromoSlide(
-                    "STAR WARS: THE MANDALORIAN AND GROGU",
-                    "Book Tickets",
-                    "/images/banners/promo-2.jpg",
-                    "Star Wars: The Mandalorian and Grogu"
-            ),
-            new PromoSlide(
-                    "MINIONS",
-                    "Book Tickets",
-                    "/images/banners/promo-3.jpg",
-                    "Minions"
-            ),
-            new PromoSlide(
-                    "ZOOTOPIA 2",
-                    "Book Tickets",
-                    "/images/banners/promo-4.jpg",
-                    "Zootopia 2"
-            ),
-            new PromoSlide(
-                    "ZOOTOPIA 2",
-                    "Book Tickets",
-                    "/images/banners/promo-5.jpg",
-                    "Zootopia 2"
-            )
+            new PromoSlide("ZOOTOPIA 2", "Find tickets", "/images/banners/promo-1.jpg", "Zootopia 2"),
+            new PromoSlide("STAR WARS: THE MANDALORIAN AND GROGU", "Find tickets", "/images/banners/promo-2.jpg", "Star Wars: The Mandalorian and Grogu"),
+            new PromoSlide("MINIONS", "Find tickets", "/images/banners/promo-3.jpg", "Minions"),
+            new PromoSlide("ZOOTOPIA 2", "Find tickets", "/images/banners/promo-4.jpg", "Zootopia 2"),
+            new PromoSlide("ZOOTOPIA 2", "Find tickets", "/images/banners/promo-5.jpg", "Zootopia 2")
     );
 
     private List<Film> allFilms = List.of();
-    // All future screenings within a rolling 6-month window starting today.
-    // This drives the Now showing / Advance bookings / Coming soon tabs so
-    // their semantics stay independent from the optional Date filter.
     private List<Screening> screeningWindow = List.of();
-    // Screenings on the date selected in the Date filter. Empty when the
-    // filter has no value, in which case no per-day filtering is applied.
     private List<Screening> dateScreenings = List.of();
 
     private FilmTab activeTab = FilmTab.ALL;
@@ -96,26 +90,19 @@ public class FilmListingView extends Div implements BeforeEnterObserver {
         this.cinemaRepository = cinemaRepository;
         this.screeningService = screeningService;
 
+        cls(this, "flp-page");
         setWidthFull();
-        getStyle()
-                .set("background", "#020b1d")
-                .set("min-height", "100vh")
-                .set("color", "white");
 
-        Div page = new Div();
-        page.getStyle()
-                .set("max-width", "1320px")
-                .set("margin", "0 auto")
-                .set("padding", "46px 48px 90px 48px")
-                .set("box-sizing", "border-box");
+        Div page = cls(new Div(), "flp-shell");
 
         configureFilters();
         loadData();
 
         page.add(
                 buildPromoCarousel(),
-                buildTitleBlock(),
-                buildTabsAndFilter(),
+                buildHeaderAndControls(),
+                buildTabsBar(),
+                resultSummary,
                 filmGrid
         );
 
@@ -136,14 +123,11 @@ public class FilmListingView extends Div implements BeforeEnterObserver {
 
         if (requestedCity != null && !requestedCity.isBlank()) {
             VaadinSession.getCurrent().setAttribute("selectedCity", requestedCity);
-        }
-
-        if (requestedKeyword != null) {
-            searchField.setValue(requestedKeyword);
-        }
-
-        if (requestedCity != null && !requestedCity.isBlank()) {
             cityFilter.setValue(requestedCity);
+        }
+
+        if (requestedKeyword != null && !requestedKeyword.isBlank()) {
+            searchField.setValue(requestedKeyword);
         }
 
         applyFilter();
@@ -151,122 +135,70 @@ public class FilmListingView extends Div implements BeforeEnterObserver {
 
     private String firstQueryValue(Map<String, List<String>> params, String key) {
         List<String> values = params.get(key);
-
         if (values == null || values.isEmpty()) {
             return null;
         }
-
         String value = values.get(0);
-
         return value == null || value.isBlank() ? null : value;
     }
 
     private Div buildPromoCarousel() {
-        Div carousel = new Div();
-        carousel.getStyle()
-                .set("position", "relative")
-                .set("height", "520px")
-                .set("margin", "0 0 72px 0")
-                .set("overflow", "hidden")
-                .set("background", "#020b1d")
-                .set("box-shadow", "0 24px 60px rgba(0,0,0,0.35)");
+        Div carousel = cls(new Div(), "flp-hero");
 
-        Div imageLayer = new Div();
+        Div imageLayer = cls(new Div(), "flp-hero-image");
         imageLayer.getElement().setAttribute("data-role", "promo-image");
-        imageLayer.getStyle()
-                .set("position", "absolute")
-                .set("inset", "0")
-                .set("background-size", "cover")
-                .set("background-position", "center")
-                .set("transition", "background-image 0.45s ease-in-out");
 
-        Div content = new Div();
-        content.getStyle()
-                .set("position", "relative")
-                .set("z-index", "2")
-                .set("height", "100%")
-                .set("display", "flex")
-                .set("flex-direction", "column")
-                .set("justify-content", "center")
-                .set("padding", "64px")
-                .set("box-sizing", "border-box")
-                .set("max-width", "760px");
+        Div shade = cls(new Div(), "flp-hero-shade");
 
-        H1 title = new H1("");
+        Div content = cls(new Div(), "flp-hero-content");
+
+        Span eyebrow = cls(new Span("HORIZON CINEMAS"), "flp-eyebrow");
+
+        H1 title = cls(new H1(""), "flp-hero-title");
         title.getElement().setAttribute("data-role", "promo-title");
-        title.getStyle()
-                .set("margin", "0 0 44px 0")
-                .set("font-size", "58px")
-                .set("line-height", "0.98")
-                .set("font-weight", "950")
-                .set("letter-spacing", "0.04em")
-                .set("color", "white")
-                .set("text-transform", "uppercase");
 
-        Button cta = new Button();
+        Paragraph copy = cls(new Paragraph(
+                "A premium booking experience for current releases, advance previews and city-wide showtimes."
+        ), "flp-hero-copy");
+
+        Button cta = cls(new Button(), "flp-hero-cta");
         cta.getElement().setAttribute("data-role", "promo-cta");
         cta.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 
-        cta.getStyle()
-                .set("width", "230px")
-                .set("height", "54px")
-                .set("background", "rgba(2,11,29,0.62)")
-                .set("border", "1px solid white")
-                .set("border-radius", "0")
-                .set("font-size", "20px")
-                .set("font-weight", "750")
-                .set("clip-path", "polygon(0 0, 100% 0, 92% 100%, 0 100%)");
+        Div heroStats = cls(new Div(), "flp-hero-stats");
+        heroStats.add(
+                heroMetric(String.valueOf(allFilms.size()), "Films"),
+                heroMetric(String.valueOf(distinctGenres()), "Genres"),
+                heroMetric(String.valueOf(distinctCities()), "Cities")
+        );
 
-        content.add(title, cta);
+        content.add(eyebrow, title, copy, cta, heroStats);
 
-        Div next = carouselArrow("›", "promo-next");
-        next.getStyle()
-                .set("right", "32px")
-                .set("top", "42%");
-
+        Div controls = cls(new Div(), "flp-hero-controls");
         Div previous = carouselArrow("‹", "promo-prev");
-        previous.getStyle()
-                .set("right", "32px")
-                .set("top", "60%");
+        Div next = carouselArrow("›", "promo-next");
+        controls.add(previous, next);
 
-        Div dots = new Div();
-        dots.getStyle()
-                .set("position", "absolute")
-                .set("left", "50%")
-                .set("bottom", "22px")
-                .set("transform", "translateX(-50%)")
-                .set("display", "flex")
-                .set("gap", "10px")
-                .set("z-index", "3");
-
+        Div dots = cls(new Div(), "flp-hero-dots");
         for (int i = 0; i < promoSlides.size(); i++) {
-            Span dot = new Span();
+            Span dot = cls(new Span(), "flp-hero-dot");
             dot.getElement().setAttribute("data-role", "promo-dot");
             dot.getElement().setAttribute("data-index", String.valueOf(i));
-            dot.getStyle()
-                    .set("width", "9px")
-                    .set("height", "9px")
-                    .set("border-radius", "50%")
-                    .set("background", "rgba(255,255,255,0.45)")
-                    .set("display", "inline-block")
-                    .set("cursor", "pointer")
-                    .set("transition", "all 0.2s ease");
-
             dots.add(dot);
         }
 
-        carousel.add(imageLayer, content, next, previous, dots);
+        carousel.add(imageLayer, shade, content, controls, dots);
 
         carousel.addAttachListener(event -> {
             String slidesJson = promoSlides.stream()
                     .map(slide -> """
-                {
-                    "title": "%s",
-                    "cta": "%s",
-                    "imageUrl": "%s",
-                    "bookingUrl": "%s"
-                }
-                """.formatted(
+                            {
+                              "title": "%s",
+                              "cta": "%s",
+                              "imageUrl": "%s",
+                              "bookingUrl": "%s"
+                            }
+                            """.formatted(
                             jsEscape(slide.title()),
                             jsEscape(slide.cta()),
                             jsEscape(slide.imageUrl()),
@@ -275,226 +207,146 @@ public class FilmListingView extends Div implements BeforeEnterObserver {
                     .collect(Collectors.joining(",", "[", "]"));
 
             carousel.getElement().executeJs("""
-        const host = this;
-        const slides = %s;
-        let index = 0;
-        
-        const image = host.querySelector('[data-role="promo-image"]');
-        const title = host.querySelector('[data-role="promo-title"]');
-        const cta = host.querySelector('[data-role="promo-cta"]');
-        const next = host.querySelector('[data-role="promo-next"]');
-        const previous = host.querySelector('[data-role="promo-prev"]');
-        const dots = host.querySelectorAll('[data-role="promo-dot"]');
-        
-        function renderSlide(targetIndex) {
-            index = (targetIndex + slides.length) %% slides.length;
-            const slide = slides[index];
-        
-            image.style.backgroundImage =
-                "linear-gradient(90deg, rgba(2,11,29,0.84) 0%%, rgba(2,11,29,0.50) 42%%, rgba(2,11,29,0.10) 100%%), url('" + slide.imageUrl + "')";
-        
-            title.textContent = slide.title;
-            cta.textContent = slide.cta;
-            cta.setAttribute("data-booking-url", slide.bookingUrl);
-        
-            dots.forEach((dot, i) => {
-                dot.style.background = i === index ? "#38bdf8" : "rgba(255,255,255,0.45)";
-                dot.style.width = i === index ? "26px" : "9px";
-                dot.style.borderRadius = i === index ? "999px" : "50%%";
-            });
-        }
-        
-        next.onclick = () => renderSlide(index + 1);
-        previous.onclick = () => renderSlide(index - 1);
-        
-        dots.forEach((dot) => {
-            dot.onclick = () => renderSlide(Number(dot.getAttribute("data-index")));
-        });
-        
-        cta.onclick = () => {
-            const url = cta.getAttribute("data-booking-url") || "/booking";
-            window.location.href = url;
-        };
-        
-        if (host.__promoTimer) {
-            clearInterval(host.__promoTimer);
-        }
-        
-        host.__promoTimer = setInterval(() => {
-            renderSlide(index + 1);
-        }, 4500);
-        
-        renderSlide(0);
-        """.formatted(slidesJson));
+                    const host = this;
+                    const slides = JSON.parse($0);
+                    let index = 0;
+
+                    const image = host.querySelector('[data-role="promo-image"]');
+                    const title = host.querySelector('[data-role="promo-title"]');
+                    const cta = host.querySelector('[data-role="promo-cta"]');
+                    const next = host.querySelector('[data-role="promo-next"]');
+                    const previous = host.querySelector('[data-role="promo-prev"]');
+                    const dots = host.querySelectorAll('[data-role="promo-dot"]');
+
+                    function renderSlide(targetIndex) {
+                        index = (targetIndex + slides.length) % slides.length;
+                        const slide = slides[index];
+                        image.style.backgroundImage =
+                            "linear-gradient(90deg, rgba(4,7,18,0.92) 0%, rgba(4,7,18,0.66) 42%, rgba(4,7,18,0.22) 100%), url('" + slide.imageUrl + "')";
+                        title.textContent = slide.title;
+                        title.classList.toggle('is-long', slide.title.length > 28);
+                        title.classList.toggle('is-ultra', slide.title.length > 42);
+                        cta.textContent = slide.cta;
+                        cta.setAttribute("data-booking-url", slide.bookingUrl);
+                        dots.forEach((dot, i) => dot.classList.toggle('is-active', i === index));
+                    }
+
+                    next.onclick = () => renderSlide(index + 1);
+                    previous.onclick = () => renderSlide(index - 1);
+                    dots.forEach(dot => dot.onclick = () => renderSlide(Number(dot.getAttribute('data-index'))));
+                    cta.onclick = () => window.location.href = cta.getAttribute('data-booking-url') || '/booking';
+
+                    if (host.__promoTimer) {
+                        clearInterval(host.__promoTimer);
+                    }
+                    host.__promoTimer = setInterval(() => renderSlide(index + 1), 5200);
+                    renderSlide(0);
+                    """, slidesJson);
         });
 
         return carousel;
     }
 
+    private Div heroMetric(String value, String label) {
+        Div metric = cls(new Div(), "flp-hero-metric");
+        metric.add(cls(new Span(value), "flp-hero-metric-value"), cls(new Span(label), "flp-hero-metric-label"));
+        return metric;
+    }
+
     private Div carouselArrow(String symbol, String role) {
-        Div arrow = new Div();
+        Div arrow = cls(new Div(), "flp-hero-arrow");
         arrow.getElement().setAttribute("data-role", role);
-
-        arrow.getStyle()
-                .set("position", "absolute")
-                .set("z-index", "4")
-                .set("width", "64px")
-                .set("height", "64px")
-                .set("display", "flex")
-                .set("align-items", "center")
-                .set("justify-content", "center")
-                .set("border", "1px solid rgba(255,255,255,0.75)")
-                .set("color", "white")
-                .set("font-size", "48px")
-                .set("font-weight", "300")
-                .set("cursor", "pointer")
-                .set("transform", "rotate(45deg)")
-                .set("background", "rgba(2,11,29,0.24)")
-                .set("line-height", "1");
-
-        Span inner = new Span(symbol);
-        inner.getStyle()
-                .set("transform", "rotate(-45deg)")
-                .set("display", "block");
-
-        arrow.add(inner);
-
+        arrow.add(new Span(symbol));
         return arrow;
     }
 
-    private Div buildTitleBlock() {
-        Div wrapper = new Div();
-        wrapper.getStyle()
-                .set("text-align", "center")
-                .set("margin-bottom", "52px");
+    private Div buildHeaderAndControls() {
+        Div section = cls(new Div(), "flp-control-panel flp-control-panel-compact");
 
-        H1 title = new H1("ALL FILMS");
-        title.getStyle()
-                .set("margin", "0")
-                .set("font-size", "30px")
-                .set("font-weight", "800")
-                .set("letter-spacing", "0.12em");
+        Div filters = cls(new Div(), "flp-filters flp-filters-wide");
+        filters.add(searchField, cityFilter, genreFilter, dateFilter, todayButton(), thisWeekendButton(), resetButton());
 
-        Div underline = new Div();
-        underline.getStyle()
-                .set("width", "78px")
-                .set("height", "3px")
-                .set("background", "#0072ce")
-                .set("margin", "18px auto 0 auto")
-                .set("box-shadow", "0 0 0 1px rgba(56,189,248,0.35)");
-
-        wrapper.add(title, underline);
-        return wrapper;
+        section.add(filters);
+        return section;
     }
 
-    private Div buildTabsAndFilter() {
-        Div wrapper = new Div();
-        wrapper.getStyle()
-                .set("display", "flex")
-                .set("justify-content", "space-between")
-                .set("align-items", "center")
-                .set("border-bottom", "1px solid rgba(255,255,255,0.28)")
-                .set("margin-bottom", "38px")
-                .set("gap", "24px")
-                .set("flex-wrap", "wrap");
-
-        tabsContainer.getStyle()
-                .set("display", "flex")
-                .set("align-items", "center")
-                .set("gap", "52px")
-                .set("min-height", "58px")
-                .set("flex-wrap", "wrap");
-
-        Div filterBox = new Div();
-        filterBox.getStyle()
-                .set("display", "flex")
-                .set("align-items", "end")
-                .set("gap", "12px")
-                .set("flex-wrap", "wrap");
-
-        filterBox.add(searchField, cityFilter, genreFilter, dateFilter, thisWeekendButton(), resetButton());
-
-        wrapper.add(tabsContainer, filterBox);
-
+    private Div buildTabsBar() {
+        Div wrapper = cls(new Div(), "flp-tabs-wrap");
+        wrapper.add(tabsContainer);
         return wrapper;
     }
 
     private void configureFilters() {
-        searchField.setPlaceholder("Search films or cinemas");
+        searchField.setPlaceholder("Search film, actor or cinema");
         searchField.setClearButtonVisible(true);
         searchField.setValueChangeMode(ValueChangeMode.LAZY);
-        searchField.setWidth("230px");
         searchField.addValueChangeListener(event -> applyFilter());
-        styleDarkInput(searchField);
+        cls(searchField, "flp-search");
+        styleGoldInput(searchField);
 
         List<String> cities = cinemaRepository.findAll()
                 .stream()
                 .map(cinema -> cinema.getCity())
                 .filter(city -> city != null && !city.isBlank())
                 .distinct()
-                .sorted()
+                .sorted(String.CASE_INSENSITIVE_ORDER)
                 .toList();
 
         cityFilter.setPlaceholder("City");
         cityFilter.setClearButtonVisible(true);
-        cityFilter.setWidth("160px");
         cityFilter.setItems(cities);
         cityFilter.addValueChangeListener(event -> {
             String city = event.getValue();
             VaadinSession.getCurrent().setAttribute("selectedCity", city == null ? "" : city);
             applyFilter();
         });
-        styleDarkInput(cityFilter);
+        cls(cityFilter, "flp-filter");
+        styleGoldInput(cityFilter);
 
         genreFilter.setPlaceholder("Genre");
         genreFilter.setClearButtonVisible(true);
-        genreFilter.setWidth("180px");
         genreFilter.addValueChangeListener(event -> applyFilter());
-        styleDarkInput(genreFilter);
+        cls(genreFilter, "flp-filter");
+        styleGoldInput(genreFilter);
 
         dateFilter.setPlaceholder("Any date");
-        dateFilter.setWidth("170px");
-        // No default value: leaving the date picker empty means "do not
-        // restrict by day" so the tabs (All / Now showing / Advance bookings
-        // / Coming soon) can decide what to show on their own semantics.
         dateFilter.setClearButtonVisible(true);
         dateFilter.addValueChangeListener(event -> {
             reloadDateScreenings();
             applyFilter();
         });
-        styleDarkInput(dateFilter);
+        cls(dateFilter, "flp-filter");
+        styleGoldInput(dateFilter);
     }
 
-    private void styleDarkInput(Component component) {
+    private void styleGoldInput(Component component) {
         component.getElement().getStyle()
-                .set("--vaadin-input-field-background", "rgba(255,255,255,0.08)")
-                .set("--vaadin-input-field-value-color", "white")
-                .set("--vaadin-input-field-placeholder-color", "#94a3b8")
+                .set("--vaadin-input-field-background", "rgba(9,14,29,0.78)")
+                .set("--vaadin-input-field-value-color", "#f8fafc")
+                .set("--vaadin-input-field-placeholder-color", "#9ca3af")
                 .set("--vaadin-input-field-border-width", "1px")
-                .set("--vaadin-input-field-border-color", "rgba(255,255,255,0.25)");
+                .set("--vaadin-input-field-border-color", "rgba(214,170,66,0.30)");
+    }
+
+    private Button todayButton() {
+        Button button = secondaryButton("Today");
+        button.addClickListener(event -> dateFilter.setValue(LocalDate.now()));
+        return button;
     }
 
     private Button thisWeekendButton() {
-        Button weekendButton = new Button("This Weekend", event -> {
+        Button button = secondaryButton("This Weekend");
+        button.addClickListener(event -> {
             LocalDate today = LocalDate.now();
-            int daysUntilSaturday = (6 - today.getDayOfWeek().getValue() + 7) % 7;
+            int daysUntilSaturday = (DayOfWeek.SATURDAY.getValue() - today.getDayOfWeek().getValue() + 7) % 7;
             dateFilter.setValue(today.plusDays(daysUntilSaturday));
         });
-
-        weekendButton.getStyle()
-                .set("background", "transparent")
-                .set("color", "white")
-                .set("border", "1px solid rgba(255,255,255,0.45)")
-                .set("border-radius", "999px")
-                .set("height", "38px")
-                .set("padding", "0 18px")
-                .set("font-weight", "800");
-
-        return weekendButton;
+        return button;
     }
 
     private Button resetButton() {
-        Button resetButton = new Button("Reset", event -> {
+        Button resetButton = secondaryButton("Reset");
+        resetButton.addClickListener(event -> {
             searchField.clear();
             cityFilter.clear();
             genreFilter.clear();
@@ -505,15 +357,12 @@ public class FilmListingView extends Div implements BeforeEnterObserver {
             renderTabs();
             applyFilter();
         });
-
-        resetButton.getStyle()
-                .set("background", "transparent")
-                .set("color", "white")
-                .set("border", "1px solid rgba(255,255,255,0.45)")
-                .set("border-radius", "0")
-                .set("height", "38px");
-
         return resetButton;
+    }
+
+    private Button secondaryButton(String text) {
+        Button button = cls(new Button(text), "flp-secondary-btn");
+        return button;
     }
 
     private void loadData() {
@@ -530,57 +379,48 @@ public class FilmListingView extends Div implements BeforeEnterObserver {
                 .filter(Objects::nonNull)
                 .filter(genre -> !genre.isBlank())
                 .distinct()
-                .sorted()
+                .sorted(String.CASE_INSENSITIVE_ORDER)
                 .toList();
 
         genreFilter.setItems(genres);
     }
 
     private void reloadScreeningWindow() {
-        // Tabs reason about "any future screening", not "a specific day".
-        // Use a rolling 6-month window starting today so newly created films
-        // with screenings later this season still surface under Now showing
-        // / Advance bookings.
         LocalDate today = LocalDate.now();
         screeningWindow = screeningService.findScreeningsBetween(today, today.plusMonths(6));
     }
 
     private void reloadDateScreenings() {
         LocalDate selectedDate = dateFilter.getValue();
-        if (selectedDate == null) {
-            dateScreenings = List.of();
-        } else {
-            dateScreenings = screeningService.findScreeningsBetween(selectedDate, selectedDate);
-        }
+        dateScreenings = selectedDate == null
+                ? List.of()
+                : screeningService.findScreeningsBetween(selectedDate, selectedDate);
     }
 
     private void renderTabs() {
         tabsContainer.removeAll();
-
+        cls(tabsContainer, "flp-tabs");
         for (FilmTab tab : FilmTab.values()) {
             tabsContainer.add(tab(tab));
         }
     }
 
-    private Span tab(FilmTab tab) {
+    private Div tab(FilmTab tab) {
         boolean active = activeTab == tab;
+        Div tabItem = cls(new Div(), "flp-tab");
+        if (active) {
+            cls(tabItem, "is-active");
+        }
 
-        Span tabSpan = new Span(tab.label);
-        tabSpan.getStyle()
-                .set("font-size", "18px")
-                .set("font-weight", "650")
-                .set("padding", "18px 0")
-                .set("cursor", "pointer")
-                .set("color", active ? "#38bdf8" : "white")
-                .set("border-bottom", active ? "3px solid #38bdf8" : "3px solid transparent");
-
-        tabSpan.addClickListener(event -> {
+        Span label = cls(new Span(tab.label), "flp-tab-label");
+        Span count = cls(new Span(String.valueOf(filmsForTab(tab).size())), "flp-tab-count");
+        tabItem.add(label, count);
+        tabItem.addClickListener(event -> {
             activeTab = tab;
             renderTabs();
             applyFilter();
         });
-
-        return tabSpan;
+        return tabItem;
     }
 
     private void applyFilter() {
@@ -588,23 +428,23 @@ public class FilmListingView extends Div implements BeforeEnterObserver {
         String selectedCity = cityFilter.getValue();
         String selectedGenre = genreFilter.getValue();
 
-        List<Film> base = filmsForActiveTab();
-
-        // Date filter is now optional: only restrict by day when the user
-        // explicitly selects a date. Otherwise the tab semantics (Now showing
-        // / Coming soon / Advance bookings / All) stand on their own.
-        List<Film> filtered = base.stream()
+        List<Film> filtered = filmsForActiveTab().stream()
                 .filter(this::matchesSelectedDate)
                 .filter(film -> matchesKeyword(film, keyword))
                 .filter(film -> matchesCity(film, selectedCity))
                 .filter(film -> matchesGenre(film, selectedGenre))
                 .toList();
 
+        renderResultSummary(filtered.size());
         renderFilms(filtered);
     }
 
     private List<Film> filmsForActiveTab() {
-        return switch (activeTab) {
+        return filmsForTab(activeTab);
+    }
+
+    private List<Film> filmsForTab(FilmTab tab) {
+        return switch (tab) {
             case ALL -> allFilms;
             case NOW_SHOWING -> allFilms.stream()
                     .filter(this::isReleased)
@@ -621,40 +461,49 @@ public class FilmListingView extends Div implements BeforeEnterObserver {
         };
     }
 
+    private void renderResultSummary(int count) {
+        resultSummary.removeAll();
+        cls(resultSummary, "flp-result-summary");
+
+        String dateText = dateFilter.getValue() == null
+                ? "Any date"
+                : dateFilter.getValue().format(DATE_LABEL);
+        String cityText = cityFilter.getValue() == null || cityFilter.getValue().isBlank()
+                ? "All cities"
+                : cityFilter.getValue();
+
+        resultSummary.add(
+                cls(new Span(count + " film" + (count == 1 ? "" : "s") + " found"), "flp-result-main"),
+                cls(new Span(activeTab.label + " · " + cityText + " · " + dateText), "flp-result-sub")
+        );
+    }
+
     private boolean isReleased(Film film) {
         return film.getReleaseDate() == null || !film.getReleaseDate().isAfter(LocalDate.now());
     }
 
     private boolean hasUpcomingScreening(Film film) {
         return screeningWindow.stream()
-                .anyMatch(screening -> Objects.equals(screening.getFilm().getId(), film.getId()));
+                .anyMatch(screening -> sameFilm(screening, film));
     }
 
     private boolean hasRegularUpcomingScreening(Film film) {
         return screeningWindow.stream()
-                .filter(screening -> Objects.equals(screening.getFilm().getId(), film.getId()))
-                .anyMatch(screening ->
-                        screening.getScreeningType() != null
-                                && screening.getScreeningType().isRegular()
-                );
+                .filter(screening -> sameFilm(screening, film))
+                .anyMatch(screening -> screening.getScreeningType() != null && screening.getScreeningType().isRegular());
     }
 
     private boolean hasAdvancePreviewScreening(Film film) {
         return screeningWindow.stream()
-                .filter(screening -> Objects.equals(screening.getFilm().getId(), film.getId()))
-                .anyMatch(screening ->
-                        screening.getScreeningType() != null
-                                && !screening.getScreeningType().isRegular()
-                );
+                .filter(screening -> sameFilm(screening, film))
+                .anyMatch(screening -> screening.getScreeningType() != null && !screening.getScreeningType().isRegular());
     }
 
     private boolean matchesSelectedDate(Film film) {
-        // No date selected -> the per-day filter is inactive.
         if (dateFilter.getValue() == null) {
             return true;
         }
-        return dateScreenings.stream()
-                .anyMatch(screening -> Objects.equals(screening.getFilm().getId(), film.getId()));
+        return dateScreenings.stream().anyMatch(screening -> sameFilm(screening, film));
     }
 
     private boolean matchesKeyword(Film film, String keyword) {
@@ -662,16 +511,17 @@ public class FilmListingView extends Div implements BeforeEnterObserver {
             return true;
         }
 
-        String value = keyword.toLowerCase();
+        String value = keyword.toLowerCase(Locale.ROOT).trim();
 
         boolean filmMatch =
                 safe(film.getTitle()).contains(value)
                         || safe(film.getGenre()).contains(value)
                         || safe(film.getActors()).contains(value)
+                        || safe(film.getDirectors()).contains(value)
                         || safe(film.getDescription()).contains(value);
 
         boolean cinemaMatch = screeningWindow.stream()
-                .filter(screening -> Objects.equals(screening.getFilm().getId(), film.getId()))
+                .filter(screening -> sameFilm(screening, film))
                 .anyMatch(screening ->
                         safe(screening.getScreen().getCinema().getName()).contains(value)
                                 || safe(screening.getScreen().getCinema().getCity()).contains(value)
@@ -686,38 +536,31 @@ public class FilmListingView extends Div implements BeforeEnterObserver {
         }
 
         return screeningWindow.stream()
-                .filter(screening -> Objects.equals(screening.getFilm().getId(), film.getId()))
+                .filter(screening -> sameFilm(screening, film))
                 .anyMatch(screening -> city.equalsIgnoreCase(screening.getScreen().getCinema().getCity()));
     }
 
     private boolean matchesGenre(Film film, String genre) {
-        if (genre == null || genre.isBlank()) {
-            return true;
-        }
+        return genre == null || genre.isBlank() || genre.equalsIgnoreCase(film.getGenre());
+    }
 
-        return genre.equalsIgnoreCase(film.getGenre());
+    private boolean sameFilm(Screening screening, Film film) {
+        return screening != null
+                && screening.getFilm() != null
+                && film != null
+                && Objects.equals(screening.getFilm().getId(), film.getId());
     }
 
     private String safe(String value) {
-        return value == null ? "" : value.toLowerCase();
+        return value == null ? "" : value.toLowerCase(Locale.ROOT);
     }
 
     private void renderFilms(List<Film> films) {
         filmGrid.removeAll();
-
-        filmGrid.getStyle()
-                .set("display", "grid")
-                .set("grid-template-columns", "repeat(auto-fill, minmax(230px, 1fr))")
-                .set("gap", "56px 48px")
-                .set("align-items", "start");
+        cls(filmGrid, "flp-film-grid");
 
         if (films.isEmpty()) {
-            Paragraph empty = new Paragraph(emptyMessage());
-            empty.getStyle()
-                    .set("color", "#cbd5e1")
-                    .set("font-size", "18px");
-
-            filmGrid.add(empty);
+            filmGrid.add(buildEmptyState());
             return;
         }
 
@@ -726,109 +569,53 @@ public class FilmListingView extends Div implements BeforeEnterObserver {
         }
     }
 
+    private Div buildEmptyState() {
+        Div empty = cls(new Div(), "flp-empty");
+        empty.add(
+                cls(new Span("No matching films"), "flp-empty-title"),
+                cls(new Paragraph(emptyMessage()), "flp-empty-copy"),
+                resetButton()
+        );
+        return empty;
+    }
+
     private String emptyMessage() {
         if (activeTab == FilmTab.COMING_SOON) {
-            return "No coming-soon films are available in the current sample data.";
+            return "No coming-soon films are available for the selected filters.";
         }
-
         if (activeTab == FilmTab.ADVANCE_BOOKINGS) {
-            return "No advance preview or advance booking films match the selected filter.";
+            return "No advance preview or advance booking films match the selected filters.";
         }
-
-        return "No films have showtimes for the selected date and filters.";
+        return "Try changing the city, genre, search term or date filter.";
     }
 
     private Div createFilmCard(Film film) {
-        Div card = new Div();
-        card.getStyle()
-                .set("position", "relative")
-                .set("cursor", "pointer")
-                .set("min-width", "0");
+        Div card = cls(new Div(), "flp-film-card");
 
-        Div posterWrapper = new Div();
-        posterWrapper.getStyle()
-                .set("position", "relative")
-                .set("height", "360px")
-                .set("overflow", "hidden")
-                .set("background", "linear-gradient(145deg, #111827, #4c1d95)")
-                .set("box-shadow", "0 16px 34px rgba(0,0,0,0.34)");
-
+        Div posterWrapper = cls(new Div(), "flp-poster-wrap");
         if (film.getPosterUrl() != null && !film.getPosterUrl().isBlank()) {
-            Image poster = new Image(film.getPosterUrl(), film.getTitle());
+            Image poster = cls(new Image(film.getPosterUrl(), film.getTitle()), "flp-poster");
             poster.setWidthFull();
             poster.setHeightFull();
-            poster.getStyle()
-                    .set("object-fit", "cover")
-                    .set("transition", "transform 0.25s ease");
-
             posterWrapper.add(poster);
         } else {
-            Div placeholder = new Div();
+            Div placeholder = cls(new Div(), "flp-poster-placeholder");
             placeholder.setText(film.getTitle());
-            placeholder.getStyle()
-                    .set("height", "100%")
-                    .set("display", "flex")
-                    .set("align-items", "center")
-                    .set("justify-content", "center")
-                    .set("text-align", "center")
-                    .set("padding", "20px")
-                    .set("box-sizing", "border-box")
-                    .set("font-size", "20px")
-                    .set("font-weight", "900")
-                    .set("color", "white");
-
             posterWrapper.add(placeholder);
         }
 
-        Div playCorner = new Div();
-        playCorner.getStyle()
-                .set("position", "absolute")
-                .set("top", "0")
-                .set("left", "0")
-                .set("width", "54px")
-                .set("height", "54px")
-                .set("background", "#0072ce")
-                .set("clip-path", "polygon(0 0, 100% 0, 100% 72%, 72% 100%, 0 100%)")
-                .set("display", "flex")
-                .set("align-items", "center")
-                .set("justify-content", "center");
+        Div posterOverlay = cls(new Div(), "flp-poster-overlay");
+        Div playCorner = cls(new Div(), "flp-play-corner");
+        playCorner.add(new Span("▶"));
 
-        Span playIcon = new Span("▶");
-        playIcon.getStyle()
-                .set("font-size", "22px")
-                .set("margin-left", "2px");
+        Span availability = cls(new Span(availabilityLabel(film)), "flp-availability");
+        posterWrapper.add(posterOverlay, playCorner, availability);
 
-        playCorner.add(playIcon);
+        Div body = cls(new Div(), "flp-card-body");
 
-        Span bookmark = new Span("▱");
-        bookmark.getStyle()
-                .set("position", "absolute")
-                .set("top", "12px")
-                .set("right", "14px")
-                .set("font-size", "30px")
-                .set("font-weight", "300")
-                .set("color", "white");
+        H2 title = cls(new H2(film.getTitle()), "flp-film-title");
 
-        posterWrapper.add(playCorner, bookmark);
-
-        H2 title = new H2(film.getTitle().toUpperCase());
-        title.getStyle()
-                .set("font-size", "30px")
-                .set("line-height", "0.95")
-                .set("font-weight", "900")
-                .set("letter-spacing", "0.02em")
-                .set("margin", "-10px 0 8px 0")
-                .set("color", "white")
-                .set("position", "relative")
-                .set("z-index", "2");
-
-        Div meta = new Div();
-        meta.getStyle()
-                .set("display", "flex")
-                .set("gap", "8px")
-                .set("flex-wrap", "wrap")
-                .set("margin-top", "10px");
-
+        Div meta = cls(new Div(), "flp-meta");
         meta.add(
                 tag(film.getAgeRating()),
                 tag(film.getGenre()),
@@ -841,50 +628,65 @@ public class FilmListingView extends Div implements BeforeEnterObserver {
             meta.add(highlightTag("Advance Booking"));
         }
 
-        Button bookButton = new Button("Find tickets", event ->
-                getUI().ifPresent(ui -> ui.getPage().setLocation(bookingUrlForFilm(film)))
+        Paragraph description = cls(new Paragraph(shortDescription(film)), "flp-film-description");
+
+        Div details = cls(new Div(), "flp-film-details");
+        details.add(
+                detailLine("Release", releaseLabel(film)),
+                detailLine("Next show", nextShowLabel(film))
         );
 
+        Button bookButton = cls(new Button("Find tickets"), "flp-book-btn");
         bookButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        bookButton.getStyle()
-                .set("margin-top", "14px")
-                .set("background", "#0072ce")
-                .set("border-radius", "0")
-                .set("font-weight", "800")
-                .set("width", "150px")
-                .set("height", "40px")
-                .set("clip-path", "polygon(0 0, 100% 0, 92% 100%, 0 100%)");
+        bookButton.addClickListener(event -> getUI().ifPresent(ui -> ui.getPage().setLocation(bookingUrlForFilm(film))));
 
-        card.add(posterWrapper, title, meta, bookButton);
-
+        body.add(title, meta, description, details, bookButton);
+        card.add(posterWrapper, body);
         return card;
     }
 
-    private Span tag(String text) {
-        Span tag = new Span(text == null || text.isBlank() ? "-" : text);
-
-        tag.getStyle()
-                .set("font-size", "12px")
-                .set("font-weight", "700")
-                .set("color", "#dbeafe")
-                .set("border", "1px solid rgba(219,234,254,0.55)")
-                .set("padding", "4px 7px");
-
-        return tag;
+    private String availabilityLabel(Film film) {
+        if (hasRegularUpcomingScreening(film)) {
+            return "Now showing";
+        }
+        if (hasAdvancePreviewScreening(film) || (!isReleased(film) && hasUpcomingScreening(film))) {
+            return "Advance booking";
+        }
+        return "Coming soon";
     }
 
+    private String shortDescription(Film film) {
+        String description = film.getDescription();
+        if (description == null || description.isBlank()) {
+            return "Film information will be updated soon.";
+        }
+        return description.length() <= 120 ? description : description.substring(0, 117).trim() + "...";
+    }
+
+    private String releaseLabel(Film film) {
+        if (film.getReleaseDate() == null) {
+            return "Available";
+        }
+        return film.getReleaseDate().format(DATE_LABEL);
+    }
+
+    private String nextShowLabel(Film film) {
+        Optional<LocalDate> next = screeningService.findEarliestUpcomingDateForFilm(film.getId());
+        return next.map(localDate -> localDate.format(DATE_LABEL)).orElse("No scheduled shows");
+    }
+
+    private Div detailLine(String label, String value) {
+        Div row = cls(new Div(), "flp-detail-line");
+        row.add(cls(new Span(label), "flp-detail-label"), cls(new Span(value), "flp-detail-value"));
+        return row;
+    }
+
+    private Span tag(String text) {
+        return cls(new Span(text == null || text.isBlank() ? "-" : text), "flp-tag");
+    }
 
     private Span highlightTag(String text) {
-        Span tag = new Span(text == null || text.isBlank() ? "-" : text);
-
-        tag.getStyle()
-                .set("font-size", "12px")
-                .set("font-weight", "900")
-                .set("color", "#fdba74")
-                .set("border", "1px solid #fb923c")
-                .set("padding", "4px 7px");
-
-        return tag;
+        return cls(new Span(text == null || text.isBlank() ? "-" : text), "flp-tag", "flp-tag-gold");
     }
 
     private String bookingUrlForFilm(Film film) {
@@ -892,10 +694,9 @@ public class FilmListingView extends Div implements BeforeEnterObserver {
             return "/booking";
         }
 
-        // Use the film's earliest upcoming screening date so the booking page
-        // lands on a day that actually has showtimes for this film.
+        LocalDate preferredDate = dateFilter.getValue();
         LocalDate earliestDate = screeningService.findEarliestUpcomingDateForFilm(film.getId())
-                .orElse(dateFilter.getValue() == null ? LocalDate.now() : dateFilter.getValue());
+                .orElse(preferredDate == null ? LocalDate.now() : preferredDate);
 
         StringBuilder url = new StringBuilder("/booking/")
                 .append(film.getId())
@@ -904,7 +705,7 @@ public class FilmListingView extends Div implements BeforeEnterObserver {
 
         String selectedCity = cityFilter.getValue();
         screeningWindow.stream()
-                .filter(screening -> Objects.equals(screening.getFilm().getId(), film.getId()))
+                .filter(screening -> sameFilm(screening, film))
                 .filter(screening -> selectedCity == null
                         || selectedCity.isBlank()
                         || selectedCity.equalsIgnoreCase(screening.getScreen().getCinema().getCity()))
@@ -918,7 +719,6 @@ public class FilmListingView extends Div implements BeforeEnterObserver {
         if (filmTitle == null || filmTitle.isBlank()) {
             return "/booking";
         }
-
         return allFilms.stream()
                 .filter(film -> filmTitle.equalsIgnoreCase(film.getTitle()))
                 .findFirst()
@@ -926,16 +726,47 @@ public class FilmListingView extends Div implements BeforeEnterObserver {
                 .orElse("/booking");
     }
 
+    private int distinctGenres() {
+        Set<String> genres = allFilms.stream()
+                .map(Film::getGenre)
+                .filter(Objects::nonNull)
+                .filter(value -> !value.isBlank())
+                .collect(Collectors.toSet());
+        return genres.size();
+    }
+
+    private int distinctCities() {
+        Set<String> cities = cinemaRepository.findAll().stream()
+                .map(cinema -> cinema.getCity())
+                .filter(Objects::nonNull)
+                .filter(value -> !value.isBlank())
+                .collect(Collectors.toSet());
+        return cities.size();
+    }
+
     private String jsEscape(String value) {
         if (value == null) {
             return "";
         }
-
         return value
                 .replace("\\", "\\\\")
                 .replace("\"", "\\\"")
                 .replace("\n", " ")
                 .replace("\r", " ");
+    }
+
+    private <T extends Component & HasStyle> T cls(T component, String... classNames) {
+        for (String className : classNames) {
+            if (className == null || className.isBlank()) {
+                continue;
+            }
+            for (String token : className.trim().split("\\s+")) {
+                if (!token.isBlank()) {
+                    component.addClassName(token);
+                }
+            }
+        }
+        return component;
     }
 
     private record PromoSlide(String title, String cta, String imageUrl, String targetFilmTitle) {
