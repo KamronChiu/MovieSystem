@@ -43,3 +43,173 @@ vaadin-dialog-overlay[theme~="hcbs-seat-dialog"]::part(content) {
 body {
     background: var(--hcbs-bg);
 }
+
+/* =========================================================
+   HCBS global readability + notification contrast fix
+   Append this file's contents to: frontend/styles/hcbs-theme.css
+   It improves Notifications, hints, helper text, empty states,
+   disabled controls and dialog messages across the whole system.
+   ========================================================= */
+
+:root {
+    --hcbs-bg: #020b1d;
+    --hcbs-panel: #071225;
+    --hcbs-panel-2: #0b1628;
+    --hcbs-gold: #e6c45a;
+    --hcbs-gold-2: #d6aa42;
+    --hcbs-text: #f8fafc;
+    --hcbs-muted: #c7d2e3;
+    --hcbs-soft: #94a3b8;
+    --hcbs-blue: #38bdf8;
+    --hcbs-danger: #f87171;
+    --hcbs-success: #34d399;
+}
+
+/* Global page readability */
+body, html, vaadin-app-layout, vaadin-horizontal-layout, vaadin-vertical-layout {
+    color: var(--hcbs-text);
+}
+
+/* Make hints and helper text readable on dark pages */
+.hint,
+.help-text,
+.helper-text,
+.subtitle,
+.caption,
+.description,
+.empty-state,
+[class*="hint"],
+[class*="helper"],
+[class*="subtitle"],
+[class*="description"],
+[class*="empty"] {
+    color: var(--hcbs-muted) !important;
+    opacity: 1 !important;
+    line-height: 1.6 !important;
+}
+
+/* Vaadin field labels / helper / error text */
+vaadin-text-field,
+vaadin-combo-box,
+vaadin-date-picker,
+vaadin-number-field,
+vaadin-email-field,
+vaadin-password-field,
+vaadin-text-area,
+vaadin-select {
+    --vaadin-input-field-label-color: #dbe7f5;
+    --vaadin-input-field-placeholder-color: #9fb0c7;
+    --vaadin-input-field-value-color: #f8fafc;
+    --vaadin-input-field-helper-color: #c7d2e3;
+    --vaadin-input-field-error-color: #fecaca;
+    --vaadin-input-field-background: rgba(7, 18, 37, 0.86);
+    --vaadin-input-field-border-color: rgba(230, 196, 90, 0.28);
+    --vaadin-input-field-focused-highlight: var(--hcbs-gold);
+}
+
+vaadin-checkbox,
+vaadin-radio-button {
+    color: #e8eef8 !important;
+    --lumo-secondary-text-color: #c7d2e3;
+    --lumo-disabled-text-color: #9fb0c7;
+}
+
+/* Disabled controls must still be legible */
+[disabled],
+:host([disabled]) {
+    opacity: 0.72 !important;
+}
+
+vaadin-button[disabled] {
+    color: #d7deea !important;
+    background: rgba(15, 23, 42, 0.72) !important;
+    border: 1px solid rgba(148, 163, 184, 0.35) !important;
+    opacity: 0.78 !important;
+}
+
+/* Notification / toast — high contrast black-gold */
+vaadin-notification-card {
+    background: linear-gradient(135deg, rgba(7,18,37,0.98), rgba(12,20,38,0.98)) !important;
+    color: #f8fafc !important;
+    border: 1px solid rgba(230,196,90,0.46) !important;
+    box-shadow: 0 24px 70px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.04) !important;
+    border-radius: 18px !important;
+    font-weight: 750 !important;
+    letter-spacing: 0.01em !important;
+}
+
+vaadin-notification-card::part(overlay) {
+    background: linear-gradient(135deg, rgba(7,18,37,0.98), rgba(12,20,38,0.98)) !important;
+    color: #f8fafc !important;
+    border: 1px solid rgba(230,196,90,0.46) !important;
+    border-radius: 18px !important;
+}
+
+vaadin-notification-card[theme~="success"],
+vaadin-notification-card[theme~="success"]::part(overlay) {
+    border-color: rgba(52,211,153,0.65) !important;
+    box-shadow: 0 24px 70px rgba(0,0,0,0.55), 0 0 26px rgba(52,211,153,0.16) !important;
+}
+
+vaadin-notification-card[theme~="error"],
+vaadin-notification-card[theme~="error"]::part(overlay) {
+    border-color: rgba(248,113,113,0.72) !important;
+    box-shadow: 0 24px 70px rgba(0,0,0,0.55), 0 0 26px rgba(248,113,113,0.16) !important;
+}
+
+vaadin-notification-card[theme~="primary"],
+vaadin-notification-card[theme~="primary"]::part(overlay) {
+    border-color: rgba(56,189,248,0.65) !important;
+    box-shadow: 0 24px 70px rgba(0,0,0,0.55), 0 0 26px rgba(56,189,248,0.16) !important;
+}
+
+/* Dialog / overlay text safety */
+vaadin-dialog-overlay::part(overlay),
+vaadin-confirm-dialog-overlay::part(overlay) {
+    background: linear-gradient(145deg, rgba(7,18,37,0.98), rgba(12,20,38,0.98)) !important;
+    color: #f8fafc !important;
+    border: 1px solid rgba(230,196,90,0.35) !important;
+    box-shadow: 0 32px 90px rgba(0,0,0,0.68) !important;
+}
+
+vaadin-dialog-overlay::part(header),
+vaadin-dialog-overlay::part(content),
+vaadin-dialog-overlay::part(footer),
+vaadin-confirm-dialog-overlay::part(header),
+vaadin-confirm-dialog-overlay::part(content),
+vaadin-confirm-dialog-overlay::part(footer) {
+    color: #f8fafc !important;
+}
+
+/* Grid readability */
+vaadin-grid {
+    --lumo-base-color: #071225;
+    --lumo-body-text-color: #f8fafc;
+    --lumo-secondary-text-color: #c7d2e3;
+    --lumo-contrast-10pct: rgba(148,163,184,0.16);
+    --lumo-contrast-20pct: rgba(230,196,90,0.18);
+    border-color: rgba(230,196,90,0.22) !important;
+}
+
+vaadin-grid::part(header-cell) {
+    background: rgba(15,23,42,0.96) !important;
+    color: #f5d66b !important;
+    font-weight: 900 !important;
+    letter-spacing: 0.08em !important;
+}
+
+vaadin-grid::part(body-cell) {
+    background: rgba(7,18,37,0.92) !important;
+    color: #eef4ff !important;
+}
+
+/* Generic white-panel safety: prevents white cards + white text */
+.black-gold-page .white-card,
+.backoffice-pro-page .white-card,
+.admin-schedule-pro-page .white-card,
+.manager-admin-pro-page .white-card,
+[class*="pro-page"] .white-card {
+    background: rgba(7,18,37,0.94) !important;
+    color: #f8fafc !important;
+    border: 1px solid rgba(230,196,90,0.28) !important;
+}

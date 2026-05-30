@@ -6,6 +6,7 @@ import com.eduaccess.domain.Screen;
 import com.eduaccess.service.CinemaService;
 import com.eduaccess.service.LoginService;
 import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.dependency.CssImport;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.component.button.ButtonVariant;
@@ -28,6 +29,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@CssImport("./styles/manager-admin-pro.css")
 @Route(value = "manager/cinemas", layout = MainLayout.class)
 @PageTitle("HCBS — Manager Cinemas")
 public class ManagerCinemaView extends Div implements BeforeEnterObserver {
@@ -55,6 +57,7 @@ public class ManagerCinemaView extends Div implements BeforeEnterObserver {
         this.loginService = loginService;
 
         setWidthFull();
+        addClassNames("manager-pro-page", "manager-cinema-page");
         getStyle()
                 .set("min-height", "100vh")
                 .set("background", "#020b1d")
@@ -63,6 +66,7 @@ public class ManagerCinemaView extends Div implements BeforeEnterObserver {
                 .set("box-sizing", "border-box");
 
         Div page = new Div();
+        page.addClassName("manager-pro-shell");
         page.getStyle()
                 .set("max-width", "1320px")
                 .set("margin", "0 auto");
@@ -87,6 +91,7 @@ public class ManagerCinemaView extends Div implements BeforeEnterObserver {
         configureGrid();
 
         Div layout = new Div();
+        layout.addClassNames("manager-pro-layout", "manager-cinema-layout");
         layout.getStyle()
                 .set("display", "grid")
                 .set("grid-template-columns", "420px 1fr")
@@ -242,8 +247,9 @@ public class ManagerCinemaView extends Div implements BeforeEnterObserver {
         }).setHeader("Expansion");
 
         cinemaGrid.setSizeFull();
+        cinemaGrid.addClassName("manager-pro-grid");
         cinemaGrid.getStyle()
-                .set("background", "white")
+                .set("background", "transparent")
                 .set("border-radius", "14px")
                 .set("overflow", "hidden");
     }
@@ -320,6 +326,7 @@ public class ManagerCinemaView extends Div implements BeforeEnterObserver {
 
     private Div darkCard() {
         Div card = new Div();
+        card.addClassName("manager-pro-card");
         card.getStyle()
                 .set("background", "rgba(255,255,255,0.055)")
                 .set("border", "1px solid rgba(255,255,255,0.13)")

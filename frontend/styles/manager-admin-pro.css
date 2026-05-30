@@ -1,0 +1,285 @@
+/* Manager Cinema + Manage Films black-gold enterprise styling.
+   Page scoped to avoid touching Booking, Film Listing, Dashboard, Food Orders, or Cancellation pages. */
+
+.manager-pro-page {
+    --manager-bg: #050814;
+    --manager-panel: rgba(10, 16, 34, 0.86);
+    --manager-panel-soft: rgba(15, 23, 42, 0.72);
+    --manager-line: rgba(219, 170, 63, 0.26);
+    --manager-line-strong: rgba(234, 198, 98, 0.50);
+    --manager-gold: #e7c554;
+    --manager-gold-soft: #a88a2e;
+    --manager-blue: #4f7cff;
+    --manager-text: #f8fafc;
+    --manager-muted: #9ca8ba;
+    --manager-danger: #ef4444;
+    position: relative;
+    overflow: hidden;
+    background:
+        radial-gradient(circle at 10% 0%, rgba(47, 58, 150, 0.26), transparent 32%),
+        radial-gradient(circle at 92% 8%, rgba(231, 197, 84, 0.18), transparent 34%),
+        linear-gradient(135deg, #070b1c 0%, #050814 48%, #10100c 100%) !important;
+}
+
+.manager-pro-page::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    background-image:
+        linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px);
+    background-size: 72px 72px;
+    mask-image: linear-gradient(to bottom, rgba(0,0,0,0.80), rgba(0,0,0,0.18));
+}
+
+.manager-pro-page::after {
+    content: "";
+    position: fixed;
+    width: 520px;
+    height: 520px;
+    right: -190px;
+    top: 160px;
+    pointer-events: none;
+    z-index: 0;
+    background: radial-gradient(circle, rgba(231,197,84,0.14), rgba(79,124,255,0.08) 40%, transparent 70%);
+    filter: blur(8px);
+}
+
+.manager-pro-shell {
+    position: relative;
+    z-index: 1;
+}
+
+.manager-pro-page h1 {
+    color: var(--manager-text) !important;
+    letter-spacing: 0.12em !important;
+    text-shadow: 0 0 36px rgba(231,197,84,0.12);
+}
+
+.manager-pro-page h1::before {
+    content: "MANAGER CONTROL";
+    display: block;
+    margin: 0 0 14px 2px;
+    color: rgba(231,197,84,0.82);
+    font-size: 12px;
+    font-weight: 900;
+    letter-spacing: 0.32em;
+}
+
+.manager-pro-page p {
+    color: var(--manager-muted) !important;
+}
+
+.manager-pro-layout {
+    width: 100%;
+}
+
+.manager-pro-card {
+    position: relative;
+    border-radius: 28px !important;
+    background:
+        linear-gradient(145deg, rgba(11,17,36,0.94), rgba(8,12,27,0.86)) !important;
+    border: 1px solid var(--manager-line) !important;
+    box-shadow:
+        0 26px 80px rgba(0,0,0,0.48),
+        inset 0 1px 0 rgba(255,255,255,0.04) !important;
+    backdrop-filter: blur(18px);
+    transition: transform .22s ease, border-color .22s ease, box-shadow .22s ease;
+}
+
+.manager-pro-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--manager-line-strong) !important;
+    box-shadow:
+        0 34px 96px rgba(0,0,0,0.56),
+        0 0 0 1px rgba(231,197,84,0.09),
+        inset 0 1px 0 rgba(255,255,255,0.06) !important;
+}
+
+.manager-pro-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    border-radius: inherit;
+    background:
+        linear-gradient(135deg, rgba(231,197,84,0.12), transparent 28%),
+        radial-gradient(circle at 92% 0%, rgba(79,124,255,0.10), transparent 38%);
+}
+
+.manager-pro-card > * {
+    position: relative;
+    z-index: 1;
+}
+
+.manager-pro-card h2 {
+    color: var(--manager-text) !important;
+    letter-spacing: 0.06em;
+}
+
+.manager-pro-card h2::after {
+    content: "";
+    display: block;
+    width: 54px;
+    height: 3px;
+    margin-top: 10px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--manager-gold), rgba(79,124,255,0.72));
+    box-shadow: 0 0 22px rgba(231,197,84,0.30);
+}
+
+.manager-pro-page vaadin-text-field,
+.manager-pro-page vaadin-integer-field,
+.manager-pro-page vaadin-combo-box,
+.manager-pro-page vaadin-multi-select-combo-box,
+.manager-pro-page vaadin-date-picker,
+.manager-pro-page vaadin-text-area {
+    --vaadin-input-field-background: rgba(11, 17, 36, 0.92) !important;
+    --vaadin-input-field-value-color: #f8fafc !important;
+    --vaadin-input-field-label-color: rgba(233, 239, 247, 0.86) !important;
+    --vaadin-input-field-placeholder-color: rgba(156,168,186,0.78) !important;
+    --vaadin-input-field-border-width: 1px !important;
+    --vaadin-input-field-border-color: rgba(231,197,84,0.22) !important;
+    --vaadin-input-field-focused-highlight: var(--manager-gold) !important;
+    color: #f8fafc !important;
+}
+
+.manager-pro-page vaadin-text-field::part(input-field),
+.manager-pro-page vaadin-integer-field::part(input-field),
+.manager-pro-page vaadin-combo-box::part(input-field),
+.manager-pro-page vaadin-multi-select-combo-box::part(input-field),
+.manager-pro-page vaadin-date-picker::part(input-field),
+.manager-pro-page vaadin-text-area::part(input-field) {
+    border: 1px solid rgba(231,197,84,0.22) !important;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+    transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
+}
+
+.manager-pro-page vaadin-text-field:hover::part(input-field),
+.manager-pro-page vaadin-integer-field:hover::part(input-field),
+.manager-pro-page vaadin-combo-box:hover::part(input-field),
+.manager-pro-page vaadin-multi-select-combo-box:hover::part(input-field),
+.manager-pro-page vaadin-date-picker:hover::part(input-field),
+.manager-pro-page vaadin-text-area:hover::part(input-field) {
+    border-color: rgba(231,197,84,0.48) !important;
+    box-shadow: 0 0 0 3px rgba(231,197,84,0.06), inset 0 1px 0 rgba(255,255,255,0.05);
+}
+
+.manager-pro-page vaadin-button {
+    border-radius: 999px !important;
+    font-weight: 900 !important;
+    letter-spacing: 0.02em;
+    transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease, opacity .16s ease;
+    cursor: pointer;
+}
+
+.manager-pro-page vaadin-button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 16px 36px rgba(0,0,0,0.36), 0 0 0 1px rgba(231,197,84,0.16);
+}
+
+.manager-pro-page vaadin-button[theme~="primary"] {
+    background: linear-gradient(135deg, #f1d464, #b99127) !important;
+    color: #10131e !important;
+    border: 1px solid rgba(255,235,158,0.38) !important;
+    clip-path: none !important;
+}
+
+.manager-pro-page vaadin-button[theme~="error"],
+.manager-pro-page vaadin-button[theme~="tertiary"][theme~="error"] {
+    color: #fecaca !important;
+}
+
+.manager-pro-page .manager-pro-grid {
+    border-radius: 20px !important;
+    overflow: hidden !important;
+    background: transparent !important;
+    border: 1px solid rgba(231,197,84,0.16);
+}
+
+.manager-pro-page vaadin-grid {
+    --lumo-base-color: rgba(8,12,27,0.90);
+    --lumo-body-text-color: #e9eef7;
+    --lumo-secondary-text-color: #9ca8ba;
+    --lumo-contrast-10pct: rgba(255,255,255,0.06);
+    --lumo-contrast-20pct: rgba(255,255,255,0.10);
+    --lumo-primary-color: var(--manager-gold);
+    background: transparent !important;
+    color: #e9eef7 !important;
+}
+
+.manager-pro-page vaadin-grid::part(header-cell) {
+    background: rgba(11,17,36,0.96) !important;
+    color: rgba(231,197,84,0.88) !important;
+    border-bottom: 1px solid rgba(231,197,84,0.22) !important;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-size: 12px;
+}
+
+.manager-pro-page vaadin-grid::part(cell) {
+    background: rgba(8,12,27,0.62) !important;
+    color: #e9eef7 !important;
+    border-bottom: 1px solid rgba(255,255,255,0.055) !important;
+}
+
+.manager-pro-page vaadin-grid::part(row):hover vaadin-grid-cell-content {
+    color: #ffffff;
+}
+
+.manager-pro-page vaadin-grid::part(selected-row-cell),
+.manager-pro-page vaadin-grid::part(focused-cell) {
+    background: rgba(231,197,84,0.11) !important;
+}
+
+.manager-pro-page vaadin-upload.manager-pro-upload {
+    border-radius: 18px;
+    overflow: hidden;
+}
+
+.manager-pro-page vaadin-upload.manager-pro-upload::part(drop-label) {
+    color: rgba(248,250,252,0.82);
+}
+
+.manager-pro-page vaadin-upload.manager-pro-upload::part(primary-buttons) vaadin-button {
+    background: rgba(231,197,84,0.12) !important;
+    border: 1px solid rgba(231,197,84,0.28) !important;
+    color: #f8fafc !important;
+}
+
+.manager-pro-page img {
+    box-shadow: 0 14px 38px rgba(0,0,0,0.34);
+}
+
+.manager-pro-page vaadin-confirm-dialog-overlay::part(overlay),
+vaadin-confirm-dialog-overlay::part(overlay) {
+    background: rgba(8,12,27,0.96) !important;
+    color: #f8fafc !important;
+    border: 1px solid rgba(231,197,84,0.32) !important;
+    box-shadow: 0 30px 90px rgba(0,0,0,0.60) !important;
+}
+
+@media (max-width: 1120px) {
+    .manager-pro-layout {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+@media (max-width: 720px) {
+    .manager-pro-page {
+        padding: 28px 18px 70px 18px !important;
+    }
+
+    .manager-pro-page h1 {
+        font-size: 32px !important;
+        letter-spacing: 0.07em !important;
+    }
+
+    .manager-pro-card {
+        border-radius: 22px !important;
+        padding: 18px !important;
+    }
+}

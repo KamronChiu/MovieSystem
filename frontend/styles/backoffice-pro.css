@@ -24,9 +24,9 @@
     min-height: 100vh !important;
     color: var(--bo-text) !important;
     background:
-        radial-gradient(circle at 12% 8%, rgba(53, 65, 160, 0.24), transparent 35%),
-        radial-gradient(circle at 82% 0%, rgba(214, 170, 66, 0.16), transparent 33%),
-        linear-gradient(135deg, #050814 0%, #070c1a 44%, #141414 100%) !important;
+            radial-gradient(circle at 12% 8%, rgba(53, 65, 160, 0.24), transparent 35%),
+            radial-gradient(circle at 82% 0%, rgba(214, 170, 66, 0.16), transparent 33%),
+            linear-gradient(135deg, #050814 0%, #070c1a 44%, #141414 100%) !important;
     position: relative;
     overflow-x: hidden;
 }
@@ -42,8 +42,8 @@
     inset: 0;
     pointer-events: none;
     background-image:
-        linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+            linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
     background-size: 72px 72px;
     mask-image: linear-gradient(to bottom, rgba(0,0,0,0.9), rgba(0,0,0,0.2));
     z-index: 0;
@@ -391,4 +391,258 @@ vaadin-dialog-overlay::part(backdrop) {
     .batch-cancellation-pro-page vaadin-grid {
         font-size: 13px;
     }
+}
+
+/* --------------------------------------------------------------------------
+   Readability hotfix: some older Java views use inline LIGHT_PANEL values such
+   as "#ffffff" / "white" / "#f4f7fb". If those are not converted to dark,
+   the global white heading/text rules become unreadable. Keep all back-office
+   cards dark and make form labels/options visible.
+   -------------------------------------------------------------------------- */
+.audit-log-pro-page [style*="background: #ffffff"],
+.cancellation-pro-page [style*="background: #ffffff"],
+.cancellation-status-pro-page [style*="background: #ffffff"],
+.refund-history-pro-page [style*="background: #ffffff"],
+.email-management-pro-page [style*="background: #ffffff"],
+.batch-cancellation-pro-page [style*="background: #ffffff"],
+.audit-log-pro-page [style*="background:#ffffff"],
+.cancellation-pro-page [style*="background:#ffffff"],
+.cancellation-status-pro-page [style*="background:#ffffff"],
+.refund-history-pro-page [style*="background:#ffffff"],
+.email-management-pro-page [style*="background:#ffffff"],
+.batch-cancellation-pro-page [style*="background:#ffffff"],
+.audit-log-pro-page [style*="background: #fff"],
+.cancellation-pro-page [style*="background: #fff"],
+.cancellation-status-pro-page [style*="background: #fff"],
+.refund-history-pro-page [style*="background: #fff"],
+.email-management-pro-page [style*="background: #fff"],
+.batch-cancellation-pro-page [style*="background: #fff"],
+.audit-log-pro-page [style*="background-color: white"],
+.cancellation-pro-page [style*="background-color: white"],
+.cancellation-status-pro-page [style*="background-color: white"],
+.refund-history-pro-page [style*="background-color: white"],
+.email-management-pro-page [style*="background-color: white"],
+.batch-cancellation-pro-page [style*="background-color: white"],
+.audit-log-pro-page [style*="background-color: #ffffff"],
+.cancellation-pro-page [style*="background-color: #ffffff"],
+.cancellation-status-pro-page [style*="background-color: #ffffff"],
+.refund-history-pro-page [style*="background-color: #ffffff"],
+.email-management-pro-page [style*="background-color: #ffffff"],
+.batch-cancellation-pro-page [style*="background-color: #ffffff"],
+.audit-log-pro-page [style*="background: rgb(255, 255, 255)"],
+.cancellation-pro-page [style*="background: rgb(255, 255, 255)"],
+.cancellation-status-pro-page [style*="background: rgb(255, 255, 255)"],
+.refund-history-pro-page [style*="background: rgb(255, 255, 255)"],
+.email-management-pro-page [style*="background: rgb(255, 255, 255)"],
+.batch-cancellation-pro-page [style*="background: rgb(255, 255, 255)"] {
+    background:
+            radial-gradient(circle at 80% 0%, rgba(230, 195, 86, 0.10), transparent 34%),
+            linear-gradient(145deg, rgba(11, 17, 34, 0.98), rgba(5, 9, 20, 0.94)) !important;
+    color: var(--bo-text) !important;
+    border-color: rgba(214, 170, 66, 0.30) !important;
+    box-shadow: var(--bo-shadow) !important;
+}
+
+/* Cancellation status page: force the main step content card dark. */
+.cancellation-status-pro-page div[style*="max-width: 820px"][style*="padding: 32px"],
+.cancellation-status-pro-page div[style*="max-width: 820px"][style*="padding:32px"] {
+    background:
+            radial-gradient(circle at 80% 0%, rgba(230, 195, 86, 0.10), transparent 34%),
+            linear-gradient(145deg, rgba(11, 17, 34, 0.98), rgba(5, 9, 20, 0.94)) !important;
+    color: var(--bo-text) !important;
+    border: 1px solid rgba(214, 170, 66, 0.30) !important;
+}
+
+/* Soft panels inside refund pages, including the refund breakdown and receipt. */
+.cancellation-status-pro-page [style*="background: #f4f7fb"],
+.cancellation-status-pro-page [style*="background:#f4f7fb"],
+.cancellation-status-pro-page [style*="background: #eef4fb"],
+.cancellation-status-pro-page [style*="background:#eef4fb"],
+.cancellation-status-pro-page [style*="background: #fffbeb"],
+.cancellation-status-pro-page [style*="background:#fffbeb"],
+.cancellation-status-pro-page [style*="background: #ecfdf5"],
+.cancellation-status-pro-page [style*="background:#ecfdf5"],
+.cancellation-status-pro-page [style*="background: rgb(244, 247, 251)"],
+.cancellation-status-pro-page [style*="background: rgb(238, 244, 251)"],
+.cancellation-status-pro-page [style*="background: rgb(255, 251, 235)"],
+.cancellation-status-pro-page [style*="background: rgb(236, 253, 245)"] {
+    background: rgba(15, 23, 42, 0.88) !important;
+    color: var(--bo-text) !important;
+    border-color: rgba(214, 170, 66, 0.26) !important;
+}
+
+/* Step cards: completed/inactive steps should not become white or pale blue. */
+.cancellation-status-pro-page [style*="background: #dbeafe"],
+.cancellation-status-pro-page [style*="background:#dbeafe"],
+.cancellation-status-pro-page [style*="background: rgb(219, 234, 254)"] {
+    background: rgba(15, 23, 42, 0.82) !important;
+    color: #dbeafe !important;
+    border-color: rgba(214, 170, 66, 0.28) !important;
+}
+
+/* Text colours inside darkened panels. Override legacy light-theme inline colours. */
+.audit-log-pro-page [style*="color: #065f46"],
+.cancellation-pro-page [style*="color: #065f46"],
+.cancellation-status-pro-page [style*="color: #065f46"],
+.refund-history-pro-page [style*="color: #065f46"],
+.email-management-pro-page [style*="color: #065f46"],
+.batch-cancellation-pro-page [style*="color: #065f46"],
+.audit-log-pro-page [style*="color: #047857"],
+.cancellation-pro-page [style*="color: #047857"],
+.cancellation-status-pro-page [style*="color: #047857"],
+.refund-history-pro-page [style*="color: #047857"],
+.email-management-pro-page [style*="color: #047857"],
+.batch-cancellation-pro-page [style*="color: #047857"],
+.audit-log-pro-page [style*="color: #92400e"],
+.cancellation-pro-page [style*="color: #92400e"],
+.cancellation-status-pro-page [style*="color: #92400e"],
+.refund-history-pro-page [style*="color: #92400e"],
+.email-management-pro-page [style*="color: #92400e"],
+.batch-cancellation-pro-page [style*="color: #92400e"],
+.audit-log-pro-page [style*="color: #78350f"],
+.cancellation-pro-page [style*="color: #78350f"],
+.cancellation-status-pro-page [style*="color: #78350f"],
+.refund-history-pro-page [style*="color: #78350f"],
+.email-management-pro-page [style*="color: #78350f"],
+.batch-cancellation-pro-page [style*="color: #78350f"] {
+    color: var(--bo-text) !important;
+}
+
+.cancellation-status-pro-page [style*="color: #64748b"],
+.cancellation-status-pro-page [style*="color:#64748b"],
+.cancellation-status-pro-page [style*="color: rgb(100, 116, 139)"] {
+    color: var(--bo-muted) !important;
+}
+
+/* Make checkbox/radio labels readable, including disabled refund items. */
+.cancellation-status-pro-page vaadin-checkbox,
+.cancellation-status-pro-page vaadin-radio-button,
+.cancellation-status-pro-page vaadin-radio-group,
+.cancellation-status-pro-page vaadin-checkbox-group {
+    color: var(--bo-text) !important;
+    --lumo-primary-color: #e6c356;
+    --lumo-body-text-color: var(--bo-text);
+    --lumo-secondary-text-color: var(--bo-muted);
+    --lumo-disabled-text-color: rgba(203, 213, 225, 0.60);
+}
+
+.cancellation-status-pro-page vaadin-checkbox::part(label),
+.cancellation-status-pro-page vaadin-radio-button::part(label) {
+    color: var(--bo-text) !important;
+    opacity: 1 !important;
+}
+
+.cancellation-status-pro-page vaadin-checkbox[disabled]::part(label),
+.cancellation-status-pro-page vaadin-radio-button[disabled]::part(label) {
+    color: rgba(203, 213, 225, 0.62) !important;
+}
+
+/* Prevent white glow from washing out headings. */
+.cancellation-status-pro-page [style*="box-shadow"] {
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.38) !important;
+}
+
+/* ------------------------------------------------------------------
+   Clickability hotfix
+   Decorative dark/gold back-office layers must never intercept button,
+   grid or form interaction. Keep the visual theme but force functional
+   components above any pseudo layers.
+------------------------------------------------------------------- */
+.audit-log-pro-page::before,
+.cancellation-pro-page::before,
+.cancellation-status-pro-page::before,
+.refund-history-pro-page::before,
+.email-management-pro-page::before,
+.batch-cancellation-pro-page::before,
+.audit-log-pro-page::after,
+.cancellation-pro-page::after,
+.cancellation-status-pro-page::after,
+.refund-history-pro-page::after,
+.email-management-pro-page::after,
+.batch-cancellation-pro-page::after {
+    pointer-events: none !important;
+}
+
+.audit-log-pro-page vaadin-button,
+.cancellation-pro-page vaadin-button,
+.cancellation-status-pro-page vaadin-button,
+.refund-history-pro-page vaadin-button,
+.email-management-pro-page vaadin-button,
+.batch-cancellation-pro-page vaadin-button,
+.audit-log-pro-page vaadin-grid,
+.cancellation-pro-page vaadin-grid,
+.cancellation-status-pro-page vaadin-grid,
+.refund-history-pro-page vaadin-grid,
+.email-management-pro-page vaadin-grid,
+.batch-cancellation-pro-page vaadin-grid,
+.audit-log-pro-page vaadin-checkbox,
+.cancellation-pro-page vaadin-checkbox,
+.cancellation-status-pro-page vaadin-checkbox,
+.refund-history-pro-page vaadin-checkbox,
+.email-management-pro-page vaadin-checkbox,
+.batch-cancellation-pro-page vaadin-checkbox,
+.audit-log-pro-page vaadin-radio-button,
+.cancellation-pro-page vaadin-radio-button,
+.cancellation-status-pro-page vaadin-radio-button,
+.refund-history-pro-page vaadin-radio-button,
+.email-management-pro-page vaadin-radio-button,
+.batch-cancellation-pro-page vaadin-radio-button,
+.audit-log-pro-page vaadin-radio-group,
+.cancellation-pro-page vaadin-radio-group,
+.cancellation-status-pro-page vaadin-radio-group,
+.refund-history-pro-page vaadin-radio-group,
+.email-management-pro-page vaadin-radio-group,
+.batch-cancellation-pro-page vaadin-radio-group,
+.audit-log-pro-page vaadin-text-field,
+.cancellation-pro-page vaadin-text-field,
+.cancellation-status-pro-page vaadin-text-field,
+.refund-history-pro-page vaadin-text-field,
+.email-management-pro-page vaadin-text-field,
+.batch-cancellation-pro-page vaadin-text-field,
+.audit-log-pro-page vaadin-text-area,
+.cancellation-pro-page vaadin-text-area,
+.cancellation-status-pro-page vaadin-text-area,
+.refund-history-pro-page vaadin-text-area,
+.email-management-pro-page vaadin-text-area,
+.batch-cancellation-pro-page vaadin-text-area,
+.audit-log-pro-page vaadin-combo-box,
+.cancellation-pro-page vaadin-combo-box,
+.cancellation-status-pro-page vaadin-combo-box,
+.refund-history-pro-page vaadin-combo-box,
+.email-management-pro-page vaadin-combo-box,
+.batch-cancellation-pro-page vaadin-combo-box,
+.audit-log-pro-page vaadin-date-picker,
+.cancellation-pro-page vaadin-date-picker,
+.cancellation-status-pro-page vaadin-date-picker,
+.refund-history-pro-page vaadin-date-picker,
+.email-management-pro-page vaadin-date-picker,
+.batch-cancellation-pro-page vaadin-date-picker {
+    position: relative !important;
+    z-index: 5 !important;
+    pointer-events: auto !important;
+}
+
+.batch-cancellation-pro-page vaadin-button,
+.email-management-pro-page vaadin-button,
+.audit-log-pro-page vaadin-button,
+.cancellation-pro-page vaadin-button,
+.cancellation-status-pro-page vaadin-button,
+.refund-history-pro-page vaadin-button {
+    cursor: pointer !important;
+}
+
+.batch-cancellation-pro-page vaadin-button[disabled],
+.email-management-pro-page vaadin-button[disabled],
+.audit-log-pro-page vaadin-button[disabled],
+.cancellation-pro-page vaadin-button[disabled],
+.cancellation-status-pro-page vaadin-button[disabled],
+.refund-history-pro-page vaadin-button[disabled] {
+    cursor: not-allowed !important;
+    opacity: 0.55 !important;
+}
+
+.batch-cancellation-pro-page vaadin-grid::part(row),
+.batch-cancellation-pro-page vaadin-grid::part(cell),
+.batch-cancellation-pro-page vaadin-grid::part(checkbox) {
+    pointer-events: auto !important;
 }

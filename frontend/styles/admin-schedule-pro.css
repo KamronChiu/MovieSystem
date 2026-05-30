@@ -1,0 +1,340 @@
+/* Admin Film Scheduler — CSS-only black-gold polish
+   This file is safe to replace frontend/styles/admin-schedule-pro.css.
+   It does not change any Java logic. */
+
+:root {
+  --hcbs-bg: #020b1d;
+  --hcbs-panel: rgba(6, 14, 30, 0.94);
+  --hcbs-panel-2: rgba(9, 20, 42, 0.92);
+  --hcbs-line: rgba(218, 170, 66, 0.28);
+  --hcbs-line-soft: rgba(148, 163, 184, 0.20);
+  --hcbs-gold: #e9c75c;
+  --hcbs-gold-2: #d6aa42;
+  --hcbs-text: #f8fafc;
+  --hcbs-muted: #cbd5e1;
+  --hcbs-hint: #aebbd0;
+  --hcbs-blue: #38bdf8;
+  --hcbs-red: #fb7185;
+  --hcbs-green: #34d399;
+}
+
+html,
+body,
+#outlet,
+vaadin-app-layout,
+vaadin-app-layout::part(content),
+vaadin-router-layout {
+  background:
+          radial-gradient(circle at 12% 0%, rgba(23, 31, 78, 0.48), transparent 34%),
+          radial-gradient(circle at 92% 10%, rgba(214, 170, 66, 0.14), transparent 30%),
+          linear-gradient(135deg, #050815 0%, #020b1d 48%, #070707 100%) !important;
+  color: var(--hcbs-text) !important;
+}
+
+.admin-schedule-pro-page {
+  width: 100% !important;
+  max-width: none !important;
+  min-height: 100vh !important;
+  overflow-x: hidden !important;
+  background:
+          linear-gradient(rgba(255,255,255,0.028) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255,255,255,0.028) 1px, transparent 1px),
+          radial-gradient(circle at 16% 8%, rgba(38, 74, 143, 0.28), transparent 32%),
+          radial-gradient(circle at 86% 10%, rgba(214, 170, 66, 0.13), transparent 28%),
+          #020b1d !important;
+  background-size: 72px 72px, 72px 72px, auto, auto, auto !important;
+}
+
+.admin-schedule-pro-page > div {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  box-sizing: border-box !important;
+}
+
+.admin-schedule-pro-page h1 {
+  color: var(--hcbs-text) !important;
+  letter-spacing: 0.13em !important;
+  margin-bottom: 26px !important;
+  text-shadow: 0 14px 38px rgba(0,0,0,0.45) !important;
+}
+
+.admin-schedule-pro-page h1::after {
+  content: "";
+  display: block;
+  width: 116px;
+  height: 3px;
+  margin-top: 16px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--hcbs-gold), transparent);
+  box-shadow: 0 0 22px rgba(233,199,92,0.45);
+}
+
+.admin-schedule-pro-page h2,
+.admin-schedule-pro-page h3,
+.admin-schedule-pro-page span,
+.admin-schedule-pro-page p,
+.admin-schedule-pro-page label {
+  text-rendering: geometricPrecision;
+}
+
+.admin-schedule-pro-page p,
+.admin-schedule-pro-page [theme~="helper"],
+.admin-schedule-pro-page .hint,
+.admin-schedule-pro-page small {
+  color: var(--hcbs-hint) !important;
+  font-weight: 650 !important;
+  letter-spacing: 0.01em !important;
+}
+
+/* Outer cards created by darkCard() */
+.admin-schedule-pro-page > div > div > div {
+  min-width: 0;
+}
+
+.admin-schedule-pro-page > div > div > div > div,
+.admin-schedule-pro-page [style*="rgba(7,18,37"] {
+  background:
+          linear-gradient(180deg, rgba(10, 22, 46, 0.96), rgba(4, 11, 25, 0.96)) !important;
+  border: 1px solid var(--hcbs-line) !important;
+  box-shadow:
+          0 24px 72px rgba(0, 0, 0, 0.42),
+          inset 0 1px 0 rgba(255,255,255,0.05) !important;
+  border-radius: 26px !important;
+}
+
+/* Left film panel */
+.admin-schedule-pro-page [draggable="true"] {
+  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease !important;
+}
+
+.admin-schedule-pro-page [draggable="true"]:hover {
+  transform: translateY(-3px);
+  border-color: rgba(233,199,92,0.65) !important;
+  box-shadow: 0 22px 55px rgba(0,0,0,0.46), 0 0 0 1px rgba(233,199,92,0.20) !important;
+  filter: brightness(1.08);
+}
+
+.admin-schedule-pro-page [style*="border-left: 5px solid #38bdf8"] {
+  border-left-color: var(--hcbs-gold) !important;
+  background: linear-gradient(135deg, rgba(10, 22, 46, 0.98), rgba(4, 11, 25, 0.98)) !important;
+}
+
+/* Vaadin fields */
+.admin-schedule-pro-page vaadin-combo-box::part(label),
+.admin-schedule-pro-page vaadin-date-picker::part(label),
+.admin-schedule-pro-page vaadin-text-field::part(label) {
+  color: #dbe5f5 !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.06em !important;
+  text-transform: uppercase !important;
+}
+
+.admin-schedule-pro-page vaadin-combo-box::part(input-field),
+.admin-schedule-pro-page vaadin-date-picker::part(input-field),
+.admin-schedule-pro-page vaadin-text-field::part(input-field) {
+  background: rgba(9, 18, 38, 0.92) !important;
+  border: 1px solid rgba(233, 199, 92, 0.25) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.04) !important;
+  color: #f8fafc !important;
+}
+
+.admin-schedule-pro-page vaadin-combo-box::part(value),
+.admin-schedule-pro-page vaadin-combo-box::part(input-field),
+.admin-schedule-pro-page vaadin-date-picker::part(value),
+.admin-schedule-pro-page vaadin-text-field::part(value) {
+  color: #f8fafc !important;
+  font-weight: 700 !important;
+}
+
+.admin-schedule-pro-page vaadin-combo-box::part(toggle-button),
+.admin-schedule-pro-page vaadin-date-picker::part(toggle-button),
+.admin-schedule-pro-page vaadin-combo-box::part(clear-button),
+.admin-schedule-pro-page vaadin-date-picker::part(clear-button) {
+  color: var(--hcbs-gold) !important;
+}
+
+/* Buttons: improves contrast without changing click listeners */
+.admin-schedule-pro-page vaadin-button {
+  border-radius: 999px !important;
+  font-weight: 950 !important;
+  letter-spacing: 0.02em !important;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, filter 0.16s ease, border-color 0.16s ease !important;
+}
+
+.admin-schedule-pro-page vaadin-button:hover:not([disabled]) {
+  transform: translateY(-2px);
+  filter: brightness(1.08);
+}
+
+.admin-schedule-pro-page vaadin-button[theme~="primary"],
+.admin-schedule-pro-page vaadin-button[style*="#0072ce"] {
+  background: linear-gradient(135deg, #f0d46a, #d6aa42) !important;
+  color: #111827 !important;
+  border: 1px solid rgba(255,255,255,0.16) !important;
+  box-shadow: 0 16px 34px rgba(214,170,66,0.24) !important;
+  clip-path: none !important;
+}
+
+.admin-schedule-pro-page vaadin-button[disabled] {
+  opacity: 0.46 !important;
+  filter: grayscale(0.2) !important;
+  cursor: not-allowed !important;
+  color: #9aa8bb !important;
+}
+
+.admin-schedule-pro-page vaadin-button:not([theme~="primary"]):not([style*="#0072ce"]) {
+  background: rgba(8, 18, 38, 0.84) !important;
+  color: #f1f5f9 !important;
+  border: 1px solid rgba(233,199,92,0.24) !important;
+}
+
+/* Pending line / hints */
+.admin-schedule-pro-page span[style*="Draft changes"],
+.admin-schedule-pro-page span[style*="No draft changes"],
+.admin-schedule-pro-page span[style*="#94a3b8"] {
+  color: #b8c6da !important;
+}
+
+/* Timetable container */
+.admin-schedule-pro-page div:has(> [style*="grid-template-columns: 90px repeat(7"]) {
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  border-radius: 22px !important;
+  border: 1px solid rgba(233,199,92,0.22) !important;
+  box-shadow: 0 18px 48px rgba(0,0,0,0.30) !important;
+}
+
+.admin-schedule-pro-page div[style*="grid-template-columns: 90px repeat(7"] {
+  min-width: 1120px !important;
+  width: 100% !important;
+  border-radius: 22px !important;
+  overflow: hidden !important;
+  border-color: rgba(233,199,92,0.24) !important;
+  background: rgba(4, 11, 25, 0.96) !important;
+}
+
+/* Timetable header/time/cells - generic matching because Java uses inline style */
+.admin-schedule-pro-page div[style*="text-transform: uppercase"][style*="letter-spacing"] {
+  color: #d7e1f0 !important;
+  background: linear-gradient(180deg, rgba(18, 32, 58, 0.96), rgba(9, 20, 42, 0.96)) !important;
+}
+
+.admin-schedule-pro-page div[style*="· TODAY"] {
+  color: #ffe89a !important;
+}
+
+.admin-schedule-pro-page div[style*="min-height: 128px"] {
+  background: rgba(9, 19, 38, 0.58) !important;
+}
+
+.admin-schedule-pro-page div[style*="repeating-linear-gradient"] {
+  background: repeating-linear-gradient(135deg,
+  rgba(71,85,105,0.24) 0,
+  rgba(71,85,105,0.24) 8px,
+  rgba(15,23,42,0.45) 8px,
+  rgba(15,23,42,0.45) 16px) !important;
+}
+
+/* Schedule cards */
+.admin-schedule-pro-page div[style*="min-height: 118px"] {
+  background: linear-gradient(180deg, rgba(13, 27, 52, 0.98), rgba(5, 13, 30, 0.98)) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 16px 36px rgba(0,0,0,0.38), inset 0 1px 0 rgba(255,255,255,0.05) !important;
+}
+
+.admin-schedule-pro-page div[style*="min-height: 118px"] span {
+  color: inherit;
+}
+
+/* Badges readable */
+.admin-schedule-pro-page span[style*="border-radius: 999px"] {
+  font-weight: 950 !important;
+}
+
+/* Dialog overlays for scheduler detail popup */
+vaadin-dialog-overlay::part(overlay) {
+  background: linear-gradient(180deg, rgba(9,20,42,0.98), rgba(3,9,23,0.98)) !important;
+  color: #f8fafc !important;
+  border: 1px solid rgba(233,199,92,0.28) !important;
+  box-shadow: 0 30px 90px rgba(0,0,0,0.58) !important;
+  border-radius: 24px !important;
+}
+
+vaadin-dialog-overlay::part(content) {
+  color: #f8fafc !important;
+}
+
+/* Notification — high contrast; loaded by this page CSS */
+vaadin-notification-card::part(overlay) {
+  background: linear-gradient(135deg, #071225, #111827) !important;
+  color: #f8fafc !important;
+  border: 1px solid rgba(233,199,92,0.42) !important;
+  border-left: 5px solid #e9c75c !important;
+  box-shadow: 0 20px 70px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.04) !important;
+  border-radius: 18px !important;
+  font-weight: 850 !important;
+  letter-spacing: 0.01em !important;
+}
+
+vaadin-notification-card[theme~="success"]::part(overlay) {
+  border-left-color: #34d399 !important;
+}
+
+vaadin-notification-card[theme~="error"]::part(overlay) {
+  border-left-color: #fb7185 !important;
+}
+
+vaadin-notification-card[theme~="primary"]::part(overlay) {
+  border-left-color: #38bdf8 !important;
+}
+
+/* Combo-box overlay/dropdown readable */
+vaadin-combo-box-overlay::part(overlay) {
+  background: #071225 !important;
+  color: #f8fafc !important;
+  border: 1px solid rgba(233,199,92,0.25) !important;
+  box-shadow: 0 24px 70px rgba(0,0,0,0.55) !important;
+}
+
+vaadin-combo-box-item {
+  color: #f8fafc !important;
+  font-weight: 750 !important;
+}
+
+vaadin-combo-box-item:hover,
+vaadin-combo-box-item[focused] {
+  background: rgba(233,199,92,0.14) !important;
+}
+
+/* Scrollbar */
+.admin-schedule-pro-page *::-webkit-scrollbar {
+  height: 10px;
+  width: 10px;
+}
+
+.admin-schedule-pro-page *::-webkit-scrollbar-track {
+  background: rgba(15,23,42,0.72);
+}
+
+.admin-schedule-pro-page *::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(233,199,92,0.72), rgba(214,170,66,0.42));
+  border-radius: 999px;
+}
+
+@media (max-width: 1180px) {
+  .admin-schedule-pro-page {
+    padding: 28px 22px 72px 22px !important;
+  }
+
+  .admin-schedule-pro-page > div > div[style*="grid-template-columns"] {
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  .admin-schedule-pro-page h1 {
+    font-size: 34px !important;
+  }
+}

@@ -13,6 +13,7 @@ import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.combobox.MultiSelectComboBox;
 import com.vaadin.flow.component.confirmdialog.ConfirmDialog;
+import com.vaadin.flow.component.dependency.CssImport;
 import com.vaadin.flow.component.datepicker.DatePicker;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.Div;
@@ -54,6 +55,7 @@ import java.util.stream.Collectors;
  * existing films in a grid. New films appear immediately on the
  * public Films listing page.
  */
+@CssImport("./styles/manager-admin-pro.css")
 @Route(value = "manager/films", layout = MainLayout.class)
 @PageTitle("HCBS — Manage Films")
 public class ManagerListingsView extends Div implements BeforeEnterObserver {
@@ -105,6 +107,7 @@ public class ManagerListingsView extends Div implements BeforeEnterObserver {
         this.auditLogService = auditLogService;
 
         setWidthFull();
+        addClassNames("manager-pro-page", "manager-films-page");
         getStyle()
                 .set("min-height", "100vh")
                 .set("background", "#020b1d")
@@ -113,6 +116,7 @@ public class ManagerListingsView extends Div implements BeforeEnterObserver {
                 .set("box-sizing", "border-box");
 
         Div page = new Div();
+        page.addClassName("manager-pro-shell");
         page.getStyle()
                 .set("max-width", "1320px")
                 .set("margin", "0 auto");
@@ -139,6 +143,7 @@ public class ManagerListingsView extends Div implements BeforeEnterObserver {
         configureGrid();
 
         Div layout = new Div();
+        layout.addClassNames("manager-pro-layout", "manager-film-layout");
         layout.getStyle()
                 .set("display", "grid")
                 .set("grid-template-columns", "440px 1fr")
@@ -156,20 +161,20 @@ public class ManagerListingsView extends Div implements BeforeEnterObserver {
         titleField.setPlaceholder("e.g. Call Me By Your Name");
         titleField.setWidthFull();
         styleDarkField(titleField);
-    
+
         descriptionField.setPlaceholder("Short film synopsis shown on the film detail page...");
         descriptionField.setHeight("110px");
         descriptionField.setWidthFull();
         styleDarkField(descriptionField);
-    
+
         actorsField.setPlaceholder("e.g. Timoth\u00e9e Chalamet, Armie Hammer, Michael Stuhlbarg");
         actorsField.setWidthFull();
         styleDarkField(actorsField);
-    
+
         directorsField.setPlaceholder("e.g. Luca Guadagnino");
         directorsField.setWidthFull();
         styleDarkField(directorsField);
-    
+
         genreField.setItems(List.of(
                 "Action", "Adventure", "Animation", "Comedy", "Crime",
                 "Documentary", "Drama", "Family", "Fantasy", "Horror",
@@ -187,23 +192,23 @@ public class ManagerListingsView extends Div implements BeforeEnterObserver {
         genreField.setPlaceholder("Select one or more genres");
         genreField.setWidthFull();
         styleDarkField(genreField);
-    
+
         ageRatingField.setItems("U", "PG", "12A", "12", "15", "18");
         ageRatingField.setValue("12A");
         ageRatingField.setWidthFull();
         styleDarkField(ageRatingField);
-    
+
         durationField.setMin(40);
         durationField.setMax(360);
         durationField.setValue(120);
         durationField.setStepButtonsVisible(true);
         durationField.setWidthFull();
         styleDarkField(durationField);
-    
+
         releaseDatePicker.setValue(LocalDate.now());
         releaseDatePicker.setWidthFull();
         styleDarkField(releaseDatePicker);
-    
+
         contentAdviceField.setPlaceholder("e.g. Mild violence, occasional strong language");
         contentAdviceField.setWidthFull();
         styleDarkField(contentAdviceField);
@@ -214,6 +219,7 @@ public class ManagerListingsView extends Div implements BeforeEnterObserver {
         posterUpload.setMaxFiles(1);
         posterUpload.setMaxFileSize(10 * 1024 * 1024); // 10 MB
         posterUpload.setDropLabel(new Span("Drop poster image here (jpg, png, webp, ≤10 MB)"));
+        posterUpload.addClassName("manager-pro-upload");
         posterUpload.getStyle()
                 .set("background", "rgba(255,255,255,0.06)")
                 .set("border", "1px dashed rgba(255,255,255,0.30)")
@@ -434,8 +440,9 @@ public class ManagerListingsView extends Div implements BeforeEnterObserver {
         });
 
         filmGrid.setSizeFull();
+        filmGrid.addClassName("manager-pro-grid");
         filmGrid.getStyle()
-                .set("background", "white")
+                .set("background", "transparent")
                 .set("border-radius", "14px")
                 .set("overflow", "hidden");
     }
@@ -701,6 +708,7 @@ public class ManagerListingsView extends Div implements BeforeEnterObserver {
 
     private Div darkCard() {
         Div card = new Div();
+        card.addClassName("manager-pro-card");
         card.getStyle()
                 .set("background", "rgba(255,255,255,0.055)")
                 .set("border", "1px solid rgba(255,255,255,0.13)")
@@ -754,17 +762,17 @@ public class ManagerListingsView extends Div implements BeforeEnterObserver {
         // scope, so the only reliable cross-shadow-DOM way is a global rule.
         attachEvent.getUI().getPage().executeJs(
                 "(()=>{const id='hcbs-chip-style';" +
-                "if(document.getElementById(id))return;" +
-                "const s=document.createElement('style');s.id=id;" +
-                "s.textContent=\"vaadin-multi-select-combo-box-chip{" +
-                "background:#2563eb !important;color:#fff !important;" +
-                "border-radius:999px !important;padding:2px 10px !important;" +
-                "margin:2px 4px 2px 0 !important;font-weight:600 !important;" +
-                "display:inline-flex !important;align-items:center !important;" +
-                "min-height:24px !important;}" +
-                "vaadin-multi-select-combo-box-chip::part(label){color:#fff !important;}" +
-                "vaadin-multi-select-combo-box-chip::part(remove-button){color:rgba(255,255,255,0.85) !important;}\";" +
-                "document.head.appendChild(s);})();"
+                        "if(document.getElementById(id))return;" +
+                        "const s=document.createElement('style');s.id=id;" +
+                        "s.textContent=\"vaadin-multi-select-combo-box-chip{" +
+                        "background:#2563eb !important;color:#fff !important;" +
+                        "border-radius:999px !important;padding:2px 10px !important;" +
+                        "margin:2px 4px 2px 0 !important;font-weight:600 !important;" +
+                        "display:inline-flex !important;align-items:center !important;" +
+                        "min-height:24px !important;}" +
+                        "vaadin-multi-select-combo-box-chip::part(label){color:#fff !important;}" +
+                        "vaadin-multi-select-combo-box-chip::part(remove-button){color:rgba(255,255,255,0.85) !important;}\";" +
+                        "document.head.appendChild(s);})();"
         );
     }
 }

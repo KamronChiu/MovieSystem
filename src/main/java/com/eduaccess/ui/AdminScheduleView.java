@@ -12,6 +12,7 @@ import com.eduaccess.repository.ScreenRepository;
 import com.eduaccess.service.LoginService;
 import com.eduaccess.service.SchedulingService;
 import com.vaadin.flow.component.Component;
+import com.vaadin.flow.component.dependency.CssImport;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.component.button.Button;
@@ -43,6 +44,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 
+@CssImport("./styles/admin-schedule-pro.css")
 @Route(value = "admin/schedule", layout = MainLayout.class)
 @PageTitle("HCBS — Admin Schedule")
 public class AdminScheduleView extends Div implements BeforeEnterObserver {
@@ -106,6 +108,7 @@ public class AdminScheduleView extends Div implements BeforeEnterObserver {
         styleSecondaryButton(discardButton);
 
         setWidthFull();
+        addClassName("admin-schedule-pro-page");
         getStyle()
                 .set("min-height", "100vh")
                 .set("background", "#020b1d")

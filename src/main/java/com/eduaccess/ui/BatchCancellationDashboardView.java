@@ -629,10 +629,12 @@ public class BatchCancellationDashboardView extends Div implements BeforeEnterOb
     }
 
     private void updateActionAvailability() {
-        boolean enabled = !selectedBookings.isEmpty();
-        previewEmailButton.setEnabled(enabled);
-        batchRefundButton.setEnabled(enabled);
-        // Email Management is always reachable — the button is informational.
+        // Keep the three action buttons visibly clickable. The action methods
+        // already validate selection and show a friendly notification when
+        // no booking is selected, so disabling the buttons here only makes the
+        // UI look broken after the dark-theme styling.
+        previewEmailButton.setEnabled(true);
+        batchRefundButton.setEnabled(true);
         openEmailManagementButton.setEnabled(true);
     }
 
