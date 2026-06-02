@@ -73,27 +73,27 @@ public class PricingService {
         ShowPeriod period = getShowPeriod(startTime);
 
         return switch (city.toLowerCase()) {
-            case "birmingham" -> switch (period) {
-                case MORNING -> new BigDecimal("5.00");
-                case AFTERNOON -> new BigDecimal("6.00");
-                case EVENING -> new BigDecimal("7.00");
+            case "london" -> switch (period) {
+                case MORNING -> new BigDecimal("10.00");
+                case AFTERNOON -> new BigDecimal("11.00");
+                case EVENING -> new BigDecimal("12.00");
             };
             case "bristol" -> switch (period) {
                 case MORNING -> new BigDecimal("6.00");
                 case AFTERNOON -> new BigDecimal("7.00");
                 case EVENING -> new BigDecimal("8.00");
             };
-            case "cardiff" -> switch (period) {
+            case "birmingham", "cardiff" -> switch (period) {
                 case MORNING -> new BigDecimal("5.00");
                 case AFTERNOON -> new BigDecimal("6.00");
                 case EVENING -> new BigDecimal("7.00");
             };
-            case "london" -> switch (period) {
-                case MORNING -> new BigDecimal("10.00");
-                case AFTERNOON -> new BigDecimal("11.00");
-                case EVENING -> new BigDecimal("12.00");
+            // 默认定价：新城市使用 Birmingham 价格作为基准
+            default -> switch (period) {
+                case MORNING -> new BigDecimal("5.00");
+                case AFTERNOON -> new BigDecimal("6.00");
+                case EVENING -> new BigDecimal("7.00");
             };
-            default -> throw new IllegalArgumentException("Unsupported city for pricing: " + city);
         };
     }
 

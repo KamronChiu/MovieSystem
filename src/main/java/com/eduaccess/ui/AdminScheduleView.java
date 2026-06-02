@@ -54,6 +54,11 @@ public class AdminScheduleView extends Div implements BeforeEnterObserver {
     @Override
     public void beforeEnter(BeforeEnterEvent event) {
         PermissionChecker.checkAdminAccess(event, loginService);
+        
+        // 每次进入页面时刷新影院列表（支持从ManagerCinemaView创建新影院后自动更新）
+        if (cinemaBox != null) {
+            refreshCinemaDropdown();
+        }
     }
 
     private static final DateTimeFormatter DAY_FORMAT = DateTimeFormatter.ofPattern("EEE dd MMM", Locale.UK);
@@ -147,12 +152,8 @@ public class AdminScheduleView extends Div implements BeforeEnterObserver {
     }
 
     private void configureControls() {
-        List<Cinema> cinemas = cinemaRepository.findAll()
-                .stream()
-                .sorted(Comparator.comparing(Cinema::getCity).thenComparing(Cinema::getName))
-                .toList();
-
-        cinemaBox.setItems(cinemas);
+        refreshCinemaDropdown();
+        
         cinemaBox.setItemLabelGenerator(cinema -> cinema.getCity() + " — " + cinema.getName());
         cinemaBox.setPlaceholder("Select cinema");
         cinemaBox.setWidth("320px");
@@ -199,8 +200,13 @@ public class AdminScheduleView extends Div implements BeforeEnterObserver {
             refreshScheduleItems();
         });
 
-        if (!cinemas.isEmpty()) {
-            cinemaBox.setValue(cinemas.get(0));
+        // 如果有影院，默认选中第一个
+        List<Cinema> currentCinemas = cinemaRepository.findAll()
+                .stream()
+                .sorted(Comparator.comparing(Cinema::getCity).thenComparing(Cinema::getName))
+                .toList();
+        if (!currentCinemas.isEmpty()) {
+            cinemaBox.setValue(currentCinemas.get(0));
         } else {
             renderTimetable();
         }
@@ -227,15 +233,33 @@ public class AdminScheduleView extends Div implements BeforeEnterObserver {
                     .findFirst()
                     .orElse(null);
         }
+
         if (selected == null && !screens.isEmpty()) {
             selected = screens.get(0);
         }
 
-        if (selected != null) {
-            screenBox.setValue(selected);
-        }
+        screenBox.setValue(selected);
         lastScreen = selected;
         changingProgrammatically = false;
+    }
+
+    /**
+     * 刷新影院下拉框数据（支持动态添加新影院后刷新）
+     */
+    public void refreshCinemaDropdown() {
+        List<Cinema> cinemas = cinemaRepository.findAll()
+                .stream()
+                .sorted(Comparator.comparing(Cinema::getCity).thenComparing(Cinema::getName))
+                .toList();
+
+        cinemaBox.setItems(cinemas);
+        
+        // 如果当前选中的影院不存在了，清空选择
+        Cinema currentValue = cinemaBox.getValue();
+        if (currentValue != null && !cinemas.stream().anyMatch(c -> c.getId().equals(currentValue.getId()))) {
+            cinemaBox.clear();
+            lastCinema = null;
+        }
     }
 
     private Div buildFilmPanel() {

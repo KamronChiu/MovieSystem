@@ -41,6 +41,7 @@ import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.textfield.EmailField;
 import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.component.textfield.TextField;
+import com.vaadin.flow.component.UI;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.BeforeEvent;
@@ -80,6 +81,9 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
 
         requestedDate = firstDateParam(params, "date");
         requestedCinemaId = firstLongParam(params, "cinemaId");
+        
+        // 刷新影院下拉框（支持新创建的影院）
+        refreshCinemaDropdown();
 
         applyRequestedFilters();
         reloadScreenings();
@@ -235,8 +239,8 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
     }
 
     private void configureFilters() {
-        cinemaBox.setPlaceholder("Select a cinema");
-        cinemaBox.setItems(cinemaRepository.findAll());
+        refreshCinemaDropdown();
+        
         cinemaBox.setItemLabelGenerator(Cinema::toString);
         cinemaBox.setClearButtonVisible(true);
         cinemaBox.addValueChangeListener(event -> {
@@ -377,6 +381,25 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
         wrapper.add(grid);
 
         return wrapper;
+    }
+
+    /**
+     * 刷新影院下拉框数据（支持动态添加新影院后刷新）
+     */
+    private void refreshCinemaDropdown() {
+        List<Cinema> cinemas = cinemaRepository.findAll()
+                .stream()
+                .sorted(Comparator.comparing(Cinema::getCity).thenComparing(Cinema::getName))
+                .toList();
+
+        cinemaBox.setItems(cinemas);
+        cinemaBox.setPlaceholder("Select a cinema");
+        
+        // 如果当前选中的影院不存在了，清空选择
+        Cinema currentValue = cinemaBox.getValue();
+        if (currentValue != null && !cinemas.stream().anyMatch(c -> c.getId().equals(currentValue.getId()))) {
+            cinemaBox.clear();
+        }
     }
 
     private void reloadScreenings() {
@@ -1914,7 +1937,11 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
 
             receiptContainer.setVisible(true);
 
-            Button close = primaryButton("Close", event -> seatDialog.close());
+            Button close = primaryButton("Close", event -> {
+                seatDialog.close();
+                // 关闭后返回主界面（Films页面）
+                UI.getCurrent().navigate("");
+            });
             wrapper.add(heading, note, total, receiptContainer, centerRow(close));
             return wrapper;
         }
