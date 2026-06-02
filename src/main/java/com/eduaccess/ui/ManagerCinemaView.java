@@ -297,18 +297,34 @@ public class ManagerCinemaView extends Div implements BeforeEnterObserver {
                     .map(IntegerField::getValue)
                     .toList();
 
-            cinemaService.createCinema(
+            Cinema createdCinema = cinemaService.createCinema(
                     cityField.getValue(),
                     nameField.getValue(),
                     addressField.getValue(),
                     capacities
             );
 
-            Notification.show("Cinema created successfully.");
+            Notification.show("✅ Cinema created successfully: " + createdCinema.getName());
             clearForm();
             refreshGrid();
+            
+            // 显示创建的影院详情
+            long screenCount = cinemaService.findScreensForCinema(createdCinema.getId()).size();
+            int totalSeats = cinemaService.findScreensForCinema(createdCinema.getId())
+                    .stream()
+                    .mapToInt(Screen::getCapacity)
+                    .sum();
+            
+            Notification.show(
+                    "🎬 " + createdCinema.getName() + "\n" +
+                    "📍 " + createdCinema.getCity() + "\n" +
+                    "🎥 " + screenCount + " screens | " +
+                    "💺 " + totalSeats + " total seats",
+                    5000, Notification.Position.TOP_CENTER
+            );
+            
         } catch (RuntimeException ex) {
-            Notification.show(ex.getMessage());
+            Notification.show("❌ " + ex.getMessage());
         }
     }
 
