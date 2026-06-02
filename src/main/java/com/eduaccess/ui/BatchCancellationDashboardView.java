@@ -445,6 +445,7 @@ public class BatchCancellationDashboardView extends Div implements BeforeEnterOb
 
     private Div renderInlineEmail(BatchRefundResult row, BatchOperationRecord rec) {
         Div msg = new Div();
+        msg.addClassName("batch-inline-email");
         msg.getStyle()
                 .set("background", "#fff7ed")
                 .set("border-left", "4px solid " + AMBER)
@@ -492,6 +493,7 @@ public class BatchCancellationDashboardView extends Div implements BeforeEnterOb
 
     private Span chip(String text, String color) {
         Span s = new Span(text);
+        s.addClassName("batch-inline-email-chip");
         s.getStyle()
                 .set("padding", "4px 10px")
                 .set("background", "white")

@@ -307,6 +307,7 @@ public class AuditLogView extends Div implements BeforeEnterObserver {
         // helpers keep working without rewriting their lookup tables.
         String actionCode = log.getAction() == null ? "" : log.getAction().name();
         Span badge = new Span(prettyAction(actionCode));
+        badge.addClassName("audit-action-badge");
         badge.getStyle()
                 .set("display", "inline-block")
                 .set("padding", "4px 10px")
