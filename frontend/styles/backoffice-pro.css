@@ -646,3 +646,547 @@ vaadin-dialog-overlay::part(backdrop) {
 .batch-cancellation-pro-page vaadin-grid::part(checkbox) {
     pointer-events: auto !important;
 }
+
+/* ------------------------------------------------------------------
+   Text contrast pass
+   Keep dark-theme back-office text readable even when Java views emit
+   legacy light-theme inline colours. This section intentionally changes
+   text colours only.
+------------------------------------------------------------------- */
+.audit-log-pro-page,
+.cancellation-pro-page,
+.cancellation-status-pro-page,
+.refund-history-pro-page,
+.email-management-pro-page,
+.batch-cancellation-pro-page {
+    --bo-text: #f9fbff;
+    --bo-muted: #d2dbea;
+    --bo-subtle: #b8c4d6;
+    --lumo-body-text-color: #f9fbff;
+    --lumo-secondary-text-color: #d2dbea;
+    --lumo-tertiary-text-color: #b8c4d6;
+    --lumo-disabled-text-color: #aebbd0;
+    color: #f9fbff !important;
+}
+
+.audit-log-pro-page :is(h1, h2, h3, h4, h5, h6, strong, b),
+.cancellation-pro-page :is(h1, h2, h3, h4, h5, h6, strong, b),
+.cancellation-status-pro-page :is(h1, h2, h3, h4, h5, h6, strong, b),
+.refund-history-pro-page :is(h1, h2, h3, h4, h5, h6, strong, b),
+.email-management-pro-page :is(h1, h2, h3, h4, h5, h6, strong, b),
+.batch-cancellation-pro-page :is(h1, h2, h3, h4, h5, h6, strong, b) {
+    color: #ffffff !important;
+}
+
+.audit-log-pro-page :is(p, span, label, small),
+.cancellation-pro-page :is(p, span, label, small),
+.cancellation-status-pro-page :is(p, span, label, small),
+.refund-history-pro-page :is(p, span, label, small),
+.email-management-pro-page :is(p, span, label, small),
+.batch-cancellation-pro-page :is(p, span, label, small) {
+    color: #d2dbea !important;
+}
+
+.audit-log-pro-page [style*="color: #142033"],
+.audit-log-pro-page [style*="color:#142033"],
+.audit-log-pro-page [style*="color: rgb(20, 32, 51)"],
+.cancellation-pro-page [style*="color: #142033"],
+.cancellation-pro-page [style*="color:#142033"],
+.cancellation-pro-page [style*="color: rgb(20, 32, 51)"],
+.cancellation-status-pro-page [style*="color: #142033"],
+.cancellation-status-pro-page [style*="color:#142033"],
+.cancellation-status-pro-page [style*="color: rgb(20, 32, 51)"],
+.refund-history-pro-page [style*="color: #142033"],
+.refund-history-pro-page [style*="color:#142033"],
+.refund-history-pro-page [style*="color: rgb(20, 32, 51)"],
+.email-management-pro-page [style*="color: #142033"],
+.email-management-pro-page [style*="color:#142033"],
+.email-management-pro-page [style*="color: rgb(20, 32, 51)"],
+.batch-cancellation-pro-page [style*="color: #142033"],
+.batch-cancellation-pro-page [style*="color:#142033"],
+.batch-cancellation-pro-page [style*="color: rgb(20, 32, 51)"],
+.audit-log-pro-page [style*="color: #0f172a"],
+.audit-log-pro-page [style*="color:#0f172a"],
+.cancellation-pro-page [style*="color: #0f172a"],
+.cancellation-pro-page [style*="color:#0f172a"],
+.cancellation-status-pro-page [style*="color: #0f172a"],
+.cancellation-status-pro-page [style*="color:#0f172a"],
+.refund-history-pro-page [style*="color: #0f172a"],
+.refund-history-pro-page [style*="color:#0f172a"],
+.email-management-pro-page [style*="color: #0f172a"],
+.email-management-pro-page [style*="color:#0f172a"],
+.batch-cancellation-pro-page [style*="color: #0f172a"],
+.batch-cancellation-pro-page [style*="color:#0f172a"],
+.audit-log-pro-page [style*="color: #111827"],
+.audit-log-pro-page [style*="color:#111827"],
+.cancellation-pro-page [style*="color: #111827"],
+.cancellation-pro-page [style*="color:#111827"],
+.cancellation-status-pro-page [style*="color: #111827"],
+.cancellation-status-pro-page [style*="color:#111827"],
+.refund-history-pro-page [style*="color: #111827"],
+.refund-history-pro-page [style*="color:#111827"],
+.email-management-pro-page [style*="color: #111827"],
+.email-management-pro-page [style*="color:#111827"],
+.batch-cancellation-pro-page [style*="color: #111827"],
+.batch-cancellation-pro-page [style*="color:#111827"] {
+    color: #f9fbff !important;
+}
+
+.audit-log-pro-page [style*="color: #005ba6"],
+.audit-log-pro-page [style*="color:#005ba6"],
+.cancellation-pro-page [style*="color: #005ba6"],
+.cancellation-pro-page [style*="color:#005ba6"],
+.cancellation-status-pro-page [style*="color: #005ba6"],
+.cancellation-status-pro-page [style*="color:#005ba6"],
+.refund-history-pro-page [style*="color: #005ba6"],
+.refund-history-pro-page [style*="color:#005ba6"],
+.email-management-pro-page [style*="color: #005ba6"],
+.email-management-pro-page [style*="color:#005ba6"],
+.batch-cancellation-pro-page [style*="color: #005ba6"],
+.batch-cancellation-pro-page [style*="color:#005ba6"],
+.audit-log-pro-page [style*="color: #1e40af"],
+.audit-log-pro-page [style*="color:#1e40af"],
+.cancellation-pro-page [style*="color: #1e40af"],
+.cancellation-pro-page [style*="color:#1e40af"],
+.cancellation-status-pro-page [style*="color: #1e40af"],
+.cancellation-status-pro-page [style*="color:#1e40af"],
+.refund-history-pro-page [style*="color: #1e40af"],
+.refund-history-pro-page [style*="color:#1e40af"],
+.email-management-pro-page [style*="color: #1e40af"],
+.email-management-pro-page [style*="color:#1e40af"],
+.batch-cancellation-pro-page [style*="color: #1e40af"],
+.batch-cancellation-pro-page [style*="color:#1e40af"],
+.audit-log-pro-page [style*="color: #4c1d95"],
+.audit-log-pro-page [style*="color:#4c1d95"],
+.cancellation-pro-page [style*="color: #4c1d95"],
+.cancellation-pro-page [style*="color:#4c1d95"],
+.cancellation-status-pro-page [style*="color: #4c1d95"],
+.cancellation-status-pro-page [style*="color:#4c1d95"],
+.refund-history-pro-page [style*="color: #4c1d95"],
+.refund-history-pro-page [style*="color:#4c1d95"],
+.email-management-pro-page [style*="color: #4c1d95"],
+.email-management-pro-page [style*="color:#4c1d95"],
+.batch-cancellation-pro-page [style*="color: #4c1d95"],
+.batch-cancellation-pro-page [style*="color:#4c1d95"],
+.audit-log-pro-page [style*="color: #6b21a8"],
+.audit-log-pro-page [style*="color:#6b21a8"],
+.cancellation-pro-page [style*="color: #6b21a8"],
+.cancellation-pro-page [style*="color:#6b21a8"],
+.cancellation-status-pro-page [style*="color: #6b21a8"],
+.cancellation-status-pro-page [style*="color:#6b21a8"],
+.refund-history-pro-page [style*="color: #6b21a8"],
+.refund-history-pro-page [style*="color:#6b21a8"],
+.email-management-pro-page [style*="color: #6b21a8"],
+.email-management-pro-page [style*="color:#6b21a8"],
+.batch-cancellation-pro-page [style*="color: #6b21a8"],
+.batch-cancellation-pro-page [style*="color:#6b21a8"],
+.audit-log-pro-page [style*="color: #7c2d12"],
+.audit-log-pro-page [style*="color:#7c2d12"],
+.cancellation-pro-page [style*="color: #7c2d12"],
+.cancellation-pro-page [style*="color:#7c2d12"],
+.cancellation-status-pro-page [style*="color: #7c2d12"],
+.cancellation-status-pro-page [style*="color:#7c2d12"],
+.refund-history-pro-page [style*="color: #7c2d12"],
+.refund-history-pro-page [style*="color:#7c2d12"],
+.email-management-pro-page [style*="color: #7c2d12"],
+.email-management-pro-page [style*="color:#7c2d12"],
+.batch-cancellation-pro-page [style*="color: #7c2d12"],
+.batch-cancellation-pro-page [style*="color:#7c2d12"],
+.audit-log-pro-page [style*="color: #7c3aed"],
+.audit-log-pro-page [style*="color:#7c3aed"],
+.cancellation-pro-page [style*="color: #7c3aed"],
+.cancellation-pro-page [style*="color:#7c3aed"],
+.cancellation-status-pro-page [style*="color: #7c3aed"],
+.cancellation-status-pro-page [style*="color:#7c3aed"],
+.refund-history-pro-page [style*="color: #7c3aed"],
+.refund-history-pro-page [style*="color:#7c3aed"],
+.email-management-pro-page [style*="color: #7c3aed"],
+.email-management-pro-page [style*="color:#7c3aed"],
+.batch-cancellation-pro-page [style*="color: #7c3aed"],
+.batch-cancellation-pro-page [style*="color:#7c3aed"] {
+    color: #f9fbff !important;
+}
+
+.audit-log-pro-page [style*="color: #64748b"],
+.audit-log-pro-page [style*="color:#64748b"],
+.audit-log-pro-page [style*="color: rgb(100, 116, 139)"],
+.cancellation-pro-page [style*="color: #64748b"],
+.cancellation-pro-page [style*="color:#64748b"],
+.cancellation-pro-page [style*="color: rgb(100, 116, 139)"],
+.cancellation-status-pro-page [style*="color: #64748b"],
+.cancellation-status-pro-page [style*="color:#64748b"],
+.cancellation-status-pro-page [style*="color: rgb(100, 116, 139)"],
+.refund-history-pro-page [style*="color: #64748b"],
+.refund-history-pro-page [style*="color:#64748b"],
+.refund-history-pro-page [style*="color: rgb(100, 116, 139)"],
+.email-management-pro-page [style*="color: #64748b"],
+.email-management-pro-page [style*="color:#64748b"],
+.email-management-pro-page [style*="color: rgb(100, 116, 139)"],
+.batch-cancellation-pro-page [style*="color: #64748b"],
+.batch-cancellation-pro-page [style*="color:#64748b"],
+.batch-cancellation-pro-page [style*="color: rgb(100, 116, 139)"],
+.audit-log-pro-page [style*="color: #94a3b8"],
+.audit-log-pro-page [style*="color:#94a3b8"],
+.audit-log-pro-page [style*="color: rgb(148, 163, 184)"],
+.cancellation-pro-page [style*="color: #94a3b8"],
+.cancellation-pro-page [style*="color:#94a3b8"],
+.cancellation-pro-page [style*="color: rgb(148, 163, 184)"],
+.cancellation-status-pro-page [style*="color: #94a3b8"],
+.cancellation-status-pro-page [style*="color:#94a3b8"],
+.cancellation-status-pro-page [style*="color: rgb(148, 163, 184)"],
+.refund-history-pro-page [style*="color: #94a3b8"],
+.refund-history-pro-page [style*="color:#94a3b8"],
+.refund-history-pro-page [style*="color: rgb(148, 163, 184)"],
+.email-management-pro-page [style*="color: #94a3b8"],
+.email-management-pro-page [style*="color:#94a3b8"],
+.email-management-pro-page [style*="color: rgb(148, 163, 184)"],
+.batch-cancellation-pro-page [style*="color: #94a3b8"],
+.batch-cancellation-pro-page [style*="color:#94a3b8"],
+.batch-cancellation-pro-page [style*="color: rgb(148, 163, 184)"],
+.audit-log-pro-page [style*="color: #334155"],
+.audit-log-pro-page [style*="color:#334155"],
+.cancellation-pro-page [style*="color: #334155"],
+.cancellation-pro-page [style*="color:#334155"],
+.cancellation-status-pro-page [style*="color: #334155"],
+.cancellation-status-pro-page [style*="color:#334155"],
+.refund-history-pro-page [style*="color: #334155"],
+.refund-history-pro-page [style*="color:#334155"],
+.email-management-pro-page [style*="color: #334155"],
+.email-management-pro-page [style*="color:#334155"],
+.batch-cancellation-pro-page [style*="color: #334155"],
+.batch-cancellation-pro-page [style*="color:#334155"],
+.audit-log-pro-page [style*="color: #475569"],
+.audit-log-pro-page [style*="color:#475569"],
+.cancellation-pro-page [style*="color: #475569"],
+.cancellation-pro-page [style*="color:#475569"],
+.cancellation-status-pro-page [style*="color: #475569"],
+.cancellation-status-pro-page [style*="color:#475569"],
+.refund-history-pro-page [style*="color: #475569"],
+.refund-history-pro-page [style*="color:#475569"],
+.email-management-pro-page [style*="color: #475569"],
+.email-management-pro-page [style*="color:#475569"],
+.batch-cancellation-pro-page [style*="color: #475569"],
+.batch-cancellation-pro-page [style*="color:#475569"] {
+    color: #d2dbea !important;
+}
+
+.audit-log-pro-page [style*="color: rgba(255,255,255,0.55)"],
+.audit-log-pro-page [style*="color: rgba(255, 255, 255, 0.55)"],
+.cancellation-pro-page [style*="color: rgba(255,255,255,0.55)"],
+.cancellation-pro-page [style*="color: rgba(255, 255, 255, 0.55)"],
+.cancellation-status-pro-page [style*="color: rgba(255,255,255,0.55)"],
+.cancellation-status-pro-page [style*="color: rgba(255, 255, 255, 0.55)"],
+.refund-history-pro-page [style*="color: rgba(255,255,255,0.55)"],
+.refund-history-pro-page [style*="color: rgba(255, 255, 255, 0.55)"],
+.email-management-pro-page [style*="color: rgba(255,255,255,0.55)"],
+.email-management-pro-page [style*="color: rgba(255, 255, 255, 0.55)"],
+.batch-cancellation-pro-page [style*="color: rgba(255,255,255,0.55)"],
+.batch-cancellation-pro-page [style*="color: rgba(255, 255, 255, 0.55)"],
+.audit-log-pro-page [style*="color: rgba(255,255,255,0.6)"],
+.audit-log-pro-page [style*="color: rgba(255, 255, 255, 0.6)"],
+.cancellation-pro-page [style*="color: rgba(255,255,255,0.6)"],
+.cancellation-pro-page [style*="color: rgba(255, 255, 255, 0.6)"],
+.cancellation-status-pro-page [style*="color: rgba(255,255,255,0.6)"],
+.cancellation-status-pro-page [style*="color: rgba(255, 255, 255, 0.6)"],
+.refund-history-pro-page [style*="color: rgba(255,255,255,0.6)"],
+.refund-history-pro-page [style*="color: rgba(255, 255, 255, 0.6)"],
+.email-management-pro-page [style*="color: rgba(255,255,255,0.6)"],
+.email-management-pro-page [style*="color: rgba(255, 255, 255, 0.6)"],
+.batch-cancellation-pro-page [style*="color: rgba(255,255,255,0.6)"],
+.batch-cancellation-pro-page [style*="color: rgba(255, 255, 255, 0.6)"] {
+    color: #cbd5e1 !important;
+}
+
+.audit-log-pro-page :is(vaadin-checkbox, vaadin-radio-button, vaadin-radio-group, vaadin-checkbox-group),
+.cancellation-pro-page :is(vaadin-checkbox, vaadin-radio-button, vaadin-radio-group, vaadin-checkbox-group),
+.cancellation-status-pro-page :is(vaadin-checkbox, vaadin-radio-button, vaadin-radio-group, vaadin-checkbox-group),
+.refund-history-pro-page :is(vaadin-checkbox, vaadin-radio-button, vaadin-radio-group, vaadin-checkbox-group),
+.email-management-pro-page :is(vaadin-checkbox, vaadin-radio-button, vaadin-radio-group, vaadin-checkbox-group),
+.batch-cancellation-pro-page :is(vaadin-checkbox, vaadin-radio-button, vaadin-radio-group, vaadin-checkbox-group) {
+    color: #f9fbff !important;
+    --lumo-body-text-color: #f9fbff;
+    --lumo-secondary-text-color: #d2dbea;
+    --lumo-disabled-text-color: #aebbd0;
+}
+
+.audit-log-pro-page :is(vaadin-checkbox, vaadin-radio-button)::part(label),
+.cancellation-pro-page :is(vaadin-checkbox, vaadin-radio-button)::part(label),
+.cancellation-status-pro-page :is(vaadin-checkbox, vaadin-radio-button)::part(label),
+.refund-history-pro-page :is(vaadin-checkbox, vaadin-radio-button)::part(label),
+.email-management-pro-page :is(vaadin-checkbox, vaadin-radio-button)::part(label),
+.batch-cancellation-pro-page :is(vaadin-checkbox, vaadin-radio-button)::part(label) {
+    color: #f9fbff !important;
+}
+
+.audit-log-pro-page :is(vaadin-checkbox, vaadin-radio-button)[disabled]::part(label),
+.cancellation-pro-page :is(vaadin-checkbox, vaadin-radio-button)[disabled]::part(label),
+.cancellation-status-pro-page :is(vaadin-checkbox, vaadin-radio-button)[disabled]::part(label),
+.refund-history-pro-page :is(vaadin-checkbox, vaadin-radio-button)[disabled]::part(label),
+.email-management-pro-page :is(vaadin-checkbox, vaadin-radio-button)[disabled]::part(label),
+.batch-cancellation-pro-page :is(vaadin-checkbox, vaadin-radio-button)[disabled]::part(label) {
+    color: #aebbd0 !important;
+}
+
+.audit-log-pro-page :is(vaadin-text-field, vaadin-combo-box, vaadin-date-picker, vaadin-text-area),
+.cancellation-pro-page :is(vaadin-text-field, vaadin-combo-box, vaadin-date-picker, vaadin-text-area),
+.cancellation-status-pro-page :is(vaadin-text-field, vaadin-combo-box, vaadin-date-picker, vaadin-text-area),
+.refund-history-pro-page :is(vaadin-text-field, vaadin-combo-box, vaadin-date-picker, vaadin-text-area),
+.email-management-pro-page :is(vaadin-text-field, vaadin-combo-box, vaadin-date-picker, vaadin-text-area),
+.batch-cancellation-pro-page :is(vaadin-text-field, vaadin-combo-box, vaadin-date-picker, vaadin-text-area) {
+    --vaadin-input-field-value-color: #f9fbff;
+    --vaadin-input-field-label-color: #d2dbea;
+    --vaadin-input-field-placeholder-color: #aebbd0;
+    --vaadin-input-field-helper-color: #cbd5e1;
+    color: #f9fbff !important;
+}
+
+.audit-log-pro-page vaadin-grid,
+.cancellation-pro-page vaadin-grid,
+.cancellation-status-pro-page vaadin-grid,
+.refund-history-pro-page vaadin-grid,
+.email-management-pro-page vaadin-grid,
+.batch-cancellation-pro-page vaadin-grid {
+    --lumo-body-text-color: #f9fbff;
+    --lumo-secondary-text-color: #d2dbea;
+    --lumo-tertiary-text-color: #b8c4d6;
+    color: #f9fbff !important;
+}
+
+.audit-log-pro-page vaadin-grid::part(cell),
+.cancellation-pro-page vaadin-grid::part(cell),
+.cancellation-status-pro-page vaadin-grid::part(cell),
+.refund-history-pro-page vaadin-grid::part(cell),
+.email-management-pro-page vaadin-grid::part(cell),
+.batch-cancellation-pro-page vaadin-grid::part(cell) {
+    color: #f9fbff !important;
+}
+
+vaadin-dialog-overlay {
+    --lumo-body-text-color: #f9fbff;
+    --lumo-secondary-text-color: #d2dbea;
+    --lumo-disabled-text-color: #aebbd0;
+    color: #f9fbff !important;
+}
+
+/* Light surfaces and pastel badges need dark text even inside dark pages. */
+.audit-log-pro-page [style*="background: white"],
+.audit-log-pro-page [style*="background:white"],
+.audit-log-pro-page [style*="background: #fff"],
+.audit-log-pro-page [style*="background:#fff"],
+.audit-log-pro-page [style*="background: #ffffff"],
+.audit-log-pro-page [style*="background:#ffffff"],
+.batch-cancellation-pro-page [style*="background: white"],
+.batch-cancellation-pro-page [style*="background:white"],
+.batch-cancellation-pro-page [style*="background: #fff"],
+.batch-cancellation-pro-page [style*="background:#fff"],
+.batch-cancellation-pro-page [style*="background: #ffffff"],
+.batch-cancellation-pro-page [style*="background:#ffffff"],
+.batch-cancellation-pro-page [style*="background: #fff7ed"],
+.batch-cancellation-pro-page [style*="background:#fff7ed"],
+.batch-cancellation-pro-page [style*="background: rgb(255, 247, 237)"],
+.batch-cancellation-pro-page [style*="background:rgb(255, 247, 237)"],
+.batch-cancellation-pro-page [style*="background: #f8fafc"],
+.batch-cancellation-pro-page [style*="background:#f8fafc"],
+.batch-cancellation-pro-page [style*="background: rgb(248, 250, 252)"],
+.batch-cancellation-pro-page [style*="background:rgb(248, 250, 252)"],
+.batch-cancellation-pro-page [style*="background: #f0fdf4"],
+.batch-cancellation-pro-page [style*="background:#f0fdf4"],
+.batch-cancellation-pro-page [style*="background: rgb(240, 253, 244)"],
+.batch-cancellation-pro-page [style*="background:rgb(240, 253, 244)"],
+.batch-cancellation-pro-page [style*="background: #fef2f2"],
+.batch-cancellation-pro-page [style*="background:#fef2f2"],
+.batch-cancellation-pro-page [style*="background: rgb(254, 242, 242)"],
+.batch-cancellation-pro-page [style*="background:rgb(254, 242, 242)"] {
+    color: #142033 !important;
+}
+
+.audit-log-pro-page [style*="background: white"] :is(p, span, label, small, strong, b, h1, h2, h3, h4, h5, h6),
+.audit-log-pro-page [style*="background:white"] :is(p, span, label, small, strong, b, h1, h2, h3, h4, h5, h6),
+.audit-log-pro-page [style*="background: #fff"] :is(p, span, label, small, strong, b, h1, h2, h3, h4, h5, h6),
+.audit-log-pro-page [style*="background:#fff"] :is(p, span, label, small, strong, b, h1, h2, h3, h4, h5, h6),
+.batch-cancellation-pro-page [style*="background: white"] :is(p, span, label, small, strong, b, h1, h2, h3, h4, h5, h6),
+.batch-cancellation-pro-page [style*="background:white"] :is(p, span, label, small, strong, b, h1, h2, h3, h4, h5, h6),
+.batch-cancellation-pro-page [style*="background: #fff"] :is(p, span, label, small, strong, b, h1, h2, h3, h4, h5, h6),
+.batch-cancellation-pro-page [style*="background:#fff"] :is(p, span, label, small, strong, b, h1, h2, h3, h4, h5, h6),
+.batch-cancellation-pro-page [style*="background: #fff7ed"] :is(p, span, label, small, strong, b, h1, h2, h3, h4, h5, h6),
+.batch-cancellation-pro-page [style*="background:#fff7ed"] :is(p, span, label, small, strong, b, h1, h2, h3, h4, h5, h6),
+.batch-cancellation-pro-page [style*="background: rgb(255, 247, 237)"] :is(p, span, label, small, strong, b, h1, h2, h3, h4, h5, h6),
+.batch-cancellation-pro-page [style*="background:rgb(255, 247, 237)"] :is(p, span, label, small, strong, b, h1, h2, h3, h4, h5, h6),
+.batch-cancellation-pro-page [style*="background: #f8fafc"] :is(p, span, label, small, strong, b, h1, h2, h3, h4, h5, h6),
+.batch-cancellation-pro-page [style*="background:#f8fafc"] :is(p, span, label, small, strong, b, h1, h2, h3, h4, h5, h6),
+.batch-cancellation-pro-page [style*="background: #f0fdf4"] :is(p, span, label, small, strong, b, h1, h2, h3, h4, h5, h6),
+.batch-cancellation-pro-page [style*="background:#f0fdf4"] :is(p, span, label, small, strong, b, h1, h2, h3, h4, h5, h6),
+.batch-cancellation-pro-page [style*="background: #fef2f2"] :is(p, span, label, small, strong, b, h1, h2, h3, h4, h5, h6),
+.batch-cancellation-pro-page [style*="background:#fef2f2"] :is(p, span, label, small, strong, b, h1, h2, h3, h4, h5, h6) {
+    color: #142033 !important;
+}
+
+.audit-log-pro-page span[style*="background: #fee2e2"],
+.audit-log-pro-page span[style*="background:#fee2e2"],
+.audit-log-pro-page span[style*="background: rgb(254, 226, 226)"],
+.audit-log-pro-page span[style*="background:rgb(254, 226, 226)"] {
+    color: #7f1d1d !important;
+}
+
+.audit-log-pro-page span[style*="background: #dbeafe"],
+.audit-log-pro-page span[style*="background:#dbeafe"],
+.audit-log-pro-page span[style*="background: rgb(219, 234, 254)"],
+.audit-log-pro-page span[style*="background:rgb(219, 234, 254)"],
+.audit-log-pro-page span[style*="background: #e0f2fe"],
+.audit-log-pro-page span[style*="background:#e0f2fe"],
+.audit-log-pro-page span[style*="background: rgb(224, 242, 254)"],
+.audit-log-pro-page span[style*="background:rgb(224, 242, 254)"],
+.audit-log-pro-page span[style*="background: #cffafe"],
+.audit-log-pro-page span[style*="background:#cffafe"],
+.audit-log-pro-page span[style*="background: rgb(207, 250, 254)"],
+.audit-log-pro-page span[style*="background:rgb(207, 250, 254)"] {
+    color: #075985 !important;
+}
+
+.audit-log-pro-page span[style*="background: #fef3c7"],
+.audit-log-pro-page span[style*="background:#fef3c7"],
+.audit-log-pro-page span[style*="background: rgb(254, 243, 199)"],
+.audit-log-pro-page span[style*="background:rgb(254, 243, 199)"],
+.audit-log-pro-page span[style*="background: #fef9c3"],
+.audit-log-pro-page span[style*="background:#fef9c3"],
+.audit-log-pro-page span[style*="background: rgb(254, 249, 195)"],
+.audit-log-pro-page span[style*="background:rgb(254, 249, 195)"] {
+    color: #713f12 !important;
+}
+
+.audit-log-pro-page span[style*="background: #ede9fe"],
+.audit-log-pro-page span[style*="background:#ede9fe"],
+.audit-log-pro-page span[style*="background: rgb(237, 233, 254)"],
+.audit-log-pro-page span[style*="background:rgb(237, 233, 254)"] {
+    color: #4c1d95 !important;
+}
+
+.audit-log-pro-page span[style*="background: #dcfce7"],
+.audit-log-pro-page span[style*="background:#dcfce7"],
+.audit-log-pro-page span[style*="background: rgb(220, 252, 231)"],
+.audit-log-pro-page span[style*="background:rgb(220, 252, 231)"] {
+    color: #14532d !important;
+}
+
+.audit-log-pro-page span[style*="background: #e2e8f0"],
+.audit-log-pro-page span[style*="background:#e2e8f0"],
+.audit-log-pro-page span[style*="background: rgb(226, 232, 240)"],
+.audit-log-pro-page span[style*="background:rgb(226, 232, 240)"] {
+    color: #334155 !important;
+}
+
+/* Inline white blocks are converted to dark panels earlier, so keep their text light. */
+.audit-log-pro-page [style*="background: white"],
+.audit-log-pro-page [style*="background:white"],
+.audit-log-pro-page [style*="background: #fff"],
+.audit-log-pro-page [style*="background:#fff"],
+.audit-log-pro-page [style*="background: #ffffff"],
+.audit-log-pro-page [style*="background:#ffffff"],
+.audit-log-pro-page [style*="background: rgb(255, 255, 255)"],
+.audit-log-pro-page [style*="background:rgb(255, 255, 255)"],
+.batch-cancellation-pro-page [style*="background: white"],
+.batch-cancellation-pro-page [style*="background:white"],
+.batch-cancellation-pro-page [style*="background: #fff"],
+.batch-cancellation-pro-page [style*="background:#fff"],
+.batch-cancellation-pro-page [style*="background: #ffffff"],
+.batch-cancellation-pro-page [style*="background:#ffffff"],
+.batch-cancellation-pro-page [style*="background: rgb(255, 255, 255)"],
+.batch-cancellation-pro-page [style*="background:rgb(255, 255, 255)"] {
+    color: #f9fbff !important;
+}
+
+.audit-log-pro-page [style*="background: white"] :is(p, span, label, small, strong, b, h1, h2, h3, h4, h5, h6),
+.audit-log-pro-page [style*="background:white"] :is(p, span, label, small, strong, b, h1, h2, h3, h4, h5, h6),
+.audit-log-pro-page [style*="background: #fff"] :is(p, span, label, small, strong, b, h1, h2, h3, h4, h5, h6),
+.audit-log-pro-page [style*="background:#fff"] :is(p, span, label, small, strong, b, h1, h2, h3, h4, h5, h6),
+.audit-log-pro-page [style*="background: rgb(255, 255, 255)"] :is(p, span, label, small, strong, b, h1, h2, h3, h4, h5, h6),
+.audit-log-pro-page [style*="background:rgb(255, 255, 255)"] :is(p, span, label, small, strong, b, h1, h2, h3, h4, h5, h6),
+.batch-cancellation-pro-page [style*="background: white"] :is(p, span, label, small, strong, b, h1, h2, h3, h4, h5, h6),
+.batch-cancellation-pro-page [style*="background:white"] :is(p, span, label, small, strong, b, h1, h2, h3, h4, h5, h6),
+.batch-cancellation-pro-page [style*="background: #fff"] :is(p, span, label, small, strong, b, h1, h2, h3, h4, h5, h6),
+.batch-cancellation-pro-page [style*="background:#fff"] :is(p, span, label, small, strong, b, h1, h2, h3, h4, h5, h6),
+.batch-cancellation-pro-page [style*="background: rgb(255, 255, 255)"] :is(p, span, label, small, strong, b, h1, h2, h3, h4, h5, h6),
+.batch-cancellation-pro-page [style*="background:rgb(255, 255, 255)"] :is(p, span, label, small, strong, b, h1, h2, h3, h4, h5, h6) {
+    color: #f9fbff !important;
+}
+
+.batch-cancellation-pro-page span[style*="background: white"],
+.batch-cancellation-pro-page span[style*="background:white"],
+.batch-cancellation-pro-page span[style*="background: #fff"],
+.batch-cancellation-pro-page span[style*="background:#fff"],
+.batch-cancellation-pro-page span[style*="background: #ffffff"],
+.batch-cancellation-pro-page span[style*="background:#ffffff"],
+.batch-cancellation-pro-page span[style*="background: rgb(255, 255, 255)"],
+.batch-cancellation-pro-page span[style*="background:rgb(255, 255, 255)"] {
+    color: #f9fbff !important;
+}
+
+.audit-log-pro-page span[style*="border-radius: 999px"][style*="background-color: #fee2e2"],
+.audit-log-pro-page span[style*="border-radius: 999px"][style*="background-color:#fee2e2"],
+.audit-log-pro-page span[style*="border-radius: 999px"][style*="background-color: rgb(254, 226, 226)"],
+.audit-log-pro-page span[style*="border-radius: 999px"][style*="background-color:rgb(254, 226, 226)"] {
+    color: #7f1d1d !important;
+}
+
+.audit-log-pro-page span[style*="border-radius: 999px"][style*="background-color: #dbeafe"],
+.audit-log-pro-page span[style*="border-radius: 999px"][style*="background-color:#dbeafe"],
+.audit-log-pro-page span[style*="border-radius: 999px"][style*="background-color: rgb(219, 234, 254)"],
+.audit-log-pro-page span[style*="border-radius: 999px"][style*="background-color:rgb(219, 234, 254)"],
+.audit-log-pro-page span[style*="border-radius: 999px"][style*="background-color: #e0f2fe"],
+.audit-log-pro-page span[style*="border-radius: 999px"][style*="background-color:#e0f2fe"],
+.audit-log-pro-page span[style*="border-radius: 999px"][style*="background-color: rgb(224, 242, 254)"],
+.audit-log-pro-page span[style*="border-radius: 999px"][style*="background-color:rgb(224, 242, 254)"],
+.audit-log-pro-page span[style*="border-radius: 999px"][style*="background-color: #cffafe"],
+.audit-log-pro-page span[style*="border-radius: 999px"][style*="background-color:#cffafe"],
+.audit-log-pro-page span[style*="border-radius: 999px"][style*="background-color: rgb(207, 250, 254)"],
+.audit-log-pro-page span[style*="border-radius: 999px"][style*="background-color:rgb(207, 250, 254)"] {
+    color: #075985 !important;
+}
+
+.audit-log-pro-page span[style*="border-radius: 999px"][style*="background-color: #fef3c7"],
+.audit-log-pro-page span[style*="border-radius: 999px"][style*="background-color:#fef3c7"],
+.audit-log-pro-page span[style*="border-radius: 999px"][style*="background-color: rgb(254, 243, 199)"],
+.audit-log-pro-page span[style*="border-radius: 999px"][style*="background-color:rgb(254, 243, 199)"],
+.audit-log-pro-page span[style*="border-radius: 999px"][style*="background-color: #fef9c3"],
+.audit-log-pro-page span[style*="border-radius: 999px"][style*="background-color:#fef9c3"],
+.audit-log-pro-page span[style*="border-radius: 999px"][style*="background-color: rgb(254, 249, 195)"],
+.audit-log-pro-page span[style*="border-radius: 999px"][style*="background-color:rgb(254, 249, 195)"] {
+    color: #713f12 !important;
+}
+
+.audit-log-pro-page span[style*="border-radius: 999px"][style*="background-color: #ede9fe"],
+.audit-log-pro-page span[style*="border-radius: 999px"][style*="background-color:#ede9fe"],
+.audit-log-pro-page span[style*="border-radius: 999px"][style*="background-color: rgb(237, 233, 254)"],
+.audit-log-pro-page span[style*="border-radius: 999px"][style*="background-color:rgb(237, 233, 254)"] {
+    color: #4c1d95 !important;
+}
+
+.audit-log-pro-page span[style*="border-radius: 999px"][style*="background-color: #dcfce7"],
+.audit-log-pro-page span[style*="border-radius: 999px"][style*="background-color:#dcfce7"],
+.audit-log-pro-page span[style*="border-radius: 999px"][style*="background-color: rgb(220, 252, 231)"],
+.audit-log-pro-page span[style*="border-radius: 999px"][style*="background-color:rgb(220, 252, 231)"] {
+    color: #14532d !important;
+}
+
+.audit-log-pro-page span[style*="border-radius: 999px"][style*="background-color: #e2e8f0"],
+.audit-log-pro-page span[style*="border-radius: 999px"][style*="background-color:#e2e8f0"],
+.audit-log-pro-page span[style*="border-radius: 999px"][style*="background-color: rgb(226, 232, 240)"],
+.audit-log-pro-page span[style*="border-radius: 999px"][style*="background-color:rgb(226, 232, 240)"] {
+    color: #334155 !important;
+}
+
+.audit-log-pro-page .audit-action-badge,
+.audit-log-pro-page vaadin-grid .audit-action-badge {
+    color: #142033 !important;
+}
+
+.batch-cancellation-pro-page .batch-inline-email,
+.batch-cancellation-pro-page .batch-inline-email :is(p, span, label, small, strong, b, h1, h2, h3, h4, h5, h6) {
+    color: #142033 !important;
+}
+
+.batch-cancellation-pro-page .batch-inline-email-chip,
+.batch-cancellation-pro-page .batch-inline-email-chip:is(p, span, label, small, strong, b),
+.batch-cancellation-pro-page .batch-inline-email .batch-inline-email-chip {
+    color: #f9fbff !important;
+}

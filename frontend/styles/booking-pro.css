@@ -351,6 +351,58 @@
     color: inherit;
 }
 
+.bp-price-box > div:last-child span {
+    color: #f8fafc !important;
+}
+
+.bp-price-box > div:last-child span:last-child {
+    color: #93c5fd !important;
+}
+
+.booking-pro-view .bp-dialog-content [style*="background: #eef4fb"][style*="justify-content: space-between"] > span,
+.booking-pro-view .bp-dialog-content [style*="background:#eef4fb"][style*="justify-content: space-between"] > span,
+.booking-pro-view .bp-dialog-content [style*="background-color: #eef4fb"][style*="justify-content: space-between"] > span,
+.booking-pro-view .bp-dialog-content [style*="background-color:#eef4fb"][style*="justify-content: space-between"] > span,
+.booking-pro-view .bp-dialog-content [style*="background: rgb(238, 244, 251)"][style*="justify-content: space-between"] > span,
+.booking-pro-view .bp-dialog-content [style*="background:rgb(238, 244, 251)"][style*="justify-content: space-between"] > span,
+.booking-pro-view .bp-dialog-content [style*="background-color: rgb(238, 244, 251)"][style*="justify-content: space-between"] > span,
+.booking-pro-view .bp-dialog-content [style*="background-color:rgb(238, 244, 251)"][style*="justify-content: space-between"] > span {
+    color: #142033 !important;
+}
+
+.booking-pro-view .bp-dialog-content [style*="background: #eef4fb"][style*="justify-content: space-between"] > span:last-child,
+.booking-pro-view .bp-dialog-content [style*="background:#eef4fb"][style*="justify-content: space-between"] > span:last-child,
+.booking-pro-view .bp-dialog-content [style*="background-color: #eef4fb"][style*="justify-content: space-between"] > span:last-child,
+.booking-pro-view .bp-dialog-content [style*="background-color:#eef4fb"][style*="justify-content: space-between"] > span:last-child,
+.booking-pro-view .bp-dialog-content [style*="background: rgb(238, 244, 251)"][style*="justify-content: space-between"] > span:last-child,
+.booking-pro-view .bp-dialog-content [style*="background:rgb(238, 244, 251)"][style*="justify-content: space-between"] > span:last-child,
+.booking-pro-view .bp-dialog-content [style*="background-color: rgb(238, 244, 251)"][style*="justify-content: space-between"] > span:last-child,
+.booking-pro-view .bp-dialog-content [style*="background-color:rgb(238, 244, 251)"][style*="justify-content: space-between"] > span:last-child {
+    color: #0072ce !important;
+}
+
+.bp-dialog-content [style*="background: #eef4fb"][style*="justify-content"] > span,
+.bp-dialog-content [style*="background:#eef4fb"][style*="justify-content"] > span,
+.bp-dialog-content [style*="background-color: #eef4fb"][style*="justify-content"] > span,
+.bp-dialog-content [style*="background-color:#eef4fb"][style*="justify-content"] > span,
+.bp-dialog-content [style*="background: rgb(238, 244, 251)"][style*="justify-content"] > span,
+.bp-dialog-content [style*="background:rgb(238, 244, 251)"][style*="justify-content"] > span,
+.bp-dialog-content [style*="background-color: rgb(238, 244, 251)"][style*="justify-content"] > span,
+.bp-dialog-content [style*="background-color:rgb(238, 244, 251)"][style*="justify-content"] > span {
+    color: #142033 !important;
+}
+
+.bp-dialog-content [style*="background: #eef4fb"][style*="justify-content"] > span:last-child,
+.bp-dialog-content [style*="background:#eef4fb"][style*="justify-content"] > span:last-child,
+.bp-dialog-content [style*="background-color: #eef4fb"][style*="justify-content"] > span:last-child,
+.bp-dialog-content [style*="background-color:#eef4fb"][style*="justify-content"] > span:last-child,
+.bp-dialog-content [style*="background: rgb(238, 244, 251)"][style*="justify-content"] > span:last-child,
+.bp-dialog-content [style*="background:rgb(238, 244, 251)"][style*="justify-content"] > span:last-child,
+.bp-dialog-content [style*="background-color: rgb(238, 244, 251)"][style*="justify-content"] > span:last-child,
+.bp-dialog-content [style*="background-color:rgb(238, 244, 251)"][style*="justify-content"] > span:last-child {
+    color: #0072ce !important;
+}
+
 .bp-stepper {
     max-width: 1040px !important;
 }
