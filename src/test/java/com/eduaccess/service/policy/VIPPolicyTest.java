@@ -4,6 +4,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -17,6 +18,8 @@ class VIPPolicyTest {
     @Test
     @DisplayName("calculate_movieOnly_returns70Percent")
     void calculate_movieOnly_returns70Percent() {
+        // Use future date to ensure 70% refund applies
+        // 使用未来日期确保应用70%退款
         RefundContext ctx = new RefundContext(
                 new BigDecimal("20.00"),
                 BigDecimal.ZERO,
@@ -25,7 +28,8 @@ class VIPPolicyTest {
                 false,
                 false,
                 RefundScope.PARTIAL,
-                true
+                true,
+                LocalDate.now().plusDays(2)
         );
 
         PolicyRefundResult result = policy.calculate(ctx);
@@ -38,6 +42,8 @@ class VIPPolicyTest {
     @Test
     @DisplayName("calculate_includesFood_returns100PercentFood")
     void calculate_includesFood_returns100PercentFood() {
+        // Use future date to ensure 70% refund applies
+        // 使用未来日期确保应用70%退款
         RefundContext ctx = new RefundContext(
                 new BigDecimal("20.00"),
                 new BigDecimal("8.50"),
@@ -46,7 +52,8 @@ class VIPPolicyTest {
                 true,
                 true,
                 RefundScope.PARTIAL,
-                true
+                true,
+                LocalDate.now().plusDays(4)
         );
 
         PolicyRefundResult result = policy.calculate(ctx);

@@ -49,6 +49,22 @@ class RefundCalculatorTest {
         RefundSummary summary = calculator.calculate(booking);
 
         // Same-day rule overrides all others — refund = 0.
+        // 同日规则覆盖所有其他规则 — 退款 = 0。
+        assertThat(summary.getRefundAmount()).isEqualByComparingTo("0.00");
+        assertThat(summary.getFeeAmount()).isEqualByComparingTo("20.00");
+    }
+
+    @Test
+    @DisplayName("calculate_pastScreening_returnsZeroRefund")
+    void calculate_pastScreening_returnsZeroRefund() {
+        // Test for already-completed screenings (yesterday)
+        // 测试已完成的场次（昨天）
+        Booking booking = mockBooking(new BigDecimal("20.00"), false, LocalDate.now().minusDays(1));
+
+        RefundSummary summary = calculator.calculate(booking);
+
+        // Past screening should also return 0 refund
+        // 过去的场次也应返回0退款
         assertThat(summary.getRefundAmount()).isEqualByComparingTo("0.00");
         assertThat(summary.getFeeAmount()).isEqualByComparingTo("20.00");
     }

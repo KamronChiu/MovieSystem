@@ -4,6 +4,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -20,7 +21,8 @@ class RefundContextTest {
         RefundContext ctx = new RefundContext(
                 null, null, null,
                 true, true, true,
-                null, false
+                null, false,
+                LocalDate.now().plusDays(1)
         );
 
         assertThat(ctx.movieAmount()).isEqualByComparingTo(BigDecimal.ZERO);
@@ -40,7 +42,8 @@ class RefundContextTest {
                 BigDecimal.ZERO,
                 BigDecimal.ZERO,
                 true, false, false,
-                RefundScope.PARTIAL, false
+                RefundScope.PARTIAL, false,
+                LocalDate.now().plusDays(2)
         );
 
         assertThat(ctx.vipPackageAmount()).isEqualByComparingTo("0.00");

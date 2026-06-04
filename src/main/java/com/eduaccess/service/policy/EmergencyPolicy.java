@@ -15,8 +15,29 @@ import java.math.BigDecimal;
  *   <li>Voucher:       50%-off coupon issued <em>only</em> to VIP customers,
  *       face value = 50% of the original ticket price.</li>
  * </ul>
+ * <p>
+ * 紧急退款策略 — 特殊情况/同日全额退款。
+ * <p>
+ * 规则（任务9）：
+ * <ul>
+ *   <li>电影票：100%退款（覆盖正常的同日0元规则）。</li>
+ *   <li>食品/饮料：100%退款。</li>
+ *   <li>VIP套餐：100%退款（仅在包含此项目时）。</li>
+ *   <li>优惠券：仅为VIP客户发放50%折扣券，面值 = 原始票价的50%。</li>
+ * </ul>
+ * <p>
+ * <b>Important</b>: This policy intentionally bypasses the same-day/past
+ * screening restriction. Emergency situations (cinema closure, equipment
+ * failure, etc.) require full refunds regardless of screening date.
+ * <p>
+ * <b>重要</b>：此策略故意绕过同日/已放映场次限制。紧急情况（影院关闭、
+ * 设备故障等）需要全额退款，无论放映日期如何。
+ * <p>
  * Stateless and Spring-managed so the {@link CancellationPolicyFactory}
  * can auto-discover it without manual registration.
+ * <p>
+ * 无状态且由Spring管理，因此 {@link CancellationPolicyFactory}
+ * 可以自动发现它，无需手动注册。
  */
 @Component
 public class EmergencyPolicy implements CancellationPolicy {

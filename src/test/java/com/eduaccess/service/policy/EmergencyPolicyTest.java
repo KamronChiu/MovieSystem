@@ -4,6 +4,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -22,6 +23,8 @@ class EmergencyPolicyTest {
     @Test
     @DisplayName("calculate_fullScope_returnsFullRefund")
     void calculate_fullScope_returnsFullRefund() {
+        // Emergency policy works for any date (including same-day)
+        // 紧急策略适用于任何日期（包括同日）
         RefundContext ctx = new RefundContext(
                 new BigDecimal("20.00"),
                 new BigDecimal("5.00"),
@@ -30,7 +33,8 @@ class EmergencyPolicyTest {
                 true,
                 false,
                 RefundScope.FULL,
-                false   // not VIP → no voucher
+                false,   // not VIP → no voucher
+                LocalDate.now()  // same-day (emergency allows refund)
         );
 
         PolicyRefundResult result = policy.calculate(ctx);
@@ -52,7 +56,8 @@ class EmergencyPolicyTest {
                 false,
                 false,
                 RefundScope.FULL,
-                true    // VIP → voucher should be issued
+                true,    // VIP → voucher should be issued
+                LocalDate.now().plusDays(1)
         );
 
         PolicyRefundResult result = policy.calculate(ctx);
@@ -74,7 +79,8 @@ class EmergencyPolicyTest {
                 true,
                 false,
                 RefundScope.PARTIAL,
-                false
+                false,
+                LocalDate.now().plusDays(3)
         );
 
         PolicyRefundResult result = policy.calculate(ctx);

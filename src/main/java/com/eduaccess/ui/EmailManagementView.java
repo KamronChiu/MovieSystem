@@ -61,6 +61,9 @@ public class EmailManagementView extends Div implements BeforeEnterObserver {
     private static final String AMBER       = "#f59e0b";
     private static final String DANGER      = "#dc2626";
     private static final String VIP_PURPLE  = "#7c3aed";
+    // Dark color for meta cell values - ensures high contrast on white/light backgrounds
+    // 用于元数据单元格值的深色 - 确保在白色/浅色背景上的高对比度
+    private static final String META_VALUE_COLOR = "#0f172a";
 
     private static final DateTimeFormatter STAMP_FMT =
             DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm", Locale.UK);
@@ -400,7 +403,8 @@ public class EmailManagementView extends Div implements BeforeEnterObserver {
                 .set("text-transform", "uppercase");
         Span val = new Span(value == null || value.isBlank() ? "—" : value);
         val.getStyle()
-                .set("font-size", "13px").set("font-weight", "800").set("color", LIGHT_TEXT);
+                .set("font-size", "13px").set("font-weight", "800")
+                .set("color", META_VALUE_COLOR);  // Changed to dark color for better contrast
         cell.add(lab, val);
         return cell;
     }
