@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -254,14 +255,18 @@ public class CancellationService {
     /**
      * Builds the immutable {@link RefundContext} input that drives all
      * three concrete {@link CancellationPolicy} implementations.
+     * <p>
+     * 构建不可变的 {@link RefundContext} 输入，驱动所有三个具体的
+     * {@link CancellationPolicy} 实现。
      *
-     * @param bookingReference  booking identifier
-     * @param policyType        which policy the administrator picked
-     * @param scope             full vs partial refund
-     * @param includeMovie      whether to refund the movie ticket
-     * @param includeFood       whether to refund food orders
-     * @param includeVipPackage whether to refund the VIP package add-on
+     * @param bookingReference  booking identifier (预订标识符)
+     * @param policyType        which policy the administrator picked (管理员选择的策略)
+     * @param scope             full vs partial refund (全额或部分退款)
+     * @param includeMovie      whether to refund the movie ticket (是否退电影票)
+     * @param includeFood       whether to refund food orders (是否退食品订单)
+     * @param includeVipPackage whether to refund the VIP package add-on (是否退VIP套餐)
      * @return refund context, or {@code null} if the booking is not found
+     *         (退款上下文，如果预订未找到则返回 {@code null})
      */
     @Transactional(readOnly = true)
     public RefundContext buildPolicyContext(String bookingReference,
@@ -277,6 +282,7 @@ public class CancellationService {
         }
         BigDecimal foodAmount = calculateRefundableFoodAmount(booking.getId());
         BigDecimal vipPackageAmount = booking.isVip() ? VIP_PACKAGE_FEE : BigDecimal.ZERO;
+        LocalDate screeningDate = booking.getScreening().getScreeningDate();
         return new RefundContext(
                 booking.getTotalCost(),
                 foodAmount,
@@ -285,7 +291,8 @@ public class CancellationService {
                 includeFood,
                 includeVipPackage,
                 scope,
-                booking.isVip()
+                booking.isVip(),
+                screeningDate
         );
     }
 
@@ -336,6 +343,7 @@ public class CancellationService {
                         "Booking reference was not found."));
 
         // 1) Compute the policy result (we need it for the audit trail).
+        // 1) 计算策略结果（我们需要它用于审计跟踪）。
         RefundContext context = new RefundContext(
                 booking.getTotalCost(),
                 calculateRefundableFoodAmount(booking.getId()),
@@ -344,7 +352,8 @@ public class CancellationService {
                 includeFood,
                 includeVipPackage,
                 scope,
-                booking.isVip()
+                booking.isVip(),
+                booking.getScreening().getScreeningDate()
         );
         PolicyRefundResult result = policyFactory.policyFor(policyType).calculate(context);
 
