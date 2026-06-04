@@ -105,15 +105,29 @@ public class ManagerCinemaView extends Div implements BeforeEnterObserver {
         refreshGrid();
     }
 
+    /**
+     * Configure form fields with placeholders and validation
+     * 配置表单字段，包括占位符和验证
+     * 
+     * Key points / 关键点:
+     * - numberOfScreensField: 1-6 screens allowed / 允许1-6个影厅
+     * - Value change listener triggers rebuildCapacityFields()
+     * - 值变化监听器触发生成座位数输入框
+     */
     private void configureFields() {
         cityField.setPlaceholder("e.g. Manchester");
         nameField.setPlaceholder("e.g. Horizon Manchester Central");
         addressField.setPlaceholder("e.g. 18 Oxford Road, Manchester");
 
+        // Set screen count range (1-6)
+        // 设置影厅数量范围（1-6个）
         numberOfScreensField.setMin(1);
         numberOfScreensField.setMax(6);
         numberOfScreensField.setValue(2);
         numberOfScreensField.setStepButtonsVisible(true);
+        
+        // Auto-rebuild capacity fields when screen count changes
+        // 影厅数量变化时自动重建座位数输入框
         numberOfScreensField.addValueChangeListener(event -> rebuildCapacityFields());
 
         cityField.setWidthFull();
@@ -254,6 +268,14 @@ public class ManagerCinemaView extends Div implements BeforeEnterObserver {
                 .set("overflow", "hidden");
     }
 
+    /**
+     * Rebuild capacity input fields dynamically based on number of screens
+     * 根据影厅数量动态重建座位数输入字段
+     * 
+     * Example / 示例:
+     * - User selects 3 screens → generate 3 input fields
+     * - 用户选择3个影厅 → 生成3个输入框
+     */
     private void rebuildCapacityFields() {
         capacityFields.removeAll();
         screenCapacityFields.clear();
@@ -261,6 +283,8 @@ public class ManagerCinemaView extends Div implements BeforeEnterObserver {
         Integer count = numberOfScreensField.getValue();
         int screenCount = count == null ? 1 : Math.max(1, Math.min(6, count));
 
+        // Create grid layout for capacity inputs
+        // 为座位数输入创建网格布局
         Span label = new Span("Screen capacities");
         label.getStyle()
                 .set("display", "block")
@@ -275,10 +299,12 @@ public class ManagerCinemaView extends Div implements BeforeEnterObserver {
                 .set("grid-template-columns", "repeat(2, minmax(0, 1fr))")
                 .set("gap", "12px");
 
+        // Generate input field for each screen
+        // 为每个影厅生成一个输入字段
         for (int i = 1; i <= screenCount; i++) {
             IntegerField field = new IntegerField("Screen " + i);
             field.setPlaceholder("50–120");
-            field.setValue(i % 2 == 0 ? 90 : 70);
+            field.setValue(i % 2 == 0 ? 90 : 70); // Default capacity / 默认座位数
             field.setMin(50);
             field.setMax(120);
             field.setStepButtonsVisible(true);
@@ -291,12 +317,26 @@ public class ManagerCinemaView extends Div implements BeforeEnterObserver {
         capacityFields.add(label, grid);
     }
 
+    /**
+     * Create new cinema with screens and seats
+     * 创建新影院，包括影厅和座位
+     * 
+     * Flow / 流程:
+     * 1. Get screen capacities from form fields / 从表单获取每个影厅的座位数
+     * 2. Call CinemaService.createCinema() / 调用服务层创建影院
+     * 3. Service auto-generates screens and seats / 服务层自动生成影厅和座位
+     * 4. Refresh grid and show success message / 刷新列表并显示成功消息
+     */
     private void createCinema() {
         try {
+            // Collect screen capacities from dynamic form fields
+            // 从动态表单字段收集每个影厅的座位数
             List<Integer> capacities = screenCapacityFields.stream()
                     .map(IntegerField::getValue)
                     .toList();
 
+            // Call service layer to create cinema
+            // 调用服务层创建影院（包含城市、名称、地址、影厅座位数）
             Cinema createdCinema = cinemaService.createCinema(
                     cityField.getValue(),
                     nameField.getValue(),
@@ -304,6 +344,8 @@ public class ManagerCinemaView extends Div implements BeforeEnterObserver {
                     capacities
             );
 
+            // Clear form and refresh grid
+            // 清空表单并刷新影院列表
             Notification.show("✅ Cinema created successfully: " + createdCinema.getName());
             clearForm();
             refreshGrid();
@@ -336,6 +378,18 @@ public class ManagerCinemaView extends Div implements BeforeEnterObserver {
         rebuildCapacityFields();
     }
 
+    /**
+     * Refresh grid with latest cinema data from database
+     * 从数据库加载最新影院数据并刷新列表
+     * 
+     * Flow / 流程:
+     * 1. Call cinemaService.findAllCinemas() to get all cinemas
+     * 2. Set the list as grid items
+     * 3. Grid automatically re-renders with new data
+     *
+     * Called after create/delete operations
+     * 在创建/删除操作后调用
+     */
     private void refreshGrid() {
         cinemaGrid.setItems(cinemaService.findAllCinemas());
     }

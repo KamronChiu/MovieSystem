@@ -13,6 +13,7 @@ import com.eduaccess.domain.ScreeningType;
 import com.eduaccess.domain.Seat;
 import com.eduaccess.domain.SeatType;
 import com.eduaccess.repository.CinemaRepository;
+import com.eduaccess.repository.FilmRepository;
 import com.eduaccess.service.BookingService;
 import com.eduaccess.service.FoodOrderService;
 import com.eduaccess.service.LoginService;
@@ -63,6 +64,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
+import com.eduaccess.repository.FilmRepository;
 
 @CssImport("./styles/booking-pro.css")
 @Route(value = "booking", layout = MainLayout.class)
@@ -112,6 +114,7 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
     }
 
     private final CinemaRepository cinemaRepository;
+    private final FilmRepository filmRepository;
     private final ScreeningService screeningService;
     private final BookingService bookingService;
     private final PricingService pricingService;
@@ -167,6 +170,7 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
 
     public BookingView(
             CinemaRepository cinemaRepository,
+            FilmRepository filmRepository,
             ScreeningService screeningService,
             BookingService bookingService,
             PricingService pricingService,
@@ -174,6 +178,7 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
             LoginService loginService
     ) {
         this.cinemaRepository = cinemaRepository;
+        this.filmRepository = filmRepository;
         this.screeningService = screeningService;
         this.bookingService = bookingService;
         this.pricingService = pricingService;
@@ -458,6 +463,17 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
                         .orElse(null);
             }
 
+            // If requested film is not in films list (no screenings), load it from database
+            if (selectedFilm == null && requestedFilmId != null) {
+                selectedFilm = filmRepository.findById(requestedFilmId).orElse(null);
+                if (selectedFilm != null) {
+                    // Add the film to filmBox items so it can be selected
+                    List<Film> filmsWithRequested = new java.util.ArrayList<>(films);
+                    filmsWithRequested.add(selectedFilm);
+                    filmBox.setItems(filmsWithRequested);
+                }
+            }
+
             if (selectedFilm == null) {
                 selectedFilm = films.get(0);
             }
@@ -557,8 +573,17 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
         hero.removeAll();
 
         Screening firstScreening = findFirstScreeningForSelectedFilm();
+        Film film = null;
 
-        if (firstScreening == null) {
+        // Try to get film from screening first
+        if (firstScreening != null) {
+            film = firstScreening.getFilm();
+        } else if (selectedFilmId != null) {
+            // If no screening but we have selectedFilmId, load film from repository
+            film = filmRepository.findById(selectedFilmId).orElse(null);
+        }
+
+        if (film == null) {
             Div empty = new Div();
             empty.setText("No film selected.");
             empty.getStyle()
@@ -568,8 +593,6 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
             hero.add(empty);
             return;
         }
-
-        Film film = firstScreening.getFilm();
 
         Div heroGrid = new Div();
         heroGrid.addClassName("bp-hero-grid");
@@ -1122,9 +1145,38 @@ public class BookingView extends Div implements HasUrlParameter<Long>, BeforeEnt
         );
 
         if (screenings.isEmpty()) {
-            Paragraph empty = new Paragraph("No showtimes are available for this film, date, cinema, hall type and format combination.");
-            empty.getStyle().set("color", "#cbd5e1");
-            showtimeArea.add(empty);
+            Div emptyState = new Div();
+            emptyState.getStyle()
+                    .set("text-align", "center")
+                    .set("padding", "60px 20px");
+            
+            Icon emptyIcon = VaadinIcon.CALENDAR.create();
+            emptyIcon.setSize("48px");
+            emptyIcon.getStyle().set("color", "#64748b");
+            
+            Paragraph empty = new Paragraph("No showtimes are currently scheduled for this film.");
+            empty.getStyle()
+                    .set("color", "#cbd5e1")
+                    .set("font-size", "18px")
+                    .set("font-weight", "600")
+                    .set("margin", "16px 0 8px 0");
+            
+            Paragraph hint = new Paragraph("Please check back later or browse other available films.");
+            hint.getStyle()
+                    .set("color", "#94a3b8")
+                    .set("font-size", "14px");
+            
+            Button backToFilms = new Button("Browse Films", event -> UI.getCurrent().navigate(FilmListingView.class));
+            backToFilms.getStyle()
+                    .set("margin-top", "24px")
+                    .set("background", "#0072ce")
+                    .set("color", "white")
+                    .set("padding", "12px 32px")
+                    .set("border-radius", "8px")
+                    .set("font-weight", "700");
+            
+            emptyState.add(emptyIcon, empty, hint, backToFilms);
+            showtimeArea.add(emptyState);
             return;
         }
 

@@ -214,7 +214,20 @@ public class ManagerListingsView extends Div implements BeforeEnterObserver {
         styleDarkField(contentAdviceField);
     }
 
+    /**
+     * Configure poster image upload component
+     * 配置海报图片上传组件
+     * 
+     * Key features / 关键功能:
+     * 1. Accept JPEG, PNG, WebP formats / 支持JPEG、PNG、WebP格式
+     * 2. Max file size: 10MB / 最大文件大小：10MB
+     * 3. Save to /uploads/posters/ with UUID filename
+     * 4. 保存到/uploads/posters/目录，使用UUID作为文件名
+     * 5. Show preview after upload / 上传后显示预览
+     */
     private void configureUpload() {
+        // Set accepted file types and size limit
+        // 设置接受的文件类型和大小限制
         posterUpload.setAcceptedFileTypes("image/jpeg", "image/png", "image/jpg", "image/webp");
         posterUpload.setMaxFiles(1);
         posterUpload.setMaxFileSize(10 * 1024 * 1024); // 10 MB
@@ -225,18 +238,27 @@ public class ManagerListingsView extends Div implements BeforeEnterObserver {
                 .set("border", "1px dashed rgba(255,255,255,0.30)")
                 .set("color", "white");
 
+        // Handle successful upload
+        // 处理上传成功事件
         posterUpload.addSucceededListener(event -> {
             try {
                 String original = event.getFileName();
                 String ext = extractExt(original);
+                // Generate unique filename with UUID
+                // 使用UUID生成唯一文件名
                 String savedName = UUID.randomUUID().toString().replace("-", "") + ext;
 
+                // Create upload directory if not exists
+                // 如果上传目录不存在则创建
                 File posterDir = new File(WebConfig.UPLOAD_ROOT, WebConfig.POSTERS_SUBDIR);
                 if (!posterDir.exists()) {
                     posterDir.mkdirs();
                 }
 
                 File target = new File(posterDir, savedName);
+                
+                // Save uploaded file to disk
+                // 将上传的文件保存到磁盘
                 try (InputStream in = posterBuffer.getInputStream();
                      FileOutputStream out = new FileOutputStream(target)) {
                     byte[] buf = new byte[8192];
@@ -246,6 +268,8 @@ public class ManagerListingsView extends Div implements BeforeEnterObserver {
                     }
                 }
 
+                // Store URL for database and show preview
+                // 保存URL用于数据库，并显示预览
                 uploadedPosterUrl = "/uploads/" + WebConfig.POSTERS_SUBDIR + "/" + savedName;
                 uploadedFileMime = event.getMIMEType();
 
@@ -447,21 +471,45 @@ public class ManagerListingsView extends Div implements BeforeEnterObserver {
                 .set("overflow", "hidden");
     }
 
+    /**
+     * Confirm and delete film from database
+     * 确认并从数据库中删除电影
+     * 
+     * Flow / 流程:
+     * 1. Check if film has scheduled screenings / 检查电影是否有排片
+     * 2. If has screenings, block deletion / 如果有排片，阻止删除
+     * 3. Show ConfirmDialog for user confirmation / 显示确认对话框
+     * 4. Delete film from database / 从数据库删除电影
+     * 5. Record audit log / 记录审计日志
+     * 6. Refresh grid and clear form if needed / 刷新列表，必要时清空表单
+     * 
+     * Key points / 关键点:
+     * - Uses screeningRepository.existsByFilmId() to avoid LazyInitializationException
+     * - 使用screeningRepository查询避免LazyInitializationException
+     * - Cannot delete films with screenings / 不能删除有排片的电影
+     */
     private void confirmAndDelete(Film film) {
         if (film == null) {
             return;
         }
-        // Use a repository query instead of touching the LAZY
-        // film.getScreenings() collection, which would throw
-        // LazyInitializationException in the Vaadin UI thread.
+        
+        // Use repository query instead of accessing LAZY collection
+        // 使用repository查询而不是访问LAZY集合，避免LazyInitializationException
+        // film.getScreenings() would throw LazyInitializationException
+        // film.getScreenings()会抛出LazyInitializationException
         boolean hasScreenings = film.getId() != null
                 && screeningRepository.existsByFilmId(film.getId());
+        
+        // Block deletion if film has scheduled screenings
+        // 如果电影有排片，阻止删除
         if (hasScreenings) {
             Notification.show("Cannot delete '" + film.getTitle() + "': it still has scheduled screenings. "
                     + "Remove its screenings first in Manager → Cinemas.");
             return;
         }
 
+        // Show confirmation dialog
+        // 显示确认对话框
         ConfirmDialog dialog = new ConfirmDialog();
         dialog.setHeader("Delete \"" + film.getTitle() + "\"?");
         dialog.setText("This will remove the film from the system. This action cannot be undone.");
@@ -469,13 +517,23 @@ public class ManagerListingsView extends Div implements BeforeEnterObserver {
         dialog.setCancelText("Cancel");
         dialog.setConfirmText("Delete");
         dialog.setConfirmButtonTheme("error primary");
+        
+        // Handle confirmation
+        // 处理确认操作
         dialog.addConfirmListener(e -> {
             try {
+                // Capture film data before deletion for audit log
+                // 在删除前捕获电影数据用于审计日志
                 String deletedTitle = film.getTitle();
                 Long deletedId = film.getId();
                 String deletedGenre = film.getGenre();
+                
+                // Delete film from database
+                // 从数据库删除电影
                 filmRepository.delete(film);
 
+                // Record audit log
+                // 记录审计日志
                 auditLogService.record(
                         AuditAction.FILM_DELETED,
                         "Film",
@@ -488,10 +546,18 @@ public class ManagerListingsView extends Div implements BeforeEnterObserver {
                         "Genre: " + (deletedGenre == null ? "-" : deletedGenre)
                 );
 
+                // Show success notification
+                // 显示成功通知
                 Notification.show("Deleted: " + deletedTitle);
+                
+                // Clear form if deleted film was selected
+                // 如果删除的是当前选中的电影，清空表单
                 if (selectedFilm != null && Objects.equals(selectedFilm.getId(), deletedId)) {
                     clearForm();
                 }
+                
+                // Refresh grid to show updated list
+                // 刷新列表显示更新后的结果
                 refreshGrid();
             } catch (RuntimeException ex) {
                 Notification.show("Delete failed: " + ex.getMessage());
@@ -500,10 +566,23 @@ public class ManagerListingsView extends Div implements BeforeEnterObserver {
         dialog.open();
     }
 
+    /**
+     * Create new film and save to database
+     * 创建新电影并保存到数据库
+     * 
+     * Flow / 流程:
+     * 1. Validate form fields / 验证表单字段
+     * 2. Create Film entity with all metadata / 创建Film实体，包含所有元数据
+     * 3. Save to database / 保存到数据库
+     * 4. Record audit log / 记录审计日志
+     * 5. Refresh grid and clear form / 刷新列表并清空表单
+     */
     private void doCreate() {
         try {
             validateForm();
 
+            // Create Film entity with form data
+            // 使用表单数据创建Film实体
             Film film = new Film(
                     titleField.getValue().trim(),
                     nullIfBlank(descriptionField.getValue()),
@@ -514,11 +593,15 @@ public class ManagerListingsView extends Div implements BeforeEnterObserver {
                     durationField.getValue(),
                     releaseDatePicker.getValue(),
                     nullIfBlank(contentAdviceField.getValue()),
-                    uploadedPosterUrl
+                    uploadedPosterUrl  // Poster URL from upload / 上传的海报URL
             );
 
+            // Save to database
+            // 保存到数据库
             filmRepository.save(film);
 
+            // Record audit log for tracking
+            // 记录审计日志用于追踪
             auditLogService.record(
                     AuditAction.FILM_CREATED,
                     "Film",
@@ -539,6 +622,17 @@ public class ManagerListingsView extends Div implements BeforeEnterObserver {
         }
     }
 
+    /**
+     * Update existing film with new data
+     * 更新现有电影的新数据
+     * 
+     * Flow / 流程:
+     * 1. Check if film is selected / 检查是否选择了电影
+     * 2. Validate form fields / 验证表单字段
+     * 3. Update Film entity fields / 更新Film实体字段
+     * 4. Save changes to database / 保存更改到数据库
+     * 5. Record audit log / 记录审计日志
+     */
     private void doUpdate() {
         try {
             if (selectedFilm == null) {
@@ -547,6 +641,8 @@ public class ManagerListingsView extends Div implements BeforeEnterObserver {
             }
             validateForm();
 
+            // Update all film fields from form
+            // 从表单更新所有电影字段
             selectedFilm.setTitle(titleField.getValue().trim());
             selectedFilm.setDescription(nullIfBlank(descriptionField.getValue()));
             selectedFilm.setActors(nullIfBlank(actorsField.getValue()));
@@ -556,13 +652,19 @@ public class ManagerListingsView extends Div implements BeforeEnterObserver {
             selectedFilm.setDurationMinutes(durationField.getValue());
             selectedFilm.setReleaseDate(releaseDatePicker.getValue());
             selectedFilm.setContentAdvice(nullIfBlank(contentAdviceField.getValue()));
+            
             // Only update poster if a new one was uploaded
+            // 只有在上传了新海报时才更新海报
             if (uploadedPosterUrl != null && !uploadedPosterUrl.isBlank()) {
                 selectedFilm.setPosterUrl(uploadedPosterUrl);
             }
 
+            // Save changes to database
+            // 保存更改到数据库
             filmRepository.save(selectedFilm);
 
+            // Record audit log
+            // 记录审计日志
             auditLogService.record(
                     AuditAction.FILM_UPDATED,
                     "Film",
@@ -639,6 +741,18 @@ public class ManagerListingsView extends Div implements BeforeEnterObserver {
         filmGrid.asSingleSelect().clear();
     }
 
+    /**
+     * Refresh grid with all films sorted alphabetically
+     * 从数据库加载所有电影并按字母顺序排序后刷新列表
+     * 
+     * Flow / 流程:
+     * 1. Get all films from filmRepository / 从filmRepository获取所有电影
+     * 2. Sort films by title (case-insensitive) / 按标题排序（不区分大小写）
+     * 3. Set sorted list as grid items / 将排序后的列表设置为grid的数据源
+     * 
+     * Called after create/update/delete operations
+     * 在创建/更新/删除操作后调用
+     */
     private void refreshGrid() {
         List<Film> films = filmRepository.findAll().stream()
                 .sorted(Comparator.comparing(Film::getTitle, String.CASE_INSENSITIVE_ORDER))
